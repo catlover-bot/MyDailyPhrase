@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SPM: Test Domain",
+      "type": "shell",
+      "command": "swift",
+      "args": ["test"],
+      "options": { "cwd": "${workspaceFolder}/Packages/Domain" },
+      "problemMatcher": []
+    },
+    {
+      "label": "SPM: Test Data",
+      "type": "shell",
+      "command": "swift",
+      "args": ["test"],
+      "options": { "cwd": "${workspaceFolder}/Packages/Data" },
+      "problemMatcher": []
+    },
+    {
+      "label": "SPM: Test Presentation",
+      "type": "shell",
+      "command": "swift",
+      "args": ["test"],
+      "options": { "cwd": "${workspaceFolder}/Packages/Presentation" },
+      "problemMatcher": []
+    }
+  ]
+}
