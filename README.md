@@ -1,7 +1,5 @@
 # MyDailyPhrase
 
-# MyDailyPhrase
-
 MyDailyPhrase は「今日のお題（ワンフレーズ）」に対して短い回答を記録し、連続日数（streak）を可視化する iOS アプリです。  
 データは App Group を利用して永続化し、将来的に Widget などの拡張と同じデータを参照できる構成を採用しています。
 
