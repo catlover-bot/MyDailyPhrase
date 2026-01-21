@@ -16,9 +16,22 @@
 		68CEDF122EF8859700CDD406 /* MyDailyPhrase.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyDailyPhrase.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		68CEDF482F15E65500CDD406 /* Exceptions for "MyDailyPhrase" folder in "MyDailyPhrase" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 68CEDF112EF8859700CDD406 /* MyDailyPhrase */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		68CEDF142EF8859700CDD406 /* MyDailyPhrase */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				68CEDF482F15E65500CDD406 /* Exceptions for "MyDailyPhrase" folder in "MyDailyPhrase" target */,
+			);
 			path = MyDailyPhrase;
 			sourceTree = "<group>";
 		};
@@ -107,9 +120,9 @@
 			mainGroup = 68CEDF092EF8859700CDD406;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				68CEDF212EF8C0D000CDD406 /* XCLocalSwiftPackageReference "../../Packages/Data" */,
-				68CEDF242EF8C0FC00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Domain" */,
-				68CEDF272EF8C10B00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Presentation" */,
+				68CEDF3C2F0CA77300CDD406 /* XCLocalSwiftPackageReference "../../Packages/Data" */,
+				68CEDF3D2F0CA78700CDD406 /* XCLocalSwiftPackageReference "../../Packages/Domain" */,
+				68CEDF3E2F0CA79B00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Presentation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 68CEDF132EF8859700CDD406 /* Products */;
@@ -272,6 +285,7 @@
 				DEVELOPMENT_TEAM = 9L8G486Q32;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyDailyPhrase/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -305,6 +319,7 @@
 				DEVELOPMENT_TEAM = 9L8G486Q32;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyDailyPhrase/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -351,15 +366,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		68CEDF212EF8C0D000CDD406 /* XCLocalSwiftPackageReference "../../Packages/Data" */ = {
+		68CEDF3C2F0CA77300CDD406 /* XCLocalSwiftPackageReference "../../Packages/Data" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/Data;
 		};
-		68CEDF242EF8C0FC00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Domain" */ = {
+		68CEDF3D2F0CA78700CDD406 /* XCLocalSwiftPackageReference "../../Packages/Domain" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/Domain;
 		};
-		68CEDF272EF8C10B00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Presentation" */ = {
+		68CEDF3E2F0CA79B00CDD406 /* XCLocalSwiftPackageReference "../../Packages/Presentation" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/Presentation;
 		};

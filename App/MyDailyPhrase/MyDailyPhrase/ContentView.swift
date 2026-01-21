@@ -2,54 +2,36 @@ import SwiftUI
 import Presentation
 
 struct ContentView: View {
-    @StateObject private var viewModel: HomeViewModel
+    let homeVM: HomeViewModel
+    let historyVM: HistoryViewModel
+    let reviewVM: ReviewViewModel
 
-    init(viewModel: HomeViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
-    }
+    // 追加
+    let communityVM: CommunityViewModel
+    let profileVM: ProfileViewModel
+
+    // 追加：deep link を統合処理
+    let onOpenURL: (URL) -> Void
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("今日のお題")
-                        .font(.headline)
+        TabView {
+            HomeView(viewModel: homeVM)
+                .tabItem { Label("今日", systemImage: "square.and.pencil") }
 
-                    Text(viewModel.promptText)
-                        .font(.title3)
-                        .bold()
-                }
+            HistoryView(viewModel: historyVM)
+                .tabItem { Label("履歴", systemImage: "clock") }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("あなたの回答")
-                        .font(.headline)
+            ReviewView(viewModel: reviewVM)
+                .tabItem { Label("振り返り", systemImage: "sparkles") }
 
-                    TextField("短く一言で…", text: $viewModel.answerText, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(3, reservesSpace: true)
-                }
+            CommunityView(vm: communityVM)
+                .tabItem { Label("つながり", systemImage: "person.2") }
 
-                Button {
-                    viewModel.submit()
-                } label: {
-                    Text(viewModel.isAnsweredToday ? "更新する" : "保存する")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-
-                HStack {
-                    Text("連続日数")
-                    Spacer()
-                    Text("\(viewModel.streak) 日")
-                        .bold()
-                }
-                .padding(.top, 8)
-
-                Spacer()
+            NavigationStack {
+                ProfileView(vm: profileVM)
             }
-            .padding()
-            .navigationTitle("MyDailyPhrase")
+            .tabItem { Label("プロフィール", systemImage: "person") }
         }
-        .onAppear { viewModel.load() }
+        .onOpenURL(perform: onOpenURL)
     }
 }

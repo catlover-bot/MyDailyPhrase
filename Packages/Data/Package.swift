@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Data",
     platforms: [
-        .iOS(.v16),
+        .iOS(.v17),
         .macOS(.v12)
     ],
     products: [
@@ -18,11 +18,9 @@ let package = Package(
             name: "Data",
             dependencies: [
                 .product(name: "Domain", package: "Domain")
-            ]
-        ),
-        .testTarget(
-            name: "DataTests",
-            dependencies: ["Data"]
+            ],
+            path: "Sources/Data"
         )
+        // Tests があるなら testTarget を追加
     ]
 )
