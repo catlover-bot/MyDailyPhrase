@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import LinkPresentation
 
-/// 画像+テキスト+URL を「それっぽく」共有するためのアイテム
+/// 画像+テキスト+URL を「それっぽく」共有するためのアイテム（プレビュー整形用）
 final class SharePayload: NSObject, UIActivityItemSource {
     private let text: String
     private let image: UIImage?
@@ -15,12 +15,11 @@ final class SharePayload: NSObject, UIActivityItemSource {
         super.init()
     }
 
-    // プレースホルダ（必須）
     func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
         text
     }
 
-    // 実際に渡すアイテム（基本はテキスト返しが最も事故が少ない）
+    /// ここはテキスト固定でOK（画像は別アイテムとして渡す）
     func activityViewController(
         _ activityViewController: UIActivityViewController,
         itemForActivityType activityType: UIActivity.ActivityType?
@@ -28,7 +27,6 @@ final class SharePayload: NSObject, UIActivityItemSource {
         text
     }
 
-    // 件名（Mail等）
     func activityViewController(
         _ activityViewController: UIActivityViewController,
         subjectForActivityType activityType: UIActivity.ActivityType?
@@ -36,7 +34,6 @@ final class SharePayload: NSObject, UIActivityItemSource {
         extractTitle(from: text) ?? "MyDailyPhrase"
     }
 
-    // 共有プレビュー（メタデータ）
     func activityViewControllerLinkMetadata(
         _ activityViewController: UIActivityViewController
     ) -> LPLinkMetadata? {
@@ -67,6 +64,27 @@ final class SharePayload: NSObject, UIActivityItemSource {
               !s.isEmpty else { return nil }
 
         return s.count > 40 ? String(s.prefix(40)) + "…" : s
+    }
+}
+
+/// UIActivityViewController に渡す items を安定化（画像が確実に渡る）
+enum ShareItemsBuilder {
+    static func build(text: String, image: UIImage?, url: URL?) -> [Any] {
+        var items: [Any] = []
+
+        // 1) プレビュー整形
+        items.append(SharePayload(text: text, image: image, url: url))
+
+        // 2) 本体：画像（最重要）
+        if let image { items.append(image) }
+
+        // 3) URL（コピー/保存に強い）
+        if let url { items.append(url) }
+
+        // 4) テキスト（共有先により効く）
+        items.append(text)
+
+        return items
     }
 }
 

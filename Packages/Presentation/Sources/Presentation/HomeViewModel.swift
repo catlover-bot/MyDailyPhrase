@@ -8,23 +8,20 @@ public final class HomeViewModel: ObservableObject {
     @Published public private(set) var streak: Int = 0
     @Published public private(set) var isAnsweredToday: Bool = false
 
-    // 保存結果を UI に見せる
     @Published public var saveMessage: String? = nil
-
-    // 作品カード（ReflectionArtifact）
     @Published public private(set) var todayArtifact: ReflectionArtifact? = nil
 
-    // 1年前の今日
     @Published public private(set) var oneYearAgoTitle: String = "1年前の今日"
     @Published public private(set) var oneYearAgoPrompt: String = ""
     @Published public private(set) var oneYearAgoAnswer: String = ""
     @Published public private(set) var hasOneYearAgo: Bool = false
     @Published public private(set) var oneYearAgoArtifact: ReflectionArtifact? = nil
 
-    // ✅ チャレンジ受信
     @Published public private(set) var incomingChallenge: Entry? = nil
-    // ✅ チャレンジ回答（編集用）
     @Published public var challengeAnswerText: String = ""
+
+    // ✅ NEW: 選択中の装飾ID（ShareCardに渡す）
+    @Published public private(set) var selectedDecorationId: String = "classic"
 
     private let getTodayEntry: GetTodayEntryUseCase
     private let saveTodayAnswer: SaveTodayAnswerUseCase
@@ -33,8 +30,11 @@ public final class HomeViewModel: ObservableObject {
     private let getEntryByDateKey: GetEntryByDateKeyUseCase
     private let saveAnswerByDateKey: SaveAnswerByDateKeyUseCase
 
-    // 作品化
     private let enrichEntry: EnrichEntryUseCase
+
+    // ✅ NEW: プロフィール（装飾/無料券付与用）
+    private let getMyProfile: GetMyProfileUseCase
+    private let updateMyProfile: UpdateMyProfileUseCase
 
     public init(
         getTodayEntry: GetTodayEntryUseCase,
@@ -43,7 +43,9 @@ public final class HomeViewModel: ObservableObject {
         getEntryByOffset: GetEntryByOffsetUseCase,
         enrichEntry: EnrichEntryUseCase,
         getEntryByDateKey: GetEntryByDateKeyUseCase,
-        saveAnswerByDateKey: SaveAnswerByDateKeyUseCase
+        saveAnswerByDateKey: SaveAnswerByDateKeyUseCase,
+        getMyProfile: GetMyProfileUseCase,
+        updateMyProfile: UpdateMyProfileUseCase
     ) {
         self.getTodayEntry = getTodayEntry
         self.saveTodayAnswer = saveTodayAnswer
@@ -52,6 +54,8 @@ public final class HomeViewModel: ObservableObject {
         self.enrichEntry = enrichEntry
         self.getEntryByDateKey = getEntryByDateKey
         self.saveAnswerByDateKey = saveAnswerByDateKey
+        self.getMyProfile = getMyProfile
+        self.updateMyProfile = updateMyProfile
     }
 
     public func load() {
@@ -61,11 +65,9 @@ public final class HomeViewModel: ObservableObject {
         isAnsweredToday = (entry.answer?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
         streak = computeStreak.execute()
 
-        // 今日の作品カード
         let trimmed = answerText.trimmingCharacters(in: .whitespacesAndNewlines)
         todayArtifact = trimmed.isEmpty ? nil : enrichEntry.execute(prompt: promptText, answer: trimmed)
 
-        // 1年前の今日（-365日）
         if let old = getEntryByOffset.execute(days: -365),
            let ans = old.answer?.trimmingCharacters(in: .whitespacesAndNewlines),
            !ans.isEmpty {
@@ -79,6 +81,10 @@ public final class HomeViewModel: ObservableObject {
             oneYearAgoAnswer = ""
             oneYearAgoArtifact = nil
         }
+
+        // ✅ 選択装飾を反映
+        let p = getMyProfile()
+        selectedDecorationId = p.selectedDecorationId
     }
 
     public func submit() {
@@ -89,15 +95,30 @@ public final class HomeViewModel: ObservableObject {
         }
 
         saveTodayAnswer.execute(answer: trimmed)
-        load()
 
+        // ✅ 1日1回：回答保存時に無料ガチャ券+1（付与済みならスキップ）
+        grantDailyGachaTicketIfNeeded()
+
+        load()
         NotificationCenter.default.post(name: .entryDidUpdate, object: nil)
         saveMessage = "保存しました"
     }
 
+    private func grantDailyGachaTicketIfNeeded() {
+        let tz = TimeZone(identifier: "Asia/Tokyo") ?? .current
+        let todayKey = DateKey.todayKey(timeZone: tz)
+
+        let p = getMyProfile()
+        if p.lastFreeTicketDateKey == todayKey { return }
+
+        _ = updateMyProfile(
+            gachaTickets: p.gachaTickets + 1,
+            lastFreeTicketDateKey: todayKey
+        )
+    }
+
     public func clearSaveMessage() { saveMessage = nil }
 
-    // ✅ deep link 受信
     public func handleOpenURL(_ url: URL) {
         guard url.scheme == "mydailyphrase" else { return }
         guard url.host == "challenge" else { return }
@@ -109,11 +130,9 @@ public final class HomeViewModel: ObservableObject {
 
         let e = getEntryByDateKey.execute(dateKey: dateKey)
         incomingChallenge = e
-        // 既存回答があれば編集欄へ（別端末なら空のはず）
         challengeAnswerText = e.answer ?? ""
     }
 
-    // ✅ チャレンジ回答を保存
     public func saveIncomingChallengeAnswer() {
         guard let dateKey = incomingChallenge?.dateKey else { return }
 
@@ -125,7 +144,6 @@ public final class HomeViewModel: ObservableObject {
 
         saveAnswerByDateKey.execute(dateKey: dateKey, answer: trimmed)
 
-        // 表示上も更新（再オープンせず反映させたい場合）
         if var e = incomingChallenge {
             e.answer = trimmed
             incomingChallenge = e

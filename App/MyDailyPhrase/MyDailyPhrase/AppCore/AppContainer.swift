@@ -7,6 +7,9 @@ final class AppContainer {
     let appGroupID: String
     private let timeZone: TimeZone = .current
 
+    // ✅ AppGroup UserDefaults を一箇所で確定（保険で standard fallback）
+    private let appGroupDefaults: UserDefaults
+
     // ===== Core =====
     private let entryRepo: EntryRepository
     private let promptRepo: PromptRepository
@@ -21,6 +24,10 @@ final class AppContainer {
 
     private let getMyProfile: GetMyProfileUseCase
     private let updateMyProfile: UpdateMyProfileUseCase
+
+    // ✅ Gacha UseCases（強化）
+    private let drawDecorationGacha: DrawDecorationGachaUseCase
+    private let grantDailyFreeTicket: GrantDailyFreeTicketUseCase
 
     private let createChallengeLink: CreateChallengeLinkUseCase
     private let receiveChallengeLink: ReceiveChallengeLinkUseCase
@@ -56,6 +63,7 @@ final class AppContainer {
 
     init(appGroupID: String = "group.MyDailyPhrase") {
         self.appGroupID = appGroupID
+        self.appGroupDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
 
         // Core repos
         self.promptRepo = LocalPromptRepository()
@@ -73,6 +81,10 @@ final class AppContainer {
 
         self.getMyProfile = GetMyProfileUseCase(repo: profileRepo)
         self.updateMyProfile = UpdateMyProfileUseCase(repo: profileRepo)
+
+        // ✅ Gacha UseCases
+        self.drawDecorationGacha = DrawDecorationGachaUseCase(get: getMyProfile, update: updateMyProfile, pityThreshold: 80)
+        self.grantDailyFreeTicket = GrantDailyFreeTicketUseCase(get: getMyProfile, update: updateMyProfile, timeZone: timeZone)
 
         self.createChallengeLink = CreateChallengeLinkUseCase(profileUC: getMyProfile, events: challengeEventRepo)
         self.receiveChallengeLink = ReceiveChallengeLinkUseCase(events: challengeEventRepo)
@@ -202,7 +214,9 @@ final class AppContainer {
             getEntryByOffset: getEntryByOffset,
             enrichEntry: enrichEntry,
             getEntryByDateKey: getEntryByDateKey,
-            saveAnswerByDateKey: saveAnswerByDateKey
+            saveAnswerByDateKey: saveAnswerByDateKey,
+            getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile
         )
     }
 
@@ -216,10 +230,20 @@ final class AppContainer {
         return Presentation.ReviewViewModel(listEntries: listEntries, enrichEntry: enrichEntry, timeZone: timeZone)
     }
 
+    // ✅ ガチャVM（強化版の依存を注入）
+    func makeGachaViewModel() -> GachaViewModel {
+        GachaViewModel(
+            getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile,
+            drawDecorationGacha: drawDecorationGacha,
+            grantDailyFreeTicket: grantDailyFreeTicket
+        )
+    }
+
     // MARK: - App VMs
 
     func makeCommunityViewModel() -> CommunityViewModel {
-        return CommunityViewModel(
+        CommunityViewModel(
             listInboxChallenges: listInboxChallenges,
             listOutboxChallenges: listOutboxChallenges,
             listInboxReactions: listInboxReactions,
@@ -249,6 +273,15 @@ final class AppContainer {
 
     func makeProfileViewModel() -> ProfileViewModel {
         ProfileViewModel(get: getMyProfile, update: updateMyProfile)
+    }
+
+    // MARK: - IAP
+
+    func makeIAPStore() -> IAPStore {
+        IAPStore(
+            appGroupID: appGroupID,
+            updateMyProfile: updateMyProfile
+        )
     }
 
     // MARK: - Debug

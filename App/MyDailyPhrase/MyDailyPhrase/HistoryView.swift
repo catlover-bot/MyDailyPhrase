@@ -1,12 +1,13 @@
 import SwiftUI
-import UIKit
 import Presentation
 import Domain
 
 public struct HistoryView: View {
     @StateObject private var vm: HistoryViewModel
 
-    // ✅ 追加：統合共有（テキスト + 画像）
+    @Environment(\.currentDecorationId) private var decorationId
+
+    // ✅ 統合共有（SharePayload）
     @State private var isPresentingShareSheet: Bool = false
     @State private var shareSheetItems: [Any] = []
     @State private var isPreparingShare: Bool = false
@@ -17,32 +18,47 @@ public struct HistoryView: View {
 
     public var body: some View {
         NavigationStack {
-            List(vm.entries, id: \.dateKey) { entry in
-                NavigationLink {
-                    EntryDetailView(entry: entry)
-                } label: {
-                    row(entry)
-                }
-                // ✅ 追加：投稿（テキスト+画像）
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button {
-                        presentUnifiedShare(for: entry)
+            ZStack {
+                HistoryGradientBackground()
+                    .ignoresSafeArea()
+
+                List(vm.entries, id: \.dateKey) { entry in
+                    NavigationLink {
+                        EntryDetailView(entry: entry)
                     } label: {
-                        Label(isPreparingShare ? "準備中" : "投稿", systemImage: "paperplane.fill")
+                        // ✅ Row を Card で包む（装飾反映）
+                        Card {
+                            rowContent(entry)
+                        }
                     }
-                    .tint(.blue)
-                    .disabled(isPreparingShare)
-                }
-                // 既存：お気に入り
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button {
-                        vm.toggleFavorite(dateKey: entry.dateKey)
-                    } label: {
-                        Label(entry.isFavorite ? "解除" : "お気に入り",
-                              systemImage: entry.isFavorite ? "star.slash" : "star")
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+
+                    // ✅ 投稿（SharePayloadで安定化）
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        Button {
+                            presentUnifiedShare(for: entry)
+                        } label: {
+                            Label(isPreparingShare ? "準備中" : "投稿", systemImage: "paperplane.fill")
+                        }
+                        .tint(.blue)
+                        .disabled(isPreparingShare)
                     }
-                    .tint(.yellow)
+
+                    // ✅ お気に入り
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button {
+                            vm.toggleFavorite(dateKey: entry.dateKey)
+                        } label: {
+                            Label(entry.isFavorite ? "解除" : "お気に入り",
+                                  systemImage: entry.isFavorite ? "star.slash" : "star")
+                        }
+                        .tint(.yellow)
+                    }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("履歴")
             .searchable(text: $vm.query, prompt: "検索（お題 / 回答）")
@@ -70,12 +86,14 @@ public struct HistoryView: View {
         .sheet(isPresented: $isPresentingShareSheet) {
             ShareSheet(activityItems: shareSheetItems)
         }
-        .onAppear { vm.load() }
+        .task { vm.load() } // onAppearより安全（画面復帰時の多重ロード抑制）
     }
 
+    // MARK: - Row
+
     @ViewBuilder
-    private func row(_ entry: Entry) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private func rowContent(_ entry: Entry) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(formatDateKey(entry.dateKey))
                     .font(.headline)
@@ -103,7 +121,6 @@ public struct HistoryView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 4)
     }
 
     // MARK: - Share (Text + Image)
@@ -118,10 +135,9 @@ public struct HistoryView: View {
         let model = shareCardModel(for: entry)
         let image = ShareCardRenderer.render(model: model)?.image
 
-        var items: [Any] = [text]
-        if let image { items.append(image) }
-
-        shareSheetItems = items
+        // ✅ Homeと同じ方式：SharePayload（テキストが落ちにくい）
+        let payload = SharePayload(text: text, image: image, url: nil)
+        shareSheetItems = [payload]
         isPresentingShareSheet = true
     }
 
@@ -147,7 +163,8 @@ public struct HistoryView: View {
             title: nil,
             summary: nil,
             moodTags: [],
-            keywords: []
+            keywords: [],
+            decorationId: decorationId
         )
     }
 
@@ -159,5 +176,49 @@ public struct HistoryView: View {
         let m = key.dropFirst(4).prefix(2)
         let d = key.suffix(2)
         return "\(y)-\(m)-\(d)"
+    }
+}
+
+// MARK: - Background
+
+private struct HistoryGradientBackground: View {
+    @Environment(\.currentDecorationId) private var decorationId
+    private var style: DecorationStyle { DecorationStyle.from(decorationId) }
+
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color(.systemBackground),
+                Color(.systemBackground).opacity(0.90),
+                Color(.secondarySystemBackground).opacity(0.70)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay(
+            LinearGradient(
+                colors: style.tintColors,
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+        )
+    }
+
+    private enum DecorationStyle: String {
+        case classic, sakura, aurora, neon, gold
+        static func from(_ raw: String) -> DecorationStyle {
+            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return DecorationStyle(rawValue: norm) ?? .classic
+        }
+
+        var tintColors: [Color] {
+            switch self {
+            case .classic: return [Color.purple.opacity(0.08), Color.blue.opacity(0.06), Color.clear]
+            case .sakura:  return [Color.pink.opacity(0.10),   Color.purple.opacity(0.05), Color.clear]
+            case .aurora:  return [Color.green.opacity(0.08),  Color.blue.opacity(0.08),   Color.clear]
+            case .neon:    return [Color.cyan.opacity(0.08),   Color.purple.opacity(0.06), Color.clear]
+            case .gold:    return [Color.yellow.opacity(0.08), Color.orange.opacity(0.06), Color.clear]
+            }
+        }
     }
 }

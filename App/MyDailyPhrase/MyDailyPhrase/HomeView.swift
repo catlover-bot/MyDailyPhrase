@@ -6,6 +6,9 @@ import Domain
 public struct HomeView: View {
     @StateObject private var vm: HomeViewModel
 
+    // ✅ 現在の装飾ID（RootViewから配布される）
+    @Environment(\.currentDecorationId) private var decorationId
+
     // 画像生成・入力フォーカス
     @State private var shareImage: ShareImage?
     @State private var isPreparingShareImage: Bool = false
@@ -60,6 +63,7 @@ public struct HomeView: View {
         df.dateFormat = "yyyy-MM-dd"
         let dateText = df.string(from: Date())
 
+        // ✅ decorationId は Environment を採用（UIと共有カードが一致する）
         if let art = vm.todayArtifact {
             return ShareCardModel(
                 appName: "MyDailyPhrase",
@@ -71,6 +75,7 @@ public struct HomeView: View {
                 summary: art.summary,
                 moodTags: art.moodTags,
                 keywords: art.keywords,
+                decorationId: decorationId,
                 shareURL: challengeURL
             )
         } else {
@@ -84,6 +89,7 @@ public struct HomeView: View {
                 summary: nil,
                 moodTags: [],
                 keywords: [],
+                decorationId: decorationId,
                 shareURL: challengeURL
             )
         }
@@ -142,8 +148,7 @@ public struct HomeView: View {
                 Text("チャレンジが届きました")
                     .font(.title2).bold()
 
-                Text("お題")
-                    .font(.headline)
+                Text("お題").font(.headline)
 
                 Text(vm.incomingChallenge?.prompt.text ?? "（読み込み失敗）")
                     .font(.title3)
@@ -169,20 +174,14 @@ public struct HomeView: View {
                 Spacer()
 
                 HStack(spacing: 12) {
-                    Button("閉じる") {
-                        isPresentingChallenge = false
-                    }
-                    .buttonStyle(.bordered)
+                    Button("閉じる") { isPresentingChallenge = false }
+                        .buttonStyle(.bordered)
 
                     Spacer()
 
-                    Button("保存") {
-                        vm.saveIncomingChallengeAnswer()
-                        // 保存後は閉じたいならここで閉じる：
-                        // isPresentingChallenge = false
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(vm.challengeAnswerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("保存") { vm.saveIncomingChallengeAnswer() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(vm.challengeAnswerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .padding()
@@ -406,11 +405,8 @@ public struct HomeView: View {
             vm.clearSaveMessage()
             shareImage = nil
         }
-        // ✅ チャレンジ受信で sheet を開く
         .onChange(of: vm.incomingChallenge?.dateKey ?? "") { _, _ in
-            if vm.incomingChallenge != nil {
-                isPresentingChallenge = true
-            }
+            if vm.incomingChallenge != nil { isPresentingChallenge = true }
         }
     }
 
@@ -524,6 +520,9 @@ public struct HomeView: View {
 // MARK: - Private UI Parts
 
 private struct HomeGradientBackground: View {
+    @Environment(\.currentDecorationId) private var decorationId
+    private var style: DecorationStyle { DecorationStyle.from(decorationId) }
+
     var body: some View {
         LinearGradient(
             colors: [
@@ -537,32 +536,40 @@ private struct HomeGradientBackground: View {
         .ignoresSafeArea()
         .overlay(
             LinearGradient(
-                colors: [
-                    Color.purple.opacity(0.10),
-                    Color.blue.opacity(0.08),
-                    Color.clear
-                ],
+                colors: style.tintColors,
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading
             )
             .ignoresSafeArea()
         )
     }
+
+    private enum DecorationStyle: String {
+        case classic, sakura, aurora, neon, gold
+        static func from(_ raw: String) -> DecorationStyle {
+            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return DecorationStyle(rawValue: norm) ?? .classic
+        }
+
+        var tintColors: [Color] {
+            switch self {
+            case .classic: return [Color.purple.opacity(0.10), Color.blue.opacity(0.08), Color.clear]
+            case .sakura:  return [Color.pink.opacity(0.12),   Color.purple.opacity(0.06), Color.clear]
+            case .aurora:  return [Color.green.opacity(0.10),  Color.blue.opacity(0.10),   Color.clear]
+            case .neon:    return [Color.cyan.opacity(0.10),   Color.purple.opacity(0.08), Color.clear]
+            case .gold:    return [Color.yellow.opacity(0.10), Color.orange.opacity(0.08), Color.clear]
+            }
+        }
+    }
 }
 
 private struct GlassCard<Content: View>: View {
+    @Environment(\.currentDecorationId) private var decorationId
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
 
     var body: some View {
-        content
-            .padding(14)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.10))
-            )
+        Card(nil, decorationId: decorationId) { content }
     }
 }
 

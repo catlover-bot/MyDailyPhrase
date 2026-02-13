@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Presentation
 
 struct ContentView: View {
@@ -6,11 +7,12 @@ struct ContentView: View {
     let historyVM: HistoryViewModel
     let reviewVM: ReviewViewModel
 
-    // 追加
     let communityVM: CommunityViewModel
     let profileVM: ProfileViewModel
 
-    // 追加：deep link を統合処理
+    // ✅ ガチャVM（共有）
+    let gachaVM: GachaViewModel
+
     let onOpenURL: (URL) -> Void
 
     var body: some View {
@@ -24,11 +26,17 @@ struct ContentView: View {
             ReviewView(viewModel: reviewVM)
                 .tabItem { Label("振り返り", systemImage: "sparkles") }
 
+            // ✅ 追加：ガチャ画面を独立タブに
+            NavigationStack {
+                GachaView(vm: gachaVM)
+            }
+            .tabItem { Label("ガチャ", systemImage: "gift") }
+
             CommunityView(vm: communityVM)
                 .tabItem { Label("つながり", systemImage: "person.2") }
 
             NavigationStack {
-                ProfileView(vm: profileVM)
+                ProfileView(vm: profileVM, gachaVM: gachaVM)
             }
             .tabItem { Label("プロフィール", systemImage: "person") }
         }

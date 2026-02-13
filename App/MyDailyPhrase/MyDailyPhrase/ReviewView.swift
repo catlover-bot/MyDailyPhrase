@@ -11,6 +11,8 @@ public struct ReviewView: View {
     @State private var shareSheetItems: [Any] = []
     @State private var isPreparingShare: Bool = false
 
+    @Environment(\.currentDecorationId) private var decorationId
+
     public init(viewModel: ReviewViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
     }
@@ -135,7 +137,8 @@ public struct ReviewView: View {
             title: work.artifact.title,
             summary: work.artifact.summary,
             moodTags: work.artifact.moodTags,
-            keywords: work.artifact.keywords
+            keywords: work.artifact.keywords,
+            decorationId: decorationId
         )
     }
 
@@ -151,6 +154,9 @@ public struct ReviewView: View {
 // MARK: - Private UI Parts
 
 private struct ReviewGradientBackground: View {
+    @Environment(\.currentDecorationId) private var decorationId
+    private var style: DecorationStyle { DecorationStyle.from(decorationId) }
+
     var body: some View {
         LinearGradient(
             colors: [
@@ -164,34 +170,46 @@ private struct ReviewGradientBackground: View {
         .ignoresSafeArea()
         .overlay(
             LinearGradient(
-                colors: [
-                    Color.orange.opacity(0.10),
-                    Color.pink.opacity(0.08),
-                    Color.clear
-                ],
+                colors: style.tintColors,
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading
             )
             .ignoresSafeArea()
         )
     }
+
+    private enum DecorationStyle: String {
+        case classic, sakura, aurora, neon, gold
+        static func from(_ raw: String) -> DecorationStyle {
+            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return DecorationStyle(rawValue: norm) ?? .classic
+        }
+
+        var tintColors: [Color] {
+            switch self {
+            case .classic: return [Color.purple.opacity(0.10), Color.blue.opacity(0.08), Color.clear]
+            case .sakura:  return [Color.pink.opacity(0.12),   Color.purple.opacity(0.06), Color.clear]
+            case .aurora:  return [Color.green.opacity(0.10),  Color.blue.opacity(0.10),   Color.clear]
+            case .neon:    return [Color.cyan.opacity(0.10),   Color.purple.opacity(0.08), Color.clear]
+            case .gold:    return [Color.yellow.opacity(0.10), Color.orange.opacity(0.08), Color.clear]
+            }
+        }
+    }
 }
 
+
 private struct GlassCard<Content: View>: View {
+    @Environment(\.currentDecorationId) private var decorationId
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
 
     var body: some View {
-        content
-            .padding(14)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.10))
-            )
+        Card(nil, decorationId: decorationId) {
+            content
+        }
     }
 }
+
 
 private struct SectionHeader: View {
     let title: String

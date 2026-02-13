@@ -3,6 +3,8 @@ import UIKit
 import CoreImage
 import CoreImage.CIFilterBuiltins
 
+// MARK: - Model
+
 struct ShareCardModel: Equatable {
     let appName: String
     let dateText: String
@@ -15,10 +17,12 @@ struct ShareCardModel: Equatable {
     let moodTags: [String]
     let keywords: [String]
 
-    // ✅ 呼び出し側から差し替え可能にする
+    let metaLine: String?
+    let statsLine: String?
+
+    let decorationId: String
     let shareURL: URL?
 
-    // ✅ 既存呼び出しを壊さない（デフォルトは GitHub）
     init(
         appName: String,
         dateText: String,
@@ -29,6 +33,9 @@ struct ShareCardModel: Equatable {
         summary: String?,
         moodTags: [String],
         keywords: [String],
+        metaLine: String? = nil,
+        statsLine: String? = nil,
+        decorationId: String = "classic",
         shareURL: URL? = URL(string: "https://github.com/catlover-bot/MyDailyPhrase")
     ) {
         self.appName = appName
@@ -40,35 +47,56 @@ struct ShareCardModel: Equatable {
         self.summary = summary
         self.moodTags = moodTags
         self.keywords = keywords
+        self.metaLine = metaLine
+        self.statsLine = statsLine
+        self.decorationId = decorationId
         self.shareURL = shareURL
     }
 }
 
+// MARK: - View
 
 struct ShareCardView: View {
     let model: ShareCardModel
 
+    private var decoration: DecorationStyle {
+        DecorationStyle.from(model.decorationId)
+    }
+
     var body: some View {
         ZStack {
             background
+            decorationLayer
+                .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 14) {
                 header
+
+                if let meta = trimmed(model.metaLine), !meta.isEmpty {
+                    Text(meta)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
 
                 Text((model.title?.isEmpty == false) ? (model.title ?? "") : "今日の一文")
                     .font(.system(size: 30, weight: .heavy))
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
-                if let summary = model.summary, !summary.isEmpty {
+                if let summary = trimmed(model.summary), !summary.isEmpty {
                     Text(summary)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
                 }
 
-                cardSection(title: "お題", body: model.prompt, maxLines: 4)
+                if let stats = trimmed(model.statsLine), !stats.isEmpty {
+                    statsChip(stats)
+                }
 
+                cardSection(title: "お題", body: model.prompt, maxLines: 4)
                 answerSection()
 
                 if !model.moodTags.isEmpty {
@@ -80,7 +108,6 @@ struct ShareCardView: View {
                 }
 
                 Spacer(minLength: 8)
-
                 footer
             }
             .padding(18)
@@ -91,6 +118,26 @@ struct ShareCardView: View {
                 .stroke(Color.black.opacity(0.06), lineWidth: 1)
         )
         .padding(18)
+    }
+
+    // MARK: - Decoration Style
+
+    private enum DecorationStyle: String {
+        case classic
+        case paper
+        case noir
+        case sakura
+        case neon
+        case aurora
+        case glitch
+        case gold
+
+        static func from(_ raw: String) -> DecorationStyle {
+            let norm = raw
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            return DecorationStyle(rawValue: norm) ?? .classic
+        }
     }
 
     // MARK: - Background
@@ -107,16 +154,222 @@ struct ShareCardView: View {
         )
         .overlay(
             RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.12),
-                    Color.blue.opacity(0.08),
-                    Color.clear
-                ],
+                colors: baseTintColors,
                 center: .topTrailing,
                 startRadius: 40,
                 endRadius: 360
             )
         )
+    }
+
+    private var baseTintColors: [Color] {
+        switch decoration {
+        case .classic:
+            return [Color.purple.opacity(0.12), Color.blue.opacity(0.08), Color.clear]
+        case .paper:
+            return [Color.brown.opacity(0.08), Color.yellow.opacity(0.06), Color.clear]
+        case .noir:
+            return [Color.black.opacity(0.10), Color.gray.opacity(0.06), Color.clear]
+        case .sakura:
+            return [Color.pink.opacity(0.14), Color.purple.opacity(0.06), Color.clear]
+        case .aurora:
+            return [Color.green.opacity(0.10), Color.blue.opacity(0.10), Color.clear]
+        case .neon:
+            return [Color.cyan.opacity(0.10), Color.purple.opacity(0.08), Color.clear]
+        case .glitch:
+            return [Color.cyan.opacity(0.08), Color.red.opacity(0.06), Color.clear]
+        case .gold:
+            return [Color.yellow.opacity(0.12), Color.orange.opacity(0.08), Color.clear]
+        }
+    }
+
+    // MARK: - Decoration Layer
+
+    @ViewBuilder
+    private var decorationLayer: some View {
+        switch decoration {
+        case .classic:
+            EmptyView()
+        case .paper:
+            paperLayer
+        case .noir:
+            noirLayer
+        case .sakura:
+            sakuraLayer
+        case .aurora:
+            auroraLayer
+        case .neon:
+            neonLayer
+        case .glitch:
+            glitchLayer
+        case .gold:
+            goldLayer
+        }
+    }
+
+    private var paperLayer: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            ZStack {
+                // 罫線っぽい薄いライン
+                Path { p in
+                    let step: CGFloat = 22
+                    var y: CGFloat = 40
+                    while y < h - 40 {
+                        p.move(to: CGPoint(x: 26, y: y))
+                        p.addLine(to: CGPoint(x: w - 26, y: y))
+                        y += step
+                    }
+                }
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+
+                // 左余白のマージン線
+                Path { p in
+                    p.move(to: CGPoint(x: 58, y: 26))
+                    p.addLine(to: CGPoint(x: 58, y: h - 26))
+                }
+                .stroke(Color.red.opacity(0.06), lineWidth: 2)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private var noirLayer: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .inset(by: 6)
+            .stroke(Color.black.opacity(0.18), lineWidth: 3)
+            .overlay(
+                LinearGradient(
+                    colors: [Color.black.opacity(0.10), Color.clear, Color.black.opacity(0.06)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            )
+            .blendMode(.multiply)
+            .ignoresSafeArea()
+    }
+
+    private var glitchLayer: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack {
+                // スキャンライン
+                Path { p in
+                    let step: CGFloat = 10
+                    var y: CGFloat = 20
+                    while y < h - 20 {
+                        p.move(to: CGPoint(x: 16, y: y))
+                        p.addLine(to: CGPoint(x: w - 16, y: y))
+                        y += step
+                    }
+                }
+                .stroke(Color.black.opacity(0.03), lineWidth: 1)
+
+                // “ズレ” っぽい矩形
+                ForEach(0..<10, id: \.self) { i in
+                    let frac = CGFloat(i) / 10.0
+                    let y = 40 + (h - 80) * frac
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill((i % 2 == 0) ? Color.cyan.opacity(0.06) : Color.red.opacity(0.05))
+                        .frame(width: w * 0.72, height: 10)
+                        .position(x: w * 0.52 + (i % 2 == 0 ? 8 : -8), y: y)
+                        .blendMode(.screen)
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private var sakuraLayer: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            ZStack {
+                ForEach(0..<20, id: \.self) { i in
+                    let size = petalSize(i)
+                    let p = petalPosition(i, w: w, h: h)
+
+                    Circle()
+                        .fill(Color.pink.opacity(0.10))
+                        .frame(width: size, height: size)
+                        .position(x: p.x, y: p.y)
+                }
+            }
+            .blur(radius: 0.4)
+        }
+        .ignoresSafeArea()
+    }
+
+    private func petalSize(_ i: Int) -> CGFloat {
+        let base = 10 + (i % 5) * 6
+        return CGFloat(base)
+    }
+
+    private func petalPosition(_ i: Int, w: CGFloat, h: CGFloat) -> CGPoint {
+        func frac(_ x: CGFloat) -> CGFloat { x - floor(x) }
+        let a = frac(CGFloat(i) * 0.6180339887)
+        let b = frac(CGFloat(i) * 0.4142135623)
+        let x = w * (0.10 + 0.80 * a)
+        let y = h * (0.08 + 0.84 * b)
+        return CGPoint(x: x, y: y)
+    }
+
+    private var auroraLayer: some View {
+        LinearGradient(
+            colors: [
+                Color.green.opacity(0.10),
+                Color.blue.opacity(0.10),
+                Color.purple.opacity(0.10)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .blendMode(.overlay)
+        .opacity(0.85)
+        .ignoresSafeArea()
+    }
+
+    private var neonLayer: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .inset(by: 8)
+            .stroke(Color.cyan.opacity(0.22), lineWidth: 4)
+            .blur(radius: 1.2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .inset(by: 10)
+                    .stroke(Color.purple.opacity(0.16), lineWidth: 2)
+                    .blur(radius: 1.0)
+            )
+            .blendMode(.screen)
+            .ignoresSafeArea()
+    }
+
+    private var goldLayer: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .inset(by: 6)
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        Color.yellow.opacity(0.55),
+                        Color.orange.opacity(0.35),
+                        Color.yellow.opacity(0.55)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 6
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .inset(by: 12)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .ignoresSafeArea()
     }
 
     // MARK: - Header / Footer
@@ -133,12 +386,15 @@ struct ShareCardView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            Text("🔥 \(model.streakText)")
-                .font(.system(size: 12, weight: .bold))
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(Color.black.opacity(0.05))
-                .clipShape(Capsule())
+            let s = model.streakText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !s.isEmpty {
+                Text("🔥 \(s)")
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.black.opacity(0.05))
+                    .clipShape(Capsule())
+            }
         }
     }
 
@@ -162,7 +418,6 @@ struct ShareCardView: View {
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 70, height: 70)
-                        // ✅ Quiet Zone を強制（スキャン率が上がる）
                         .padding(8)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -211,12 +466,8 @@ struct ShareCardView: View {
                     .lineLimit(7)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                // ✅ 下端にフェード（長文でも“読める感”が出る）
                 LinearGradient(
-                    colors: [
-                        Color.clear,
-                        Color.black.opacity(0.04)
-                    ],
+                    colors: [Color.clear, Color.black.opacity(0.04)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -247,6 +498,26 @@ struct ShareCardView: View {
         }
     }
 
+    private func statsChip(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(text)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(Color.black.opacity(0.05))
+        .clipShape(Capsule())
+    }
+
+    // MARK: - Helpers
+
+    private func trimmed(_ s: String?) -> String? {
+        s?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - QR
 
     private static let ciContext = CIContext()
@@ -256,8 +527,8 @@ struct ShareCardView: View {
         let data = Data(string.utf8)
 
         let f = Self.qrFilter
-        f.setValue(data, forKey: "inputMessage")
-        f.setValue("M", forKey: "inputCorrectionLevel")
+        f.message = data
+        f.correctionLevel = "M"
 
         guard let outputImage = f.outputImage else { return nil }
         let scaled = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
@@ -269,11 +540,13 @@ struct ShareCardView: View {
     private func shortURLText(_ url: URL) -> String {
         let host = url.host ?? ""
         let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if path.isEmpty { return host }
+        if path.isEmpty { return host.isEmpty ? url.absoluteString : host }
         let comps = path.split(separator: "/").prefix(2).joined(separator: "/")
         return host.isEmpty ? String(comps) : "\(host)/\(comps)"
     }
 }
+
+// MARK: - FlowLayout
 
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8

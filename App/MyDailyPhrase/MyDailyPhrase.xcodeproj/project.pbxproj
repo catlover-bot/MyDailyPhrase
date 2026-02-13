@@ -10,10 +10,12 @@
 		68CEDF232EF8C0D000CDD406 /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF222EF8C0D000CDD406 /* Data */; };
 		68CEDF262EF8C0FC00CDD406 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF252EF8C0FC00CDD406 /* Domain */; };
 		68CEDF292EF8C10B00CDD406 /* Presentation in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF282EF8C10B00CDD406 /* Presentation */; };
+		68DA308D2F23B54200BF6CE3 /* MyDailyPhrase.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		68CEDF122EF8859700CDD406 /* MyDailyPhrase.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyDailyPhrase.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = MyDailyPhrase.storekit; path = MyDailyPhrase/MyDailyPhrase.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -54,6 +56,7 @@
 		68CEDF092EF8859700CDD406 = {
 			isa = PBXGroup;
 			children = (
+				68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */,
 				68CEDF142EF8859700CDD406 /* MyDailyPhrase */,
 				68CEDF132EF8859700CDD406 /* Products */,
 			);
@@ -139,6 +142,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				68DA308D2F23B54200BF6CE3 /* MyDailyPhrase.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
