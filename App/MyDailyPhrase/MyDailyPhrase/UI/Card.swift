@@ -58,12 +58,15 @@ struct Card<Content: View>: View {
 
     // MARK: - Decoration Style
 
-    private enum DecorationStyle: String {
+    private enum DecorationStyle: String, CaseIterable {
         case classic, sakura, aurora, neon, gold
 
         static func from(_ raw: String) -> DecorationStyle {
-            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return DecorationStyle(rawValue: norm) ?? .classic
+            let resolved = DecorationThemeResolver.resolveStyleID(
+                from: raw,
+                supportedStyleIDs: Set(Self.allCases.map(\.rawValue))
+            )
+            return DecorationStyle(rawValue: resolved) ?? .classic
         }
     }
 

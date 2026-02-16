@@ -4,32 +4,42 @@ public struct GrantDailyFreeTicketUseCase: Sendable {
     private let get: GetMyProfileUseCase
     private let update: UpdateMyProfileUseCase
     private let timeZone: TimeZone
+    private let dailyBonusTickets: @Sendable () -> Int
 
     public init(
         get: GetMyProfileUseCase,
         update: UpdateMyProfileUseCase,
-        timeZone: TimeZone = .current
+        timeZone: TimeZone = .current,
+        dailyBonusTickets: @escaping @Sendable () -> Int = { 0 }
     ) {
         self.get = get
         self.update = update
         self.timeZone = timeZone
+        self.dailyBonusTickets = dailyBonusTickets
     }
 
     /// 付与したら true、付与済みなら false
     @discardableResult
     public func callAsFunction() -> Bool {
+        grantedTicketCountIfNeeded() > 0
+    }
+
+    /// 付与した券数を返す（付与済みなら0）
+    public func grantedTicketCountIfNeeded() -> Int {
         let today = ymdString(Date(), timeZone: timeZone)
         let p = get()
 
         if p.lastFreeTicketDateKey == today {
-            return false
+            return 0
         }
 
+        let bonus = max(0, dailyBonusTickets())
+        let ticketCount = 1 + bonus
         _ = update(
-            gachaTickets: p.gachaTickets + 1,
+            gachaTickets: p.gachaTickets + ticketCount,
             lastFreeTicketDateKey: today
         )
-        return true
+        return ticketCount
     }
 
     private func ymdString(_ date: Date, timeZone: TimeZone) -> String {

@@ -14,16 +14,28 @@
 				<string>mydailyphrase</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.catlovervbot.mydailyphrase.deeplink</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>mydailyphrase</string>
-			</array>
-		</dict>
 	</array>
+	<key>AUTH_BACKEND_VERIFY_ENDPOINT</key>
+	<string>$(AUTH_BACKEND_VERIFY_ENDPOINT)</string>
+	<key>AUTH_BACKEND_VERIFY_BEARER</key>
+	<string>$(AUTH_BACKEND_VERIFY_BEARER)</string>
+	<key>AUTH_BACKEND_TIMEOUT_SECONDS</key>
+	<string>$(AUTH_BACKEND_TIMEOUT_SECONDS)</string>
+	<key>AUTH_GOOGLE_OAUTH_START_URL</key>
+	<string>$(AUTH_GOOGLE_OAUTH_START_URL)</string>
+	<key>AUTH_X_OAUTH_START_URL</key>
+	<string>$(AUTH_X_OAUTH_START_URL)</string>
+	<key>AUTH_OAUTH_CALLBACK_SCHEME</key>
+	<string>$(AUTH_OAUTH_CALLBACK_SCHEME)</string>
+	<key>AUTH_ALLOW_MANUAL_TOKEN_INPUT</key>
+	<string>$(AUTH_ALLOW_MANUAL_TOKEN_INPUT)</string>
+	<key>LEGAL_TERMS_URL</key>
+	<string>$(LEGAL_TERMS_URL)</string>
+	<key>LEGAL_PRIVACY_POLICY_URL</key>
+	<string>$(LEGAL_PRIVACY_POLICY_URL)</string>
+	<key>SECURITY_LOG_RETENTION_DAYS_DEFAULT</key>
+	<string>$(SECURITY_LOG_RETENTION_DAYS_DEFAULT)</string>
+	<key>SECURITY_LOG_RETENTION_DAYS_MAX</key>
+	<string>$(SECURITY_LOG_RETENTION_DAYS_MAX)</string>
 </dict>
 </plist>

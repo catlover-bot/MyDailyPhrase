@@ -1,0 +1,27 @@
+name: App Store Screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Capture Screenshots
+        run: |
+          ./Scripts/generate_app_store_screenshots.sh "${GITHUB_WORKSPACE}/AppStoreScreenshots"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: AppStoreScreenshots
+          if-no-files-found: error

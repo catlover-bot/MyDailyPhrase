@@ -1,8 +1,147 @@
 import Foundation
 
+public enum LinkedAuthProvider: String, Codable, CaseIterable, Sendable {
+    case apple
+    case google
+    case x
+}
+
+public enum AuthAuditEventKind: String, Codable, CaseIterable, Sendable {
+    case linked
+    case unlinked
+    case credentialVerified
+    case credentialRevoked
+    case credentialNotFound
+    case verificationFailed
+    case providerReplacementBlocked
+}
+
+public enum SecurityAuditCategory: String, Codable, CaseIterable, Sendable {
+    case auth
+    case gacha
+    case community
+}
+
+public enum SecurityAuditSeverity: String, Codable, CaseIterable, Sendable {
+    case info
+    case warning
+    case error
+}
+
+public enum SecurityAuditKind: String, Codable, CaseIterable, Sendable {
+    case authLinked
+    case authUnlinked
+    case authCredentialVerified
+    case authCredentialRevoked
+    case authCredentialNotFound
+    case authVerificationFailed
+    case authProviderReplacementBlocked
+    case authOnboardingCompleted
+
+    case gachaDrawStarted
+    case gachaDrawCompleted
+    case gachaDrawFailed
+    case gachaExchangeCompleted
+    case gachaExchangeFailed
+    case gachaDailyTicketGranted
+    case gachaSeasonMilestoneClaimed
+
+    case communityRoomJoined
+    case communityRoomLeft
+    case communityUserMuted
+    case communityUserUnmuted
+    case communityUserBlocked
+    case communityUserUnblocked
+    case communitySafetyReported
+    case communityChallengeImported
+    case communityReferralAccepted
+    case communityReferralRewardClaimed
+    case communityInviteShared
+    case communityWeeklyRankingShared
+    case communityWeeklyMissionClaimed
+}
+
+public struct SecurityAuditEvent: Codable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let category: SecurityAuditCategory
+    public let kind: SecurityAuditKind
+    public let severity: SecurityAuditSeverity
+    public let title: String
+    public let detail: String
+    public let provider: String?
+    public let actorHint: String?
+    public let metadata: [String: String]
+    public let occurredAt: Date
+
+    public init(
+        id: String = UUID().uuidString,
+        category: SecurityAuditCategory,
+        kind: SecurityAuditKind,
+        severity: SecurityAuditSeverity = .info,
+        title: String,
+        detail: String,
+        provider: String? = nil,
+        actorHint: String? = nil,
+        metadata: [String: String] = [:],
+        occurredAt: Date = Date()
+    ) {
+        self.id = id
+        self.category = category
+        self.kind = kind
+        self.severity = severity
+        self.title = title
+        self.detail = detail
+        self.provider = provider
+        self.actorHint = actorHint
+        self.metadata = metadata
+        self.occurredAt = occurredAt
+    }
+}
+
+public struct AuthAuditEvent: Codable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let kind: AuthAuditEventKind
+    public let provider: String?
+    public let authUserIdHint: String?
+    public let message: String
+    public let occurredAt: Date
+
+    public init(
+        id: String = UUID().uuidString,
+        kind: AuthAuditEventKind,
+        provider: String? = nil,
+        authUserIdHint: String? = nil,
+        message: String,
+        occurredAt: Date = Date()
+    ) {
+        self.id = id
+        self.kind = kind
+        self.provider = provider
+        self.authUserIdHint = authUserIdHint
+        self.message = message
+        self.occurredAt = occurredAt
+    }
+}
+
 public struct UserProfile: Codable, Equatable, Sendable {
+    public static let maxDisplayNameLength = 24
+    public static let maxAuthAuditTrailCount = 50
+    public static let maxSecurityAuditTrailCount = 180
+    public static let maxOwnedDecorationCountPerId = 999
+    public static let maxDecorationShards = 9_999_999
+    public static let maxPityCount = 99_999
+    public static let maxGachaTickets = 999_999
+
     public let userId: String
     public var displayName: String
+    public var linkedAuthProvider: String?
+    public var linkedAuthUserId: String?
+    public var linkedAuthAt: Date?
+    public var hasCompletedOnboarding: Bool
+    public var onboardingCompletedAt: Date?
+    public var onboardingVersion: Int
+    public var authAuditTrail: [AuthAuditEvent]
+    public var securityAuditTrail: [SecurityAuditEvent]
 
     // ===== Card Decoration / Gacha =====
     public var selectedDecorationId: String
@@ -22,9 +161,22 @@ public struct UserProfile: Codable, Equatable, Sendable {
     public var gachaTickets: Int
     public var lastFreeTicketDateKey: String?
 
+    public var linkedAuthProviderKind: LinkedAuthProvider? {
+        get { linkedAuthProvider.flatMap(LinkedAuthProvider.init(rawValue:)) }
+        set { linkedAuthProvider = newValue?.rawValue }
+    }
+
     public init(
         userId: String,
         displayName: String,
+        linkedAuthProvider: String? = nil,
+        linkedAuthUserId: String? = nil,
+        linkedAuthAt: Date? = nil,
+        hasCompletedOnboarding: Bool = true,
+        onboardingCompletedAt: Date? = nil,
+        onboardingVersion: Int = 0,
+        authAuditTrail: [AuthAuditEvent] = [],
+        securityAuditTrail: [SecurityAuditEvent] = [],
         selectedDecorationId: String = CardDecorationCatalog.classicId,
         ownedDecorationIds: [String] = [CardDecorationCatalog.classicId],
         ownedDecorationCounts: [String: Int] = [CardDecorationCatalog.classicId: 1],
@@ -35,6 +187,14 @@ public struct UserProfile: Codable, Equatable, Sendable {
     ) {
         self.userId = userId
         self.displayName = displayName
+        self.linkedAuthProvider = linkedAuthProvider
+        self.linkedAuthUserId = linkedAuthUserId
+        self.linkedAuthAt = linkedAuthAt
+        self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.onboardingCompletedAt = onboardingCompletedAt
+        self.onboardingVersion = onboardingVersion
+        self.authAuditTrail = authAuditTrail
+        self.securityAuditTrail = securityAuditTrail
         self.selectedDecorationId = selectedDecorationId
         self.ownedDecorationIds = ownedDecorationIds
         self.ownedDecorationCounts = ownedDecorationCounts
@@ -49,6 +209,14 @@ public struct UserProfile: Codable, Equatable, Sendable {
     // 既存保存データ互換
     private enum CodingKeys: String, CodingKey {
         case userId, displayName
+        case linkedAuthProvider
+        case linkedAuthUserId
+        case linkedAuthAt
+        case hasCompletedOnboarding
+        case onboardingCompletedAt
+        case onboardingVersion
+        case authAuditTrail
+        case securityAuditTrail
         case selectedDecorationId
         case ownedDecorationIds
         case ownedDecorationCounts
@@ -63,6 +231,17 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
         self.userId = try c.decode(String.self, forKey: .userId)
         self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.linkedAuthProvider = try c.decodeIfPresent(String.self, forKey: .linkedAuthProvider)
+        self.linkedAuthUserId = try c.decodeIfPresent(String.self, forKey: .linkedAuthUserId)
+        self.linkedAuthAt = try c.decodeIfPresent(Date.self, forKey: .linkedAuthAt)
+        self.hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
+        self.onboardingCompletedAt = try c.decodeIfPresent(Date.self, forKey: .onboardingCompletedAt)
+        self.onboardingVersion = try c.decodeIfPresent(Int.self, forKey: .onboardingVersion) ?? 0
+        self.authAuditTrail = try c.decodeIfPresent([AuthAuditEvent].self, forKey: .authAuditTrail) ?? []
+        self.securityAuditTrail = try c.decodeIfPresent([SecurityAuditEvent].self, forKey: .securityAuditTrail) ?? []
+        if self.securityAuditTrail.isEmpty && !self.authAuditTrail.isEmpty {
+            self.securityAuditTrail = self.authAuditTrail.map(SecurityAuditEvent.init(authAuditEvent:))
+        }
 
         self.selectedDecorationId = try c.decodeIfPresent(String.self, forKey: .selectedDecorationId) ?? CardDecorationCatalog.classicId
         self.ownedDecorationIds = try c.decodeIfPresent([String].self, forKey: .ownedDecorationIds) ?? [CardDecorationCatalog.classicId]
@@ -81,26 +260,159 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
     /// データ整合性を担保
     public mutating func normalize() {
+        displayName = Self.normalizedDisplayName(displayName)
+        linkedAuthProvider = Self.normalizedLinkedAuthProvider(linkedAuthProvider)
+        linkedAuthUserId = Self.normalizedLinkedAuthUserId(linkedAuthUserId)
+        if linkedAuthProvider == nil || linkedAuthUserId == nil {
+            linkedAuthProvider = nil
+            linkedAuthUserId = nil
+            linkedAuthAt = nil
+            hasCompletedOnboarding = true
+            onboardingCompletedAt = nil
+            onboardingVersion = 0
+        }
+        onboardingVersion = max(0, onboardingVersion)
+        if !hasCompletedOnboarding {
+            onboardingCompletedAt = nil
+        }
+        authAuditTrail = authAuditTrail.sorted { $0.occurredAt > $1.occurredAt }
+        if authAuditTrail.count > Self.maxAuthAuditTrailCount {
+            authAuditTrail = Array(authAuditTrail.prefix(Self.maxAuthAuditTrailCount))
+        }
+        if securityAuditTrail.isEmpty && !authAuditTrail.isEmpty {
+            securityAuditTrail = authAuditTrail.map(SecurityAuditEvent.init(authAuditEvent:))
+        }
+        securityAuditTrail = securityAuditTrail.sorted { $0.occurredAt > $1.occurredAt }
+        if securityAuditTrail.count > Self.maxSecurityAuditTrailCount {
+            securityAuditTrail = Array(securityAuditTrail.prefix(Self.maxSecurityAuditTrailCount))
+        }
+
+        let validDecorationIDs = Set(CardDecorationCatalog.all.map(\.id))
+
+        var sanitizedCounts: [String: Int] = [:]
+        sanitizedCounts.reserveCapacity(ownedDecorationCounts.count)
+        for (id, rawCount) in ownedDecorationCounts {
+            guard validDecorationIDs.contains(id) else { continue }
+            let normalizedCount = min(Self.maxOwnedDecorationCountPerId, max(0, rawCount))
+            if normalizedCount > 0 {
+                sanitizedCounts[id] = normalizedCount
+            }
+        }
+        ownedDecorationCounts = sanitizedCounts
+
         // classic は必ず所持
         if (ownedDecorationCounts[CardDecorationCatalog.classicId] ?? 0) <= 0 {
             ownedDecorationCounts[CardDecorationCatalog.classicId] = 1
         }
+
         // ownedDecorationIds は counts から再生成（互換維持）
         ownedDecorationIds = ownedDecorationCounts
             .filter { $0.value > 0 }
             .map { $0.key }
+            .sorted()
 
         if ownedDecorationIds.isEmpty {
             ownedDecorationIds = [CardDecorationCatalog.classicId]
         }
 
         // selected は所持に寄せる
-        if (ownedDecorationCounts[selectedDecorationId] ?? 0) <= 0 {
+        if !validDecorationIDs.contains(selectedDecorationId)
+            || (ownedDecorationCounts[selectedDecorationId] ?? 0) <= 0 {
             selectedDecorationId = CardDecorationCatalog.classicId
         }
 
-        decorationShards = max(0, decorationShards)
-        pityCount = max(0, pityCount)
-        gachaTickets = max(0, gachaTickets)
+        decorationShards = min(Self.maxDecorationShards, max(0, decorationShards))
+        pityCount = min(Self.maxPityCount, max(0, pityCount))
+        gachaTickets = min(Self.maxGachaTickets, max(0, gachaTickets))
+
+        if let key = lastFreeTicketDateKey?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !key.isEmpty,
+           Self.isValidDateKey(key) {
+            lastFreeTicketDateKey = key
+        } else {
+            lastFreeTicketDateKey = nil
+        }
+    }
+
+    private static func normalizedDisplayName(_ raw: String) -> String {
+        let filteredScalars = raw.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }
+        let noControl = String(String.UnicodeScalarView(filteredScalars))
+        let collapsed = noControl
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let clipped = String(collapsed.prefix(maxDisplayNameLength))
+        return clipped.isEmpty ? "Me" : clipped
+    }
+
+    private static func normalizedLinkedAuthProvider(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else { return nil }
+        return LinkedAuthProvider(rawValue: trimmed)?.rawValue
+    }
+
+    private static func normalizedLinkedAuthUserId(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func isValidDateKey(_ raw: String) -> Bool {
+        guard raw.count == 8 else { return false }
+        return raw.unicodeScalars.allSatisfy(CharacterSet.decimalDigits.contains(_:))
+    }
+}
+
+public extension SecurityAuditEvent {
+    init(authAuditEvent event: AuthAuditEvent) {
+        let kind: SecurityAuditKind
+        let severity: SecurityAuditSeverity
+        let title: String
+
+        switch event.kind {
+        case .linked:
+            kind = .authLinked
+            severity = .info
+            title = "認証連携"
+        case .unlinked:
+            kind = .authUnlinked
+            severity = .info
+            title = "認証連携解除"
+        case .credentialVerified:
+            kind = .authCredentialVerified
+            severity = .info
+            title = "認証有効確認"
+        case .credentialRevoked:
+            kind = .authCredentialRevoked
+            severity = .warning
+            title = "認証失効検出"
+        case .credentialNotFound:
+            kind = .authCredentialNotFound
+            severity = .warning
+            title = "認証情報未検出"
+        case .verificationFailed:
+            kind = .authVerificationFailed
+            severity = .error
+            title = "認証検証エラー"
+        case .providerReplacementBlocked:
+            kind = .authProviderReplacementBlocked
+            severity = .error
+            title = "認証切替ブロック"
+        }
+
+        self.init(
+            id: event.id,
+            category: .auth,
+            kind: kind,
+            severity: severity,
+            title: title,
+            detail: event.message,
+            provider: event.provider,
+            actorHint: event.authUserIdHint,
+            metadata: [:],
+            occurredAt: event.occurredAt
+        )
     }
 }

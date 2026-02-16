@@ -1,0 +1,11 @@
+AUTH_ALLOW_MANUAL_TOKEN_INPUT = YES
+AUTH_BACKEND_TIMEOUT_SECONDS = 8
+AUTH_BACKEND_VERIFY_BEARER =
+AUTH_BACKEND_VERIFY_ENDPOINT = https://api.mydailyphrase.app/auth/verify
+AUTH_GOOGLE_OAUTH_START_URL = https://api.mydailyphrase.app/oauth/google/start
+AUTH_OAUTH_CALLBACK_SCHEME = mydailyphrase
+AUTH_X_OAUTH_START_URL = https://api.mydailyphrase.app/oauth/x/start
+LEGAL_TERMS_URL = https://github.com/catlover-bot/MyDailyPhrase/blob/main/LEGAL_TERMS.md
+LEGAL_PRIVACY_POLICY_URL = https://github.com/catlover-bot/MyDailyPhrase/blob/main/LEGAL_PRIVACY_POLICY.md
+SECURITY_LOG_RETENTION_DAYS_DEFAULT = 90
+SECURITY_LOG_RETENTION_DAYS_MAX = 365

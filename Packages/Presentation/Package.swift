@@ -20,6 +20,11 @@ let package = Package(
                 .product(name: "Domain", package: "Domain")
             ],
             path: "Sources"
+        ),
+        .testTarget(
+            name: "PresentationTests",
+            dependencies: ["Presentation"],
+            path: "Tests/PresentationTests"
         )
     ]
 )

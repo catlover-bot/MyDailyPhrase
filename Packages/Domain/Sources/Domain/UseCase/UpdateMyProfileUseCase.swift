@@ -1,5 +1,4 @@
 import Foundation
-import Domain
 
 public struct UpdateMyProfileUseCase: Sendable {
     private let repo: UserProfileRepository
@@ -17,6 +16,17 @@ public struct UpdateMyProfileUseCase: Sendable {
     public func callAsFunction(
         displayName: String? = nil,
         selectedDecorationId: String? = nil,
+        linkedAuthProvider: String? = nil,
+        linkedAuthUserId: String? = nil,
+        linkedAuthAt: Date? = nil,
+        hasCompletedOnboarding: Bool? = nil,
+        onboardingCompletedAt: Date? = nil,
+        onboardingVersion: Int? = nil,
+        clearLinkedAuth: Bool = false,
+        allowLinkedAuthProviderReplacement: Bool = false,
+        appendAuthAuditEvent: AuthAuditEvent? = nil,
+        appendSecurityAuditEvent: SecurityAuditEvent? = nil,
+        securityAuditTrail: [SecurityAuditEvent]? = nil,
 
         // 互換（古いUIやデータのため）
         ownedDecorationIds: [String]? = nil,
@@ -37,6 +47,47 @@ public struct UpdateMyProfileUseCase: Sendable {
             { p in
                 if let displayName { p.displayName = displayName }
                 if let selectedDecorationId { p.selectedDecorationId = selectedDecorationId }
+                if clearLinkedAuth {
+                    p.linkedAuthProvider = nil
+                    p.linkedAuthUserId = nil
+                    p.linkedAuthAt = nil
+                }
+                if let hasCompletedOnboarding {
+                    p.hasCompletedOnboarding = hasCompletedOnboarding
+                }
+                if let onboardingCompletedAt {
+                    p.onboardingCompletedAt = onboardingCompletedAt
+                }
+                if let onboardingVersion {
+                    p.onboardingVersion = max(0, onboardingVersion)
+                }
+                if let linkedAuthProvider, let linkedAuthUserId {
+                    let normalizedIncomingProvider = linkedAuthProvider
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                    let normalizedCurrentProvider = p.linkedAuthProvider?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                    let shouldBlockReplacement = normalizedCurrentProvider != nil
+                        && normalizedCurrentProvider != normalizedIncomingProvider
+                        && !allowLinkedAuthProviderReplacement
+
+                    if !shouldBlockReplacement {
+                        p.linkedAuthProvider = linkedAuthProvider
+                        p.linkedAuthUserId = linkedAuthUserId
+                        p.linkedAuthAt = linkedAuthAt ?? Date()
+                    }
+                }
+                if let securityAuditTrail {
+                    p.securityAuditTrail = securityAuditTrail
+                }
+                if let appendAuthAuditEvent {
+                    p.authAuditTrail.append(appendAuthAuditEvent)
+                    p.securityAuditTrail.append(SecurityAuditEvent(authAuditEvent: appendAuthAuditEvent))
+                }
+                if let appendSecurityAuditEvent {
+                    p.securityAuditTrail.append(appendSecurityAuditEvent)
+                }
 
                 // counts を優先（置換）
                 if let ownedDecorationCounts {

@@ -19,11 +19,10 @@ let package = Package(
             // もし過去の名残で Sources/Data が残っていても Domain に混入させない（無ければ無視されます）
         ),
 
-        // もし Tests が存在するなら有効化してください（無い場合はこの testTarget を削除 or コメントアウト）
-        // .testTarget(
-        //     name: "DomainTests",
-        //     dependencies: ["Domain"],
-        //     path: "Tests"
-        // )
+        .testTarget(
+            name: "DomainTests",
+            dependencies: ["Domain"],
+            path: "Tests/DomainTests"
+        )
     ]
 )

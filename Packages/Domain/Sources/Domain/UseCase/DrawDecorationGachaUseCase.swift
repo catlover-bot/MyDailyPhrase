@@ -13,6 +13,7 @@ public struct GachaDrawSummary: Sendable, Equatable {
 public struct DrawDecorationGachaUseCase: Sendable {
     private let get: GetMyProfileUseCase
     private let update: UpdateMyProfileUseCase
+    private let hasUnlimitedTicketsForUserId: @Sendable (String) -> Bool
 
     /// 天井（Legendary確定までの上限）
     private let pityThreshold: Int
@@ -20,11 +21,13 @@ public struct DrawDecorationGachaUseCase: Sendable {
     public init(
         get: GetMyProfileUseCase,
         update: UpdateMyProfileUseCase,
-        pityThreshold: Int = 80
+        pityThreshold: Int = 80,
+        hasUnlimitedTicketsForUserId: @escaping @Sendable (String) -> Bool = { _ in false }
     ) {
         self.get = get
         self.update = update
         self.pityThreshold = max(1, pityThreshold)
+        self.hasUnlimitedTicketsForUserId = hasUnlimitedTicketsForUserId
     }
 
     /// ✅ pickupMultipliers:
@@ -36,11 +39,12 @@ public struct DrawDecorationGachaUseCase: Sendable {
     ) -> GachaDrawSummary {
         let n = max(1, count)
         var p = get()
+        let hasUnlimitedTickets = hasUnlimitedTicketsForUserId(p.userId)
 
         let ticketsBefore = p.gachaTickets
         let pityBefore = p.pityCount
 
-        guard p.gachaTickets >= n else {
+        guard hasUnlimitedTickets || p.gachaTickets >= n else {
             return GachaDrawSummary(
                 drawn: [],
                 newIds: [],
@@ -99,8 +103,10 @@ public struct DrawDecorationGachaUseCase: Sendable {
             if item.rarity != .common { hasRarePlus = true }
         }
 
-        // チケット消費
-        p.gachaTickets = max(0, p.gachaTickets - n)
+        // チケット消費（無限対象ユーザーは消費しない）
+        if !hasUnlimitedTickets {
+            p.gachaTickets = max(0, p.gachaTickets - n)
+        }
 
         // ✅ 自動装備：今回の中で最もレアなもの（同レアなら「最後に出た」もの）
         if let maxRank = drawn.map({ $0.rarity.rank }).max(),

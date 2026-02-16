@@ -3,7 +3,7 @@
    LastUpgradeVersion = "2610"
    version = "1.7">
    <BuildAction
-      parallelizeBuildables = "YES"
+      parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
       <BuildActionEntries>
@@ -21,6 +21,20 @@
                ReferencedContainer = "container:MyDailyPhrase.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "68D1A0062F50000100CDD406"
+               BuildableName = "MyDailyPhraseUITests.xctest"
+               BlueprintName = "MyDailyPhraseUITests"
+               ReferencedContainer = "container:MyDailyPhrase.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -28,7 +42,29 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "YES">
+      shouldAutocreateTestPlan = "NO">
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "68D1A0062F50000100CDD406"
+               BuildableName = "MyDailyPhraseUITests.xctest"
+               BlueprintName = "MyDailyPhraseUITests"
+               ReferencedContainer = "container:MyDailyPhrase.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "68CEDF112EF8859700CDD406"
+            BuildableName = "MyDailyPhrase.app"
+            BlueprintName = "MyDailyPhrase"
+            ReferencedContainer = "container:MyDailyPhrase.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

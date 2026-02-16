@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Domain
 import Presentation
 
@@ -12,6 +13,7 @@ struct ThreadView: View {
     @Environment(\.currentDecorationId) private var decorationId
 
     @State private var commentText: String = ""
+    @State private var activityMessage: String? = nil
 
     private let emojis: [String] = ["👍", "❤️", "😂", "😮", "😢", "🙏"]
 
@@ -80,6 +82,13 @@ struct ThreadView: View {
                 }
                 .padding(.vertical, 2)
             }
+            .contextMenu {
+                moderationContextMenu(
+                    userId: challenge.link.fromId,
+                    name: challenge.link.fromName,
+                    source: "thread_challenge"
+                )
+            }
         }
     }
 
@@ -128,6 +137,12 @@ struct ThreadView: View {
                             .buttonStyle(.bordered)
                         }
                     }
+
+                    if let activityMessage {
+                        Text(activityMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, 2)
             }
@@ -161,6 +176,15 @@ struct ThreadView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                        .contextMenu {
+                            if !isMine {
+                                moderationContextMenu(
+                                    userId: ev.link.fromId,
+                                    name: ev.link.fromName,
+                                    source: "thread_comment"
+                                )
+                            }
+                        }
 
                     case .reaction(let ev, let isMine):
                         Card {
@@ -175,6 +199,15 @@ struct ThreadView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .contextMenu {
+                            if !isMine {
+                                moderationContextMenu(
+                                    userId: ev.link.fromId,
+                                    name: ev.link.fromName,
+                                    source: "thread_reaction"
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -185,8 +218,70 @@ struct ThreadView: View {
 
     @MainActor
     private func sendShare(text: String, image: UIImage? = nil, url: URL? = nil) {
-        let payload = SharePayload(text: text, image: image, url: url)
-        shareItems([payload])
+        shareItems(ShareItemsBuilder.build(text: text, image: image, url: url))
+    }
+
+    @MainActor
+    private func muteSender(userId: String, name: String) {
+        guard vm.canModerateTarget(userId: userId, displayName: name) else {
+            activityMessage = "自分自身はミュートできません"
+            return
+        }
+        vm.mute(userId: userId, displayName: name)
+        activityMessage = "「\(name)」をミュートしました"
+    }
+
+    @MainActor
+    private func blockSender(userId: String, name: String) {
+        guard vm.canModerateTarget(userId: userId, displayName: name) else {
+            activityMessage = "自分自身はブロックできません"
+            return
+        }
+        vm.block(userId: userId, displayName: name)
+        activityMessage = "「\(name)」をブロックしました"
+    }
+
+    @MainActor
+    private func reportSender(userId: String, name: String, source: String) {
+        guard vm.canModerateTarget(userId: userId, displayName: name) else {
+            activityMessage = "自分自身は通報できません"
+            return
+        }
+        guard let report = vm.report(userId: userId, displayName: name, source: source) else {
+            activityMessage = "同内容の通報は1分以内に重複登録できません"
+            return
+        }
+
+        UIPasteboard.general.string = """
+        [Safety Report]
+        date: \(report.createdAt.ISO8601Format())
+        source: \(report.source)
+        reason: \(report.reason)
+        displayName: \(report.displayName)
+        userId: \(report.userId.isEmpty ? "-" : report.userId)
+        """
+        activityMessage = "「\(name)」を通報記録しました（内容をコピー済み）"
+    }
+
+    @ViewBuilder
+    private func moderationContextMenu(userId: String, name: String, source: String) -> some View {
+        Button(role: .destructive) {
+            muteSender(userId: userId, name: name)
+        } label: {
+            Label("「\(name)」をミュート", systemImage: "speaker.slash")
+        }
+
+        Button(role: .destructive) {
+            blockSender(userId: userId, name: name)
+        } label: {
+            Label("「\(name)」をブロック", systemImage: "hand.raised")
+        }
+
+        Button {
+            reportSender(userId: userId, name: name, source: source)
+        } label: {
+            Label("通報を記録", systemImage: "exclamationmark.bubble")
+        }
     }
 
     private func shareCommentLink() {
@@ -206,6 +301,7 @@ struct ThreadView: View {
         }
 
         commentText = ""
+        activityMessage = "コメントリンクを共有しました"
         vm.refresh()
     }
 
@@ -222,6 +318,7 @@ struct ThreadView: View {
             sendShare(text: text, url: url)
         }
 
+        activityMessage = "リアクション \(emoji) を共有しました"
         vm.refresh()
     }
 
@@ -291,11 +388,14 @@ private struct ThreadGradientBackground: View {
         )
     }
 
-    private enum DecorationStyle: String {
+    private enum DecorationStyle: String, CaseIterable {
         case classic, sakura, aurora, neon, gold
         static func from(_ raw: String) -> DecorationStyle {
-            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return DecorationStyle(rawValue: norm) ?? .classic
+            let resolved = DecorationThemeResolver.resolveStyleID(
+                from: raw,
+                supportedStyleIDs: Set(Self.allCases.map(\.rawValue))
+            )
+            return DecorationStyle(rawValue: resolved) ?? .classic
         }
 
         var tintColors: [Color] {

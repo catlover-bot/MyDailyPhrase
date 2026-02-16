@@ -1,12 +1,26 @@
 import SwiftUI
 import StoreKit
 import Domain
+import UIKit
+import Presentation
 
 struct GachaView: View {
     @ObservedObject var vm: GachaViewModel
     @EnvironmentObject private var iap: IAPStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var tab: Tab = .gacha
+    @State private var revealSummary: GachaDrawSummary? = nil
+    @State private var revealIndex: Int = 0
+    @State private var lastDrawCount: Int = 1
+    @State private var revealTask: Task<Void, Never>? = nil
+    @State private var spinWatchdogTask: Task<Void, Never>? = nil
+    @State private var spinStartedAt: Date? = nil
+    @State private var skipToResultAfterSpin: Bool = false
+    @State private var hidesSpinningCinematic: Bool = false
+    @State private var showsErrorAlert = false
+    @State private var showsDiagnostics = false
+    @State private var drawTapLockedUntil: Date? = nil
 
     enum Tab: String, CaseIterable {
         case gacha = "ガチャ"
@@ -58,27 +72,59 @@ struct GachaView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             vm.load()
-            // RootView 側で store.configure() 済みなら不要
-            // await iap.configure()
+            await iap.configure()
+        }
+        .onAppear {
+            handleStateChange(vm.state)
+        }
+        .onChange(of: vm.state) { _, st in
+            handleStateChange(st)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            if case .spinning = vm.state {
+                startSpinWatchdog()
+                if let start = spinStartedAt,
+                   Date().timeIntervalSince(start) > 10.0 {
+                    vm.recoverFromStuckSpinIfNeeded()
+                }
+            }
         }
         .overlay {
-            if vm.isSpinning {
-                spinningOverlay
+            if let mode = cinematicMode {
+                GachaCinematicOverlay(
+                    mode: mode,
+                    pityMax: vm.pityMax,
+                    onSkip: { skipReveal() },
+                    onClose: { closeCinematic() }
+                )
+                .transition(.opacity)
             }
         }
-        .sheet(isPresented: resultSheetBinding) {
-            resultSheet
-        }
-    }
-
-    // ✅ result sheet を閉じられる binding にする
-    private var resultSheetBinding: Binding<Bool> {
-        Binding(
-            get: { vm.currentResult != nil },
-            set: { isOn in
-                if !isOn { vm.closeResult() }
+        .overlay(alignment: .bottom) {
+            if let msg = statusBannerMessage {
+                actionBanner(msg)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .transition(.opacity)
             }
-        )
+        }
+        .animation(.easeInOut(duration: 0.15), value: cinematicMode != nil)
+        .animation(.easeInOut(duration: 0.15), value: statusBannerMessage != nil)
+        .alert("ガチャエラー", isPresented: $showsErrorAlert) {
+            Button("再同期") {
+                vm.recoverNow()
+            }
+            Button("閉じる", role: .cancel) {
+                vm.clearError()
+            }
+        } message: {
+            Text(vm.currentErrorText ?? "不明なエラーが発生しました")
+        }
+        .onDisappear {
+            revealTask?.cancel()
+            spinWatchdogTask?.cancel()
+        }
     }
 
     // MARK: - Header
@@ -91,8 +137,12 @@ struct GachaView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text("\(vm.tickets)")
+                    Text(ticketCountText)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
+
+                    Text("\(vm.profileDisplayName) / ID: \(vm.profileUserId.suffix(6))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -120,19 +170,65 @@ struct GachaView: View {
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+                .disabled(vm.isBusy)
             }
             .padding(.horizontal)
             .padding(.top, 8)
 
             VStack(alignment: .leading, spacing: 6) {
                 pityBar
+                HStack(spacing: 8) {
+                    Text(vm.untilPityText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Label(vm.stateSummary.label, systemImage: stateIconName)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(vm.currentErrorText == nil ? Color.secondary : Color.red)
+                }
+                .padding(.top, 2)
+
+                HStack {
+                    Text(vm.stateSummary.detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Spacer()
+                    Button("再同期") {
+                        vm.recoverNow()
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.secondary)
+                }
                 if let msg = vm.lastMessage {
                     Text(msg)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if let actionMsg = vm.actionMessage {
+                    Text(actionMsg)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal)
+        }
+    }
+
+    private var ticketCountText: String {
+        vm.hasUnlimitedTickets ? "∞" : "\(vm.tickets)"
+    }
+
+    private var stateIconName: String {
+        switch vm.state {
+        case .idle: return "checkmark.circle"
+        case .spinning: return "hourglass"
+        case .result: return "gift"
+        case .error: return "exclamationmark.triangle.fill"
         }
     }
 
@@ -162,30 +258,166 @@ struct GachaView: View {
         VStack(spacing: 12) {
             bannerCard
 
+            if vm.seasonLimitedTotalCount > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label(vm.seasonLimitedCollectionProgressText, systemImage: "calendar.badge.clock")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text("\(Int(vm.seasonLimitedCollectionRate * 100))%")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ProgressView(value: vm.seasonLimitedCollectionRate, total: 1.0)
+
+                    Text("限定デコはガチャ排出されません。コミュニティ週次ミッション報酬で獲得できます。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Text(vm.seasonThemeTitleText)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("テーマ別ピックアップ: \(vm.seasonThemePickupPreviewText)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(vm.seasonRewardPreviewRows, id: \.self) { row in
+                        Text(row)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("シーズン収集ミッション", systemImage: "trophy")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                    }
+
+                    Text(vm.seasonMilestoneSummaryText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(vm.seasonMilestoneRows) { row in
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.reward.title)
+                                    .font(.caption.weight(.semibold))
+                                Text("限定デコ \(row.progressText) / \(row.rewardText)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(milestoneStatusText(row))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(milestoneStatusColor(row))
+                        }
+                        .padding(.vertical, 2)
+                    }
+
+                    if vm.hasClaimableSeasonMilestoneRewards {
+                        Button {
+                            vm.claimSeasonMilestoneRewards()
+                        } label: {
+                            Label("シーズン報酬を受け取る", systemImage: "gift.fill")
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("gacha.seasonMilestone.claim")
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+
             HStack(spacing: 10) {
                 Button {
-                    vm.drawOnce()
+                    requestDraw(count: 1) {
+                        vm.drawOnce()
+                    }
                 } label: {
                     Text("単発 (1)")
+                        .compactActionLabel()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!vm.canDraw(count: 1))
+                .accessibilityIdentifier("gacha.draw.once")
 
                 Button {
-                    vm.drawTen()
+                    requestDraw(count: 10) {
+                        vm.drawTen()
+                    }
                 } label: {
                     Text("10連 (10)")
+                        .compactActionLabel()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(.bordered)
                 .disabled(!vm.canDraw(count: 10))
+                .accessibilityIdentifier("gacha.draw.ten")
+            }
+
+            if vm.tickets < 10 {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("あと少しで10連", systemImage: "bolt.fill")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text("所持 \(vm.tickets)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(iap.isCreatorPassActive
+                         ? "Creator Passで毎日無料券ボーナス。チケットパック併用で回転率を上げられます。"
+                         : "チケットパック + Creator Pass で、毎日の無料券ボーナスと長期運用の回転率を両立できます。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 8) {
+                        Button {
+                            tab = .shop
+                        } label: {
+                            Label("ショップへ", systemImage: "cart")
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+
+                        if let bestId = iap.bestValueTicketProductID,
+                           let best = iap.ticketProducts.first(where: { $0.id == bestId }) {
+                            Button {
+                                Task { await iap.purchase(best) }
+                            } label: {
+                                Label("おすすめ \(best.displayPrice)", systemImage: "sparkles")
+                                    .compactActionLabel()
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("提供割合（重み付き）")
+                Text("提供割合（通常時）")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -198,10 +430,48 @@ struct GachaView: View {
                     }
                     .font(.caption2)
                 }
+
+                DisclosureGroup("アイテム別の提供割合（目安）") {
+                    VStack(spacing: 8) {
+                        ForEach(vm.itemWeightTable) { row in
+                            HStack(spacing: 8) {
+                                Text(row.name)
+                                    .font(.caption2.weight(.semibold))
+                                Text(row.rarity)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                if row.isFeatured {
+                                    Text("PICKUP")
+                                        .font(.caption2.weight(.bold))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.thinMaterial)
+                                        .clipShape(Capsule())
+                                }
+                                Spacer()
+                                Text(row.value)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.caption2)
+
+                ForEach(vm.oddsNotes, id: \.self) { note in
+                    Text(note)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(12)
             .background(.thinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            #if DEBUG
+            diagnosticsPanel
+            #endif
         }
     }
 
@@ -210,6 +480,22 @@ struct GachaView: View {
             Text("所持アイテム")
                 .font(.headline)
 
+            if vm.seasonLimitedTotalCount > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(vm.seasonLimitedCollectionProgressText)
+                        .font(.caption.weight(.semibold))
+                    ProgressView(value: vm.seasonLimitedCollectionRate, total: 1.0)
+                    if vm.seasonLimitedOwnedDecorations.isEmpty {
+                        Text("まだ限定デコはありません。コミュニティ週次ミッションで獲得できます。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(10)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
             LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
                 ForEach(vm.ownedDecorations, id: \.item.id) { x in
                     itemCard(
@@ -217,7 +503,8 @@ struct GachaView: View {
                         subtitle: x.item.rarity.rawValue.uppercased(),
                         trailing: "×\(x.count)",
                         isSelected: vm.isSelected(x.item.id),
-                        isLocked: false
+                        isLocked: vm.isActionRunning,
+                        badge: vm.isSeasonLimited(x.item.id) ? "限定" : nil
                     ) {
                         vm.selectDecoration(id: x.item.id)
                     }
@@ -245,7 +532,8 @@ struct GachaView: View {
                         subtitle: d.rarity.rawValue.uppercased(),
                         trailing: "欠片 \(cost)",
                         isSelected: vm.isSelected(d.id),
-                        isLocked: !affordable
+                        isLocked: !affordable || vm.isActionRunning,
+                        badge: vm.isSeasonLimited(d.id) ? "限定" : nil
                     ) {
                         vm.exchange(decorationId: d.id)
                     }
@@ -259,6 +547,10 @@ struct GachaView: View {
             Text("図鑑（全アイテム）")
                 .font(.headline)
 
+            Text("※「限定」アイテムはガチャ排出対象外です（週次ミッション報酬専用）")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
             LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
                 ForEach(vm.allDecorations, id: \.id) { d in
                     let owned = vm.isOwned(d.id)
@@ -267,9 +559,11 @@ struct GachaView: View {
                         subtitle: d.rarity.rawValue.uppercased(),
                         trailing: owned ? "所持" : "未所持",
                         isSelected: vm.isSelected(d.id),
-                        isLocked: !owned
+                        isLocked: !owned || vm.isActionRunning,
+                        badge: vm.isSeasonLimited(d.id) ? "限定" : nil
                     ) {
                         if owned { vm.selectDecoration(id: d.id) }
+                        else if vm.isSeasonLimited(d.id) { vm.lastMessage = "期間限定デコです。コミュニティ週次ミッション報酬で獲得できます" }
                         else { vm.lastMessage = "未所持です。ガチャで獲得できます" }
                     }
                 }
@@ -320,7 +614,7 @@ struct GachaView: View {
 
     private var shopPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("チケット購入")
+            Text("ショップ")
                 .font(.headline)
 
             switch iap.state {
@@ -333,23 +627,101 @@ struct GachaView: View {
 
             case .ready:
                 VStack(spacing: 10) {
-                    ForEach(iap.products, id: \.id) { p in
-                        Button {
-                            Task { await iap.purchase(p) }
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(p.displayName).fontWeight(.semibold)
-                                    Text(p.id).font(.caption2).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(p.displayPrice).fontWeight(.semibold)
-                            }
-                            .padding(14)
-                            .background(.thinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Creator Pass")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(iap.isCreatorPassActive ? "有効" : "未加入")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(iap.isCreatorPassActive ? .green : .secondary)
                         }
-                        .buttonStyle(.plain)
+                        Text(iap.creatorPassStatusText)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        ForEach(iap.creatorPassBenefitLines, id: \.self) { benefit in
+                            Label(benefit, systemImage: "checkmark.seal")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if iap.creatorPassProducts.isEmpty {
+                            Text("Creator Pass商品がありません")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(iap.creatorPassProducts, id: \.id) { p in
+                                Button {
+                                    Task { await iap.purchase(p) }
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(p.displayName).fontWeight(.semibold)
+                                            Text(p.id).font(.caption2).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(p.displayPrice).fontWeight(.semibold)
+                                    }
+                                    .padding(14)
+                                    .background(.thinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("チケット購入")
+                            .font(.subheadline.weight(.semibold))
+                        ForEach(iap.ticketValuePitchLines, id: \.self) { line in
+                            Text(line)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if iap.ticketProducts.isEmpty {
+                            Text("チケット商品がありません")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(iap.ticketProducts, id: \.id) { p in
+                                let amount = iap.ticketAmount(for: p)
+                                let isBestValue = iap.isBestValueTicketProduct(p)
+                                Button {
+                                    Task { await iap.purchase(p) }
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 6) {
+                                                Text(p.displayName).fontWeight(.semibold)
+                                                if isBestValue {
+                                                    Text("BEST VALUE")
+                                                        .font(.caption2.weight(.bold))
+                                                        .padding(.horizontal, 6)
+                                                        .padding(.vertical, 2)
+                                                        .background(.thinMaterial)
+                                                        .clipShape(Capsule())
+                                                }
+                                            }
+                                            Text("チケット \(amount)")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                            if let unitPriceText = iap.ticketUnitPriceText(for: p) {
+                                                Text(unitPriceText)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Spacer()
+                                        Text(p.displayPrice).fontWeight(.semibold)
+                                    }
+                                    .padding(14)
+                                    .background(.thinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
                 }
             }
@@ -361,7 +733,7 @@ struct GachaView: View {
                     .padding(.top, 6)
             }
 
-            Button("App Storeと同期（復元）") {
+            Button("App Storeと同期") {
                 Task { await iap.sync() }
             }
             .padding(.top, 8)
@@ -369,62 +741,29 @@ struct GachaView: View {
         }
     }
 
-    // MARK: - Result Sheet
-
-    private var resultSheet: some View {
-        VStack(spacing: 12) {
-            Capsule().fill(Color.black.opacity(0.15))
-                .frame(width: 46, height: 5)
-                .padding(.top, 10)
-
-            if let s = vm.currentResult {
-                Text("結果")
-                    .font(.title3)
-                    .fontWeight(.bold)
-
-                Text("欠片 +\(s.shardsGained) / 天井 \(s.pityAfter)/\(vm.pityMax)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
-                    ForEach(Array(s.drawn.enumerated()), id: \.offset) { _, d in
-                        let isNew = s.newIds.contains(d.id)
-                        itemCard(
-                            title: d.name,
-                            subtitle: d.rarity.rawValue.uppercased(),
-                            trailing: isNew ? "NEW" : "dup",
-                            isSelected: false,
-                            isLocked: false
-                        ) {}
-                    }
-                }
-                .padding(.horizontal)
-
-                Button("閉じる") {
-                    vm.closeResult()
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.bottom, 16)
-            } else {
-                Spacer()
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
     // MARK: - UI Parts
 
     private var bannerCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("ピックアップ（重み付き）")
+            Text(vm.currentBanner.title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("天井 + 欠片システム")
+            Text(vm.currentBanner.subtitle)
                 .font(.title3)
                 .fontWeight(.bold)
-            Text("交換所/履歴/演出を強化して「回したくなる体験」に寄せます")
+            Text(vm.currentBanner.note)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                ForEach(vm.currentBanner.featuredIds, id: \.self) { id in
+                    Text(featuredDisplayName(id))
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.thinMaterial)
+                        .clipShape(Capsule())
+                }
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -438,14 +777,29 @@ struct GachaView: View {
         trailing: String,
         isSelected: Bool,
         isLocked: Bool,
+        badge: String? = nil,
         onTap: @escaping () -> Void
     ) -> some View {
-        Button(action: onTap) {
+        let badgeTint: Color = (badge == "限定") ? .orange : .secondary
+
+        return Button(action: onTap) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(title)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(title)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                            if let badge {
+                                Text(badge)
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(badgeTint.opacity(0.18))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
                     Spacer()
                     if isSelected { Image(systemName: "checkmark.circle.fill") }
                 }
@@ -465,19 +819,281 @@ struct GachaView: View {
             .opacity(isLocked ? 0.55 : 1.0)
         }
         .buttonStyle(.plain)
+        .disabled(isLocked)
     }
 
-    private var spinningOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea()
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("回しています…")
-                    .font(.headline)
-            }
-            .padding(18)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+    private var cinematicMode: GachaCinematicOverlay.Mode? {
+        if case .spinning = vm.state {
+            if hidesSpinningCinematic { return nil }
+            return .spinning(count: lastDrawCount, bannerTitle: vm.currentBanner.title)
         }
+        if let revealSummary {
+            return .revealing(summary: revealSummary, index: revealIndex)
+        }
+        if case .result(let summary) = vm.state {
+            return .result(summary: summary)
+        }
+        return nil
+    }
+
+    private var statusBannerMessage: String? {
+        if hidesSpinningCinematic, case .spinning = vm.state {
+            return "結果を取得中…"
+        }
+        return vm.actionMessage
+    }
+
+    private func startReveal(_ summary: GachaDrawSummary) {
+        revealTask?.cancel()
+        revealSummary = summary
+        revealIndex = 0
+
+        revealTask = Task { @MainActor in
+            let n = max(1, summary.drawn.count)
+            for i in 0..<n {
+                if Task.isCancelled { return }
+                revealSummary = summary
+                revealIndex = i
+                let drawn = summary.drawn
+                let isLegendary = drawn.indices.contains(i) && drawn[i].rarity == .legendary
+                let wait = isLegendary ? 420_000_000 : 260_000_000
+                try? await Task.sleep(nanoseconds: UInt64(wait))
+            }
+            if !Task.isCancelled {
+                revealSummary = nil
+            }
+        }
+    }
+
+    private func skipReveal() {
+        switch GachaInteractionPolicy.skipDecision(
+            isRevealActive: revealSummary != nil,
+            state: gachaLifecycleState
+        ) {
+        case .closeReveal:
+            revealTask?.cancel()
+            revealSummary = nil
+        case .hideSpinAndAwaitResult:
+            // 抽選自体は継続し、演出だけスキップする
+            skipToResultAfterSpin = true
+            hidesSpinningCinematic = true
+            revealSummary = nil
+            startSpinWatchdog()
+        case .ignored:
+            break
+        }
+    }
+
+    private func closeCinematic() {
+        if case .spinning = vm.state {
+            skipReveal()
+            return
+        }
+
+        skipToResultAfterSpin = false
+        hidesSpinningCinematic = false
+        revealTask?.cancel()
+        spinWatchdogTask?.cancel()
+        spinStartedAt = nil
+        revealSummary = nil
+        vm.closeResult()
+    }
+
+    private func featuredDisplayName(_ id: String) -> String {
+        CardDecorationCatalog.byId(id)?.name ?? id
+    }
+
+    private var diagnosticsPanel: some View {
+        DisclosureGroup("状態監査（開発用）", isExpanded: $showsDiagnostics) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(vm.diagnosticsSummaryLines, id: \.self) { line in
+                    Text(line)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 8) {
+                    Button("ログをコピー") {
+                        UIPasteboard.general.string = vm.stateAuditExportText
+                        vm.lastMessage = "監査ログをコピーしました"
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button("ログをクリア") {
+                        vm.clearStateAudits()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Spacer()
+
+                    Button("再同期") {
+                        vm.recoverNow()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(vm.latestStateAudits.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
+            .padding(.top, 8)
+        }
+        .font(.caption2)
+        .padding(12)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func milestoneStatusText(_ row: GachaViewModel.SeasonMilestoneRow) -> String {
+        if row.isClaimed { return "受取済み" }
+        if row.isClaimable { return "受取可能" }
+        return "進行中"
+    }
+
+    private func milestoneStatusColor(_ row: GachaViewModel.SeasonMilestoneRow) -> Color {
+        if row.isClaimed { return .secondary }
+        if row.isClaimable { return .green }
+        return .secondary
+    }
+
+    private func handleStateChange(_ st: GachaViewModel.State) {
+        switch st {
+        case .spinning:
+            spinStartedAt = Date()
+            skipToResultAfterSpin = false
+            hidesSpinningCinematic = false
+            revealTask?.cancel()
+            revealSummary = nil
+            startSpinWatchdog()
+        case .result(let summary):
+            spinWatchdogTask?.cancel()
+            spinStartedAt = nil
+            hidesSpinningCinematic = false
+            drawTapLockedUntil = nil
+            if skipToResultAfterSpin {
+                skipToResultAfterSpin = false
+                revealSummary = nil
+            } else {
+                startReveal(summary)
+            }
+        case .idle, .error:
+            spinWatchdogTask?.cancel()
+            spinStartedAt = nil
+            skipToResultAfterSpin = false
+            hidesSpinningCinematic = false
+            drawTapLockedUntil = nil
+            revealTask?.cancel()
+            revealSummary = nil
+            if case .error = st {
+                showsErrorAlert = true
+            }
+        }
+    }
+
+    private func startSpinWatchdog() {
+        spinWatchdogTask?.cancel()
+        spinWatchdogTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if Task.isCancelled { return }
+
+                switch vm.state {
+                case .result(let summary):
+                    if skipToResultAfterSpin {
+                        skipToResultAfterSpin = false
+                        revealSummary = nil
+                    } else {
+                        startReveal(summary)
+                    }
+                    return
+                case .idle, .error:
+                    revealSummary = nil
+                    return
+                case .spinning:
+                    if let start = spinStartedAt,
+                       Date().timeIntervalSince(start) > 10.0 {
+                        vm.recoverFromStuckSpinIfNeeded()
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    private var gachaLifecycleState: GachaViewLifecycleState {
+        switch vm.state {
+        case .idle:
+            return .idle
+        case .spinning:
+            return .spinning
+        case .result:
+            return .result
+        case .error:
+            return .error
+        }
+    }
+
+    private func requestDraw(count: Int, action: () -> Void) {
+        let decision = GachaInteractionPolicy.drawTapDecision(
+            isBusy: vm.isBusy,
+            now: Date(),
+            lockedUntil: drawTapLockedUntil
+        )
+        drawTapLockedUntil = decision.nextLockedUntil
+        guard decision.accepted else { return }
+
+        lastDrawCount = count
+        action()
+    }
+
+    private func actionBanner(_ message: String) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(message)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                Spacer()
+                Button("再同期") {
+                    vm.recoverNow()
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+}
+
+private extension View {
+    func compactActionLabel() -> some View {
+        lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .allowsTightening(true)
+            .truncationMode(.tail)
     }
 }

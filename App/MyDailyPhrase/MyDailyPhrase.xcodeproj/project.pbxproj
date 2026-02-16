@@ -10,12 +10,23 @@
 		68CEDF232EF8C0D000CDD406 /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF222EF8C0D000CDD406 /* Data */; };
 		68CEDF262EF8C0FC00CDD406 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF252EF8C0FC00CDD406 /* Domain */; };
 		68CEDF292EF8C10B00CDD406 /* Presentation in Frameworks */ = {isa = PBXBuildFile; productRef = 68CEDF282EF8C10B00CDD406 /* Presentation */; };
-		68DA308D2F23B54200BF6CE3 /* MyDailyPhrase.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		68D1A00A2F50000100CDD406 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 68CEDF0A2EF8859700CDD406 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 68CEDF112EF8859700CDD406;
+			remoteInfo = MyDailyPhrase;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		68CEDF122EF8859700CDD406 /* MyDailyPhrase.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyDailyPhrase.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = MyDailyPhrase.storekit; path = MyDailyPhrase/MyDailyPhrase.storekit; sourceTree = "<group>"; };
+		68D1A0012F50000100CDD406 /* MyDailyPhraseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyDailyPhraseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A9F00012F71000100CDD406 /* MyDailyPhrase.Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = MyDailyPhrase.Debug.xcconfig; sourceTree = "<group>"; };
+		7A9F00022F71000100CDD406 /* MyDailyPhrase.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = MyDailyPhrase.Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -37,6 +48,11 @@
 			path = MyDailyPhrase;
 			sourceTree = "<group>";
 		};
+		68D1A0022F50000100CDD406 /* MyDailyPhraseUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MyDailyPhraseUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,14 +66,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		68D1A0042F50000100CDD406 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		68CEDF092EF8859700CDD406 = {
 			isa = PBXGroup;
 			children = (
-				68DA308C2F23B54200BF6CE3 /* MyDailyPhrase.storekit */,
 				68CEDF142EF8859700CDD406 /* MyDailyPhrase */,
+				68D1A0022F50000100CDD406 /* MyDailyPhraseUITests */,
+				7A9F00032F71000100CDD406 /* Config */,
 				68CEDF132EF8859700CDD406 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,8 +90,18 @@
 			isa = PBXGroup;
 			children = (
 				68CEDF122EF8859700CDD406 /* MyDailyPhrase.app */,
+				68D1A0012F50000100CDD406 /* MyDailyPhraseUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7A9F00032F71000100CDD406 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				7A9F00012F71000100CDD406 /* MyDailyPhrase.Debug.xcconfig */,
+				7A9F00022F71000100CDD406 /* MyDailyPhrase.Release.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -98,6 +132,29 @@
 			productReference = 68CEDF122EF8859700CDD406 /* MyDailyPhrase.app */;
 			productType = "com.apple.product-type.application";
 		};
+		68D1A0062F50000100CDD406 /* MyDailyPhraseUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68D1A0072F50000100CDD406 /* Build configuration list for PBXNativeTarget "MyDailyPhraseUITests" */;
+			buildPhases = (
+				68D1A0032F50000100CDD406 /* Sources */,
+				68D1A0042F50000100CDD406 /* Frameworks */,
+				68D1A0052F50000100CDD406 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				68D1A00B2F50000100CDD406 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				68D1A0022F50000100CDD406 /* MyDailyPhraseUITests */,
+			);
+			name = MyDailyPhraseUITests;
+			packageProductDependencies = (
+			);
+			productName = MyDailyPhraseUITests;
+			productReference = 68D1A0012F50000100CDD406 /* MyDailyPhraseUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -110,6 +167,10 @@
 				TargetAttributes = {
 					68CEDF112EF8859700CDD406 = {
 						CreatedOnToolsVersion = 26.1.1;
+					};
+					68D1A0062F50000100CDD406 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 68CEDF112EF8859700CDD406;
 					};
 				};
 			};
@@ -133,6 +194,7 @@
 			projectRoot = "";
 			targets = (
 				68CEDF112EF8859700CDD406 /* MyDailyPhrase */,
+				68D1A0062F50000100CDD406 /* MyDailyPhraseUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -142,7 +204,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				68DA308D2F23B54200BF6CE3 /* MyDailyPhrase.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68D1A0052F50000100CDD406 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -156,7 +224,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		68D1A0032F50000100CDD406 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		68D1A00B2F50000100CDD406 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 68CEDF112EF8859700CDD406 /* MyDailyPhrase */;
+			targetProxy = 68D1A00A2F50000100CDD406 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		68CEDF1B2EF8859900CDD406 /* Debug */ = {
@@ -280,6 +363,7 @@
 		};
 		68CEDF1E2EF8859900CDD406 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7A9F00012F71000100CDD406 /* MyDailyPhrase.Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -287,7 +371,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9L8G486Q32;
-				ENABLE_PREVIEWS = YES;
+				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyDailyPhrase/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -314,6 +398,7 @@
 		};
 		68CEDF1F2EF8859900CDD406 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7A9F00022F71000100CDD406 /* MyDailyPhrase.Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -321,7 +406,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9L8G486Q32;
-				ENABLE_PREVIEWS = YES;
+				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyDailyPhrase/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -346,6 +431,50 @@
 			};
 			name = Release;
 		};
+		68D1A0082F50000100CDD406 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9L8G486Q32;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.catloverbot.MyDailyPhraseUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MyDailyPhrase;
+			};
+			name = Debug;
+		};
+		68D1A0092F50000100CDD406 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9L8G486Q32;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.catloverbot.MyDailyPhraseUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MyDailyPhrase;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -363,6 +492,15 @@
 			buildConfigurations = (
 				68CEDF1E2EF8859900CDD406 /* Debug */,
 				68CEDF1F2EF8859900CDD406 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		68D1A0072F50000100CDD406 /* Build configuration list for PBXNativeTarget "MyDailyPhraseUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68D1A0082F50000100CDD406 /* Debug */,
+				68D1A0092F50000100CDD406 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

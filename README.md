@@ -1,54 +1,42 @@
 # MyDailyPhrase
 
-MyDailyPhrase は「今日のお題（ワンフレーズ）」に対して短い回答を記録し、連続日数（streak）を可視化する iOS アプリです。  
-データは App Group を利用して永続化し、将来的に Widget などの拡張と同じデータを参照できる構成を採用しています。
+MyDailyPhrase is an iOS SwiftUI app centered on short daily reflection. Users answer one prompt per day, keep a streak, and review their past entries in a local-first experience.
 
-## Features
-
-- 今日のお題（Prompt）の表示
-- 回答の保存／更新
-- 連続日数（streak）の表示
-- App Group 永続化（WidgetExtension とデータ共有可能）
-
-## Architecture
-
-本プロジェクトはシンプルなレイヤードアーキテクチャを採用しています。
-
-- **Presentation**: SwiftUI + ViewModel（画面状態、入力、UX）
-- **Domain**: UseCase / Entity（ビジネスロジック）
-- **Data**: Repository（App Group / Local データ管理）
-
-依存関係は `App -> Presentation -> Domain -> Data` の方向で組み立てています。
-
-## Project Structure (high level)
+The repository keeps a layered architecture so persistence, domain logic, and UI state stay separated:
 
 - `App/`
-  - iOS アプリ本体（SwiftUI）
-- `Packages/`
-  - `Domain/` UseCase・Entity
-  - `Data/` Repository 実装（App Group など）
-  - `Presentation/` ViewModel 等
-- `WidgetExtension/`
-  - Widget（App Group を通じてアプリとデータ共有）
-- `Tests/`
-  - テスト
+  The iOS application target and platform-specific wiring.
+- `Packages/Domain/`
+  Entities, repository protocols, and use cases.
+- `Packages/Data/`
+  Local persistence and prompt repository implementations.
+- `Packages/Presentation/`
+  View models and presentation-layer state management.
+
+## Core Experience
+
+- A stable daily prompt for the current calendar day
+- Save or update today's answer
+- Streak tracking and monthly answer counts
+- History browsing with delete support
+- Local reminder settings via `UNUserNotificationCenter`
+
+## Storage and Privacy
+
+Entries are stored locally using App Group-backed storage so the app can remain local-first and resilient offline. The current build does not add analytics, tracking, third-party SDKs, or network-backed user accounts.
 
 ## Requirements
 
-- Xcode (recommended: latest stable)
-- iOS Simulator / iOS device
+- Xcode 16 or later
+- iOS 17.0+
 
 ## How to Run
 
-1. Xcode で `App/MyDailyPhrase/MyDailyPhrase.xcodeproj` を開きます
-2. Run ターゲットを iOS Simulator（または実機）に設定します
-3. `MyDailyPhrase` を Run します
+1. Open `App/MyDailyPhrase/MyDailyPhrase.xcodeproj` in Xcode.
+2. Select the `MyDailyPhrase` scheme.
+3. Build and run on an iOS 17+ simulator or device.
 
 ## Notes
 
-- App Group ID は `MyDailyPhraseApp.swift` 内で定義しています。
-- WidgetExtension を有効にする場合は、App / WidgetExtension の両方で同じ App Group を設定してください。
-
-## License
-
-TBD
+- Privacy policy and support URLs live in `App/MyDailyPhrase/MyDailyPhrase/AppCore/AppLinks.swift`.
+- App Store submission readiness notes live in `docs/app-store-readiness.md`.

@@ -20,7 +20,14 @@ let package = Package(
                 .product(name: "Domain", package: "Domain")
             ],
             path: "Sources/Data"
+        ),
+        .testTarget(
+            name: "DataTests",
+            dependencies: [
+                "Data",
+                .product(name: "Domain", package: "Domain")
+            ],
+            path: "Tests/DataTests"
         )
-        // Tests があるなら testTarget を追加
     ]
 )

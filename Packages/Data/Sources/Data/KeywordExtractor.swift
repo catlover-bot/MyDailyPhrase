@@ -16,12 +16,13 @@ enum KeywordExtractor {
         let text = "\(p)\n\(a)".trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return [] }
 
-        // prompt に含まれる語を軽くブーストしたいので、集合を作る
+        // 回答に含まれる語を優先し、問いの汎用語を抑制する。
         let promptTokens = Set(tokenizeWords(p).map(normalizeToken).filter { !$0.isEmpty })
+        let answerTokens = Set(tokenizeWords(a).map(normalizeToken).filter { !$0.isEmpty })
 
         // 1) トークン化（単語列）
         let words = tokenizeWords(text).map(normalizeToken).filter { !$0.isEmpty }
-        if words.isEmpty { return fallback(prompt: p, max: max) }
+        if words.isEmpty { return fallback(answer: a, prompt: p, max: max) }
 
         // 2) タグ付け（固有表現/名詞ブースト）
         let tagger = NLTagger(tagSchemes: [.nameTypeOrLexicalClass])
@@ -59,7 +60,13 @@ enum KeywordExtractor {
             if containsKatakana(token) { w += 1 }
 
             // prompt に含まれる語は少し優先（“お題に沿う”感が上がる）
-            if promptTokens.contains(token) { w += 2 }
+            if promptTokens.contains(token) { w += 1 }
+            if answerTokens.contains(token) { w += 3 }
+
+            // 問いの文面にありがちな汎用語は弱める。
+            if promptTokens.contains(token), !answerTokens.contains(token), isPromptGeneric(token) {
+                w = Swift.max(0, w - 3)
+            }
 
             if w > 0 {
                 score[token, default: 0] += w
@@ -81,7 +88,7 @@ enum KeywordExtractor {
         // 3) 何も取れない場合：正規表現フォールバック
         if score.isEmpty {
             let rx = extractByRegex(text: text, max: max)
-            return rx.isEmpty ? fallback(prompt: p, max: max) : rx
+            return rx.isEmpty ? fallback(answer: a, prompt: p, max: max) : rx
         }
 
         // 4) ソート（スコア降順 → 長さ降順 → 辞書順）
@@ -194,6 +201,14 @@ enum KeywordExtractor {
         // ストップワード
         if stopWords.contains(t) { return false }
 
+        // 動詞や抽象語で終わる短語はキーワードとして弱い。
+        if (t.hasSuffix("する") || t.hasSuffix("した") || t.hasSuffix("できる") || t.hasSuffix("思う")) && t.count <= 6 {
+            return false
+        }
+        if (t.hasSuffix("こと") || t.hasSuffix("もの")) && t.count <= 4 {
+            return false
+        }
+
         return true
     }
 
@@ -256,18 +271,33 @@ enum KeywordExtractor {
 
     // MARK: - Fallback
 
-    private static func fallback(prompt: String, max: Int) -> [String] {
+    private static func fallback(answer: String, prompt: String, max: Int) -> [String] {
+        let source = answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? prompt : answer
         let p = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !p.isEmpty else { return [] }
+        let s = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return [] }
 
-        // prompt をざっくり分割して上位だけ返す
-        let parts = p
+        // 回答を優先してざっくり分割。
+        let parts = s
             .split(whereSeparator: { $0.isWhitespace || $0 == "、" || $0 == "。" || $0 == "\n" })
             .map(String.init)
             .map(normalizeToken)
             .filter { isValid($0) }
 
-        return Array(parts.prefix(max))
+        if !parts.isEmpty {
+            return Array(parts.prefix(max))
+        }
+        // 最終手段として prompt を利用。
+        let promptParts = p
+            .split(whereSeparator: { $0.isWhitespace || $0 == "、" || $0 == "。" || $0 == "\n" })
+            .map(String.init)
+            .map(normalizeToken)
+            .filter { isValid($0) }
+        return Array(promptParts.prefix(max))
+    }
+
+    private static func isPromptGeneric(_ token: String) -> Bool {
+        promptGenericWords.contains(token)
     }
 
     // MARK: - Character class helpers
@@ -294,7 +324,9 @@ enum KeywordExtractor {
     private static let stopWords: Set<String> = [
         // JP
         "これ","それ","あれ","ここ","そこ","もの","こと",
-        "今日","昨日","明日","自分","私","僕","あなた",
+        "今日","昨日","明日","自分","私","僕","あなた","あなたなら","あなたも",
+        "出来事","質問","回答","要約","キーワード","一言","感情","気持ち",
+        "次","ひとつ","どれ","どこ","なに","何","どう","どんな","なぜ","いつ","誰",
         "する","した","して","いる","ある","なる",
         "です","ます","ため","よう","ので","から","まで",
         "そして","しかし","でも","また","あと","など","なんか",
@@ -302,5 +334,9 @@ enum KeywordExtractor {
         // EN (最低限)
         "the","a","an","and","or","to","of","in","on","for","with","as",
         "is","are","was","were","be","been","it","this","that","i","you","we","they"
+    ]
+
+    private static let promptGenericWords: Set<String> = [
+        "今日","出来事","感情","気持ち","要約","キーワード","一言","視点","自分","明日","行動","質問"
     ]
 }

@@ -4,6 +4,12 @@ import Presentation
 import Data
 
 final class AppContainer {
+    static let preferredAppGroupID = "group.jp.catloverbot.MyDailyPhrase"
+    static let legacyAppGroupIDs = ["group.MyDailyPhrase"]
+    private static let unlimitedGachaTicketUserIDs: Set<String> = [
+        "a26f5e8c-47ec-4d5e-bcbf-95ea47d9bbee"
+    ]
+
     let appGroupID: String
     private let timeZone: TimeZone = .current
 
@@ -61,9 +67,19 @@ final class AppContainer {
     // ===== Import Challenge → Entry =====
     private let importChallengeToEntry: ImportChallengeToEntryUseCase
 
-    init(appGroupID: String = "group.MyDailyPhrase") {
+    init(appGroupID: String = AppContainer.preferredAppGroupID) {
+        Self.migrateLegacyAppGroupDataIfNeeded(
+            preferredGroupID: appGroupID,
+            legacyGroupIDs: Self.legacyAppGroupIDs
+        )
+        Self.resetAppDataIfNeeded(preferredGroupID: appGroupID)
         self.appGroupID = appGroupID
-        self.appGroupDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
+        let resolvedDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
+        self.appGroupDefaults = resolvedDefaults
+#if DEBUG
+        Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
+#endif
+        let forceUnlimitedForUITest = Self.boolEnv("UITEST_FORCE_UNLIMITED_GACHA")
 
         // Core repos
         self.promptRepo = LocalPromptRepository()
@@ -81,10 +97,32 @@ final class AppContainer {
 
         self.getMyProfile = GetMyProfileUseCase(repo: profileRepo)
         self.updateMyProfile = UpdateMyProfileUseCase(repo: profileRepo)
+#if DEBUG
+        Self.seedLinkedAuthForUITestIfNeeded(get: self.getMyProfile, update: self.updateMyProfile)
+#endif
+        let unlimitedTicketUserIDs = Self.unlimitedGachaTicketUserIDs
 
         // ✅ Gacha UseCases
-        self.drawDecorationGacha = DrawDecorationGachaUseCase(get: getMyProfile, update: updateMyProfile, pityThreshold: 80)
-        self.grantDailyFreeTicket = GrantDailyFreeTicketUseCase(get: getMyProfile, update: updateMyProfile, timeZone: timeZone)
+        self.drawDecorationGacha = DrawDecorationGachaUseCase(
+            get: getMyProfile,
+            update: updateMyProfile,
+            pityThreshold: 80,
+            hasUnlimitedTicketsForUserId: { userId in
+                let normalized = userId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                return forceUnlimitedForUITest || unlimitedTicketUserIDs.contains(normalized)
+            }
+        )
+        self.grantDailyFreeTicket = GrantDailyFreeTicketUseCase(
+            get: getMyProfile,
+            update: updateMyProfile,
+            timeZone: timeZone,
+            dailyBonusTickets: { [groupID = appGroupID] in
+                let defaults = UserDefaults(suiteName: groupID) ?? .standard
+                return defaults.bool(forKey: IAPStore.creatorPassEntitlementKey)
+                    ? IAPStore.creatorPassDailyBonusTickets
+                    : 0
+            }
+        )
 
         self.createChallengeLink = CreateChallengeLinkUseCase(profileUC: getMyProfile, events: challengeEventRepo)
         self.receiveChallengeLink = ReceiveChallengeLinkUseCase(events: challengeEventRepo)
@@ -122,6 +160,10 @@ final class AppContainer {
     // MARK: - Deep link handling
 
     func handleIncomingDeepLink(_ url: URL) {
+        if handleReferralDeepLink(url) {
+            return
+        }
+
         // 1) Room
         if url.scheme == RoomLinkCodec.scheme, let host = url.host {
             do {
@@ -173,6 +215,65 @@ final class AppContainer {
         }
     }
 
+    private func handleReferralDeepLink(_ url: URL) -> Bool {
+        if let invite = ReferralProgram.parseInvite(url: url) {
+            let me = getMyProfile()
+            if invite.inviterId == me.userId {
+                debugLog("[DeepLink] referral invite ignored (self)")
+                return true
+            }
+
+            appGroupDefaults.set(invite.inviterId, forKey: ReferralProgram.pendingInviterIDKey)
+            appGroupDefaults.set(invite.inviterName, forKey: ReferralProgram.pendingInviterNameKey)
+            appGroupDefaults.set(invite.code, forKey: ReferralProgram.pendingCodeKey)
+            appGroupDefaults.set(Date().timeIntervalSince1970, forKey: ReferralProgram.pendingReceivedAtKey)
+            NotificationCenter.default.post(name: .referralPendingDidUpdate, object: nil)
+            debugLog("[DeepLink] referral invite received:", invite.code)
+            return true
+        }
+
+        if let acknowledgement = ReferralProgram.parseAcknowledgement(url: url) {
+            let me = getMyProfile()
+            guard acknowledgement.inviterId == me.userId else {
+                debugLog("[DeepLink] referral ack ignored (different inviter)")
+                return true
+            }
+            guard acknowledgement.inviteeId != me.userId else {
+                debugLog("[DeepLink] referral ack ignored (self invitee)")
+                return true
+            }
+
+            var claimedInviteeIDs = loadStringSet(forKey: ReferralProgram.claimedInviteeIDsKey)
+            guard !claimedInviteeIDs.contains(acknowledgement.inviteeId) else {
+                debugLog("[DeepLink] referral ack ignored (already claimed)")
+                return true
+            }
+
+            claimedInviteeIDs.insert(acknowledgement.inviteeId)
+            saveStringSet(claimedInviteeIDs, forKey: ReferralProgram.claimedInviteeIDsKey)
+
+            let actorHint = me.userId.isEmpty ? nil : String(me.userId.suffix(8))
+            _ = updateMyProfile(
+                appendSecurityAuditEvent: SecurityAuditEvent(
+                    category: .community,
+                    kind: .communityReferralRewardClaimed,
+                    title: "招待報酬（招待者）",
+                    detail: "invitee=\(acknowledgement.inviteeName) code=\(acknowledgement.code)",
+                    actorHint: actorHint,
+                    metadata: [
+                        "inviteeId": acknowledgement.inviteeId
+                    ]
+                ),
+                addGachaTickets: ReferralProgram.inviterRewardTickets
+            )
+            NotificationCenter.default.post(name: .profileDidUpdate, object: nil)
+            debugLog("[DeepLink] referral ack rewarded:", acknowledgement.inviteeId)
+            return true
+        }
+
+        return false
+    }
+
     // MARK: - Share URL builders
 
     func makeChallengeShareURL(dateKey: String, prompt: String, room: String? = nil, chainId: String? = nil) -> URL? {
@@ -216,7 +317,18 @@ final class AppContainer {
             getEntryByDateKey: getEntryByDateKey,
             saveAnswerByDateKey: saveAnswerByDateKey,
             getMyProfile: getMyProfile,
-            updateMyProfile: updateMyProfile
+            updateMyProfile: updateMyProfile,
+            dailyFreeTicketBonusProvider: { [groupID = appGroupID] in
+                let defaults = UserDefaults(suiteName: groupID) ?? .standard
+                return defaults.bool(forKey: IAPStore.creatorPassEntitlementKey)
+                    ? IAPStore.creatorPassDailyBonusTickets
+                    : 0
+            },
+            shareDefaults: appGroupDefaults,
+            shareMissionTimeZone: timeZone,
+            makeChallengeShareURL: { [weak self] dateKey, prompt in
+                self?.makeChallengeShareURL(dateKey: dateKey, prompt: prompt)
+            }
         )
     }
 
@@ -232,11 +344,19 @@ final class AppContainer {
 
     // ✅ ガチャVM（強化版の依存を注入）
     func makeGachaViewModel() -> GachaViewModel {
-        GachaViewModel(
+        let unlimitedTicketUserIDs = Self.unlimitedGachaTicketUserIDs
+        let forceUnlimitedForUITest = Self.boolEnv("UITEST_FORCE_UNLIMITED_GACHA")
+        let forceDrawErrorOnceForUITest = Self.boolEnv("UITEST_GACHA_FORCE_DRAW_ERROR_ONCE")
+        return GachaViewModel(
             getMyProfile: getMyProfile,
             updateMyProfile: updateMyProfile,
             drawDecorationGacha: drawDecorationGacha,
-            grantDailyFreeTicket: grantDailyFreeTicket
+            grantDailyFreeTicket: grantDailyFreeTicket,
+            hasUnlimitedTicketsForUserId: { userId in
+                let normalized = userId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                return forceUnlimitedForUITest || unlimitedTicketUserIDs.contains(normalized)
+            },
+            forceDrawErrorOnceForUITest: forceDrawErrorOnceForUITest
         )
     }
 
@@ -244,6 +364,8 @@ final class AppContainer {
 
     func makeCommunityViewModel() -> CommunityViewModel {
         CommunityViewModel(
+            getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile,
             listInboxChallenges: listInboxChallenges,
             listOutboxChallenges: listOutboxChallenges,
             listInboxReactions: listInboxReactions,
@@ -259,6 +381,9 @@ final class AppContainer {
             makeRoomJoinURL: { [weak self] roomId, roomName in
                 self?.makeRoomJoinURL(roomId: roomId, roomName: roomName)
             },
+            makeChallengeShareURL: { [weak self] dateKey, prompt in
+                self?.makeChallengeShareURL(dateKey: dateKey, prompt: prompt)
+            },
 
             createCommentLink: createCommentLink,
             listInboxComments: listInboxComments,
@@ -267,12 +392,104 @@ final class AppContainer {
             makeReactionURL: { [weak self] emoji, toChallengeId, room, chainId in
                 self?.makeReactionShareURL(emoji: emoji, toChallengeId: toChallengeId, room: room, chainId: chainId)
             },
-            importChallengeToEntry: importChallengeToEntry
+            importChallengeToEntry: importChallengeToEntry,
+            isCreatorPassActiveProvider: { [groupID = appGroupID] in
+                let defaults = UserDefaults(suiteName: groupID) ?? .standard
+                return defaults.bool(forKey: IAPStore.creatorPassEntitlementKey)
+            },
+            defaults: appGroupDefaults
         )
     }
 
     func makeProfileViewModel() -> ProfileViewModel {
-        ProfileViewModel(get: getMyProfile, update: updateMyProfile)
+        let runtimeConfig = ExternalAuthRuntimeConfiguration.load()
+        let callbackScheme: String? = {
+#if DEBUG
+            if let override = Self.stringEnv("UITEST_AUTH_OAUTH_CALLBACK_SCHEME_OVERRIDE") {
+                return override.lowercased()
+            }
+#endif
+            return runtimeConfig.oauthCallbackScheme
+        }()
+        let registeredSchemes = Bundle.main.registeredURLSchemes
+        let callbackSchemeRegistered = callbackScheme.map { registeredSchemes.contains($0.lowercased()) } ?? false
+        if let callbackScheme, !callbackSchemeRegistered {
+            debugLog("[Auth] callback scheme not registered:", callbackScheme, "registered:", Array(registeredSchemes).sorted())
+        }
+
+        let oauthStartURLs: [ExternalAuthProvider: URL] = [
+            .google: runtimeConfig.googleOAuthStartURL,
+            .x: runtimeConfig.xOAuthStartURL
+        ].compactMapValues { $0 }
+        let tokenBroker: ExternalAuthTokenBroker? = {
+            guard let callbackScheme,
+                  callbackSchemeRegistered,
+                  !oauthStartURLs.isEmpty else {
+                return nil
+            }
+            return OAuthWebAuthTokenBroker(
+                startURLs: oauthStartURLs,
+                callbackScheme: callbackScheme
+            )
+        }()
+
+        let allowManualTokenInput: Bool = {
+#if DEBUG
+            return runtimeConfig.allowsManualTokenInput
+#else
+            return false
+#endif
+        }()
+
+        var verifiers: [any ExternalAuthTokenVerifier] = []
+        if let endpoint = runtimeConfig.verificationEndpointURL {
+            verifiers.append(
+                BackendAuthAPITokenVerifier(
+                    configuration: .init(
+                        endpoint: endpoint,
+                        bearerToken: runtimeConfig.verificationBearerToken,
+                        timeoutSeconds: runtimeConfig.verificationTimeoutSeconds
+                    )
+                )
+            )
+        } else {
+            verifiers.append(BackendPendingAuthTokenVerifier())
+        }
+        let allowDevelopmentVerifier: Bool = {
+#if DEBUG
+            return true
+#else
+            return false
+#endif
+        }()
+        if allowDevelopmentVerifier {
+            verifiers.append(DevelopmentExternalAuthTokenVerifier())
+        }
+
+        let verifier = CompositeExternalAuthTokenVerifier(verifiers: verifiers)
+        return ProfileViewModel(
+            get: getMyProfile,
+            update: updateMyProfile,
+            authTokenVerifier: verifier,
+            termsOfServiceURL: runtimeConfig.termsOfServiceURL,
+            privacyPolicyURL: runtimeConfig.privacyPolicyURL,
+            defaultSecurityLogRetentionDays: runtimeConfig.defaultSecurityLogRetentionDays,
+            maxSecurityLogRetentionDays: runtimeConfig.maxSecurityLogRetentionDays,
+            isServerAuthVerificationConfigured: runtimeConfig.verificationEndpointURL != nil,
+            serverAuthEndpointHost: runtimeConfig.verificationEndpointURL?.host,
+            isDevelopmentVerifierEnabled: allowDevelopmentVerifier,
+            externalAuthTokenBroker: tokenBroker,
+            oauthConfiguredProviders: Set(oauthStartURLs.keys),
+            oauthCallbackScheme: callbackScheme,
+            isOAuthCallbackSchemeRegistered: callbackSchemeRegistered,
+            allowsManualExternalAuthTokenInput: allowManualTokenInput,
+            isLoginBypassEnabled: Self.boolEnv("UITEST_BYPASS_LOGIN"),
+            appDefaults: appGroupDefaults
+        )
+    }
+
+    func makeNotificationScheduler() -> AppNotificationScheduler {
+        AppNotificationScheduler(defaults: appGroupDefaults)
     }
 
     // MARK: - IAP
@@ -290,5 +507,217 @@ final class AppContainer {
         #if DEBUG
         print(items.map { String(describing: $0) }.joined(separator: " "))
         #endif
+    }
+
+    private static func migrateLegacyAppGroupDataIfNeeded(
+        preferredGroupID: String,
+        legacyGroupIDs: [String]
+    ) {
+        let markerKey = "MyDailyPhrase.appGroupMigration.v2"
+        guard let target = UserDefaults(suiteName: preferredGroupID) else { return }
+        if target.bool(forKey: markerKey) { return }
+
+        let targetHasAppData = target.dictionaryRepresentation().keys.contains { $0.hasPrefix("MyDailyPhrase.") }
+        if targetHasAppData {
+            target.set(true, forKey: markerKey)
+            return
+        }
+
+        var copiedKeys = 0
+
+        func copyAppKeys(from source: UserDefaults) {
+            let sourcePairs = source.dictionaryRepresentation().filter { $0.key.hasPrefix("MyDailyPhrase.") }
+            for (key, value) in sourcePairs where target.object(forKey: key) == nil {
+                target.set(value, forKey: key)
+                copiedKeys += 1
+            }
+        }
+
+        for legacyID in legacyGroupIDs where legacyID != preferredGroupID {
+            if let legacy = UserDefaults(suiteName: legacyID) {
+                copyAppKeys(from: legacy)
+            }
+        }
+
+        // AppGroup の取得に失敗していた環境向けに standard からも救済する
+        copyAppKeys(from: .standard)
+
+        target.set(true, forKey: markerKey)
+        if copiedKeys > 0 {
+            target.synchronize()
+        }
+
+        #if DEBUG
+        print("[AppContainer] AppGroup migration copied keys:", copiedKeys, "->", preferredGroupID)
+        #endif
+    }
+
+    private static func boolEnv(_ key: String) -> Bool {
+        let value = ProcessInfo.processInfo.environment[key]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return value == "1" || value == "true" || value == "yes"
+    }
+
+    private static func stringEnv(_ key: String) -> String? {
+        let value = ProcessInfo.processInfo.environment[key]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    #if DEBUG
+    private static func seedNotificationABMetricsForUITestIfNeeded(defaults: UserDefaults) {
+        guard boolEnv("UITEST_SEED_NOTIFICATION_AB_METRICS") else { return }
+
+        let readyGlobal = AppNotificationSettings.NotificationCampaignStats(
+            a: .init(sent: 38, opened: 20, returned: 12),
+            b: .init(sent: 36, opened: 16, returned: 10)
+        )
+        let readyByContext: [String: AppNotificationSettings.NotificationCampaignStats] = [
+            "w2_morning": .init(
+                a: .init(sent: 10, opened: 6, returned: 4),
+                b: .init(sent: 8, opened: 3, returned: 2)
+            ),
+            "w4_evening": .init(
+                a: .init(sent: 8, opened: 5, returned: 3),
+                b: .init(sent: 9, opened: 4, returned: 2)
+            ),
+            "w6_night": .init(
+                a: .init(sent: 7, opened: 3, returned: 2),
+                b: .init(sent: 8, opened: 5, returned: 4)
+            )
+        ]
+        AppNotificationSettings.saveCampaignStats(readyGlobal, for: .seasonMilestoneReady, to: defaults)
+        AppNotificationSettings.saveCampaignContextStats(readyByContext, for: .seasonMilestoneReady, to: defaults)
+
+        let reminderGlobal = AppNotificationSettings.NotificationCampaignStats(
+            a: .init(sent: 44, opened: 20, returned: 11),
+            b: .init(sent: 43, opened: 24, returned: 15)
+        )
+        let reminderByContext: [String: AppNotificationSettings.NotificationCampaignStats] = [
+            "w1_slot_earlyEvening": .init(
+                a: .init(sent: 8, opened: 3, returned: 2),
+                b: .init(sent: 9, opened: 5, returned: 3)
+            ),
+            "w3_slot_primeTime": .init(
+                a: .init(sent: 9, opened: 5, returned: 3),
+                b: .init(sent: 8, opened: 6, returned: 4)
+            ),
+            "w5_slot_lateNight": .init(
+                a: .init(sent: 7, opened: 3, returned: 1),
+                b: .init(sent: 8, opened: 5, returned: 3)
+            )
+        ]
+        AppNotificationSettings.saveCampaignStats(reminderGlobal, for: .seasonMilestoneReminder, to: defaults)
+        AppNotificationSettings.saveCampaignContextStats(reminderByContext, for: .seasonMilestoneReminder, to: defaults)
+
+        let timingGlobal = AppNotificationSettings.NotificationTimingStats(
+            earlyEvening: .init(sent: 31, opened: 12, returned: 6),
+            primeTime: .init(sent: 34, opened: 18, returned: 11),
+            lateNight: .init(sent: 29, opened: 10, returned: 5)
+        )
+        let timingByWeekday: [String: AppNotificationSettings.NotificationTimingStats] = [
+            "2": .init(
+                earlyEvening: .init(sent: 8, opened: 2, returned: 1),
+                primeTime: .init(sent: 9, opened: 5, returned: 3),
+                lateNight: .init(sent: 7, opened: 2, returned: 1)
+            ),
+            "4": .init(
+                earlyEvening: .init(sent: 7, opened: 3, returned: 2),
+                primeTime: .init(sent: 8, opened: 4, returned: 3),
+                lateNight: .init(sent: 6, opened: 2, returned: 1)
+            ),
+            "6": .init(
+                earlyEvening: .init(sent: 9, opened: 3, returned: 2),
+                primeTime: .init(sent: 10, opened: 6, returned: 4),
+                lateNight: .init(sent: 8, opened: 3, returned: 2)
+            )
+        ]
+        AppNotificationSettings.saveReminderTimingStats(timingGlobal, to: defaults)
+        AppNotificationSettings.saveReminderTimingStatsByWeekday(timingByWeekday, to: defaults)
+
+        let readyWinner = AppNotificationSettings.recommendedVariant(for: readyGlobal)
+        let reminderWinner = AppNotificationSettings.recommendedVariant(for: reminderGlobal)
+        defaults.set(readyWinner.rawValue, forKey: AppNotificationSettings.seasonMilestoneReadyCopyVariantKey)
+        defaults.set(reminderWinner.rawValue, forKey: AppNotificationSettings.seasonMilestoneReminderCopyVariantKey)
+        NotificationCenter.default.post(name: .notificationABMetricsDidUpdate, object: nil)
+    }
+
+    private static func seedLinkedAuthForUITestIfNeeded(
+        get: GetMyProfileUseCase,
+        update: UpdateMyProfileUseCase
+    ) {
+        guard boolEnv("UITEST_SEED_LINKED_AUTH") else { return }
+
+        let providerRaw = stringEnv("UITEST_SEED_LINKED_AUTH_PROVIDER")?.lowercased()
+            ?? LinkedAuthProvider.google.rawValue
+        let provider = LinkedAuthProvider(rawValue: providerRaw) ?? .google
+        let subject = stringEnv("UITEST_SEED_LINKED_AUTH_SUBJECT") ?? "uitest-linked-subject"
+        let shouldSeedOnboardingPending = boolEnv("UITEST_SEED_ONBOARDING_PENDING")
+
+        let current = get()
+        if current.linkedAuthProvider != nil, current.linkedAuthUserId != nil {
+            return
+        }
+
+        _ = update(
+            linkedAuthProvider: provider.rawValue,
+            linkedAuthUserId: subject,
+            linkedAuthAt: Date(),
+            hasCompletedOnboarding: !shouldSeedOnboardingPending,
+            onboardingCompletedAt: shouldSeedOnboardingPending ? nil : Date(),
+            onboardingVersion: shouldSeedOnboardingPending ? 0 : 1
+        )
+    }
+    #endif
+
+    private static func resetAppDataIfNeeded(preferredGroupID: String) {
+        guard boolEnv("UITEST_RESET_APP_DATA") else { return }
+
+        let migrationMarker = "MyDailyPhrase.appGroupMigration.v2"
+        let targets: [UserDefaults] = [UserDefaults(suiteName: preferredGroupID), .standard]
+            .compactMap { $0 }
+
+        for defaults in targets {
+            let keys = defaults.dictionaryRepresentation().keys
+                .filter { $0.hasPrefix("MyDailyPhrase.") || $0 == migrationMarker }
+            for key in keys {
+                defaults.removeObject(forKey: key)
+            }
+            defaults.synchronize()
+        }
+    }
+
+    private func loadStringSet(forKey key: String) -> Set<String> {
+        let values = appGroupDefaults.stringArray(forKey: key) ?? []
+        return Set(values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+    }
+
+    private func saveStringSet(_ values: Set<String>, forKey key: String) {
+        let normalized = values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted()
+        appGroupDefaults.set(normalized, forKey: key)
+    }
+}
+
+private extension Bundle {
+    var registeredURLSchemes: Set<String> {
+        guard let urlTypes = infoDictionary?["CFBundleURLTypes"] as? [[String: Any]] else {
+            return []
+        }
+        var schemes: Set<String> = []
+        for item in urlTypes {
+            let rawSchemes = item["CFBundleURLSchemes"] as? [String] ?? []
+            for raw in rawSchemes {
+                let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if !normalized.isEmpty {
+                    schemes.insert(normalized)
+                }
+            }
+        }
+        return schemes
     }
 }
