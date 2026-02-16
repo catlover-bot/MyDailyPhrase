@@ -28,6 +28,7 @@ public struct HomeView: View {
 
     // 共有テキスト形式
     @State private var shareFormat: ShareFormat = .x
+    @State private var viralTone: ViralTone = .challenge
 
     public init(viewModel: HomeViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
@@ -42,17 +43,17 @@ public struct HomeView: View {
     }
 
     private var shareText: String {
-        buildShareText(format: shareFormat)
+        buildShareText(format: shareFormat, url: fallbackChallengeURL)
     }
 
-    // ✅ 共有に載せるチャレンジURL（QR/URL）
-    private var challengeURL: URL? {
-        let tz = TimeZone(identifier: "Asia/Tokyo") ?? .current
-        let todayKey = DateKey.todayKey(timeZone: tz)
-        return URL(string: "mydailyphrase://challenge?dateKey=\(todayKey)")
+    // 共有文言のデフォルトURL（コピー時など副作用を起こさない用途）
+    private var fallbackChallengeURL: URL? {
+        let dateKey = vm.todayDateKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !dateKey.isEmpty else { return nil }
+        return URL(string: "mydailyphrase://challenge?dateKey=\(dateKey)")
     }
 
-    private var shareCardModel: ShareCardModel {
+    private func shareCardModel(shareURL: URL?) -> ShareCardModel {
         let prompt = vm.promptText.trimmingCharacters(in: .whitespacesAndNewlines)
         let answer = vm.answerText.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -76,7 +77,7 @@ public struct HomeView: View {
                 moodTags: art.moodTags,
                 keywords: art.keywords,
                 decorationId: decorationId,
-                shareURL: challengeURL
+                shareURL: shareURL
             )
         } else {
             return ShareCardModel(
@@ -90,9 +91,30 @@ public struct HomeView: View {
                 moodTags: [],
                 keywords: [],
                 decorationId: decorationId,
-                shareURL: challengeURL
+                shareURL: shareURL
             )
         }
+    }
+
+    private func colorForMood(_ mood: String) -> Color {
+        switch mood {
+        case "喜び": return .yellow
+        case "哀しみ": return .blue
+        case "怒り": return .red
+        case "不安": return .purple
+        case "疲れ": return .gray
+        case "挑戦": return .orange
+        case "日常": return .green
+        default: return .clear
+        }
+    }
+
+    private var auraColors: [Color] {
+        let colors = vm.todayArtifact?.moodTags.map { colorForMood($0) }.filter { $0 != .clear } ?? []
+        if colors.isEmpty {
+            return [Color.gray.opacity(0.3)]
+        }
+        return colors
     }
 
     @MainActor
@@ -106,19 +128,15 @@ public struct HomeView: View {
         isPreparingShareImage = true
         defer { isPreparingShareImage = false }
 
-        shareImage = ShareCardRenderer.render(model: shareCardModel)
+        let challengeURL = vm.buildChallengeShareURLForCurrentPrompt() ?? fallbackChallengeURL
+        let model = shareCardModel(shareURL: challengeURL)
+        shareImage = ShareCardRenderer.render(model: model)
 
         let uiImage = shareImage?.image
-        let linkURL = shareCardModel.shareURL
-
-        let payload = SharePayload(text: shareText, image: uiImage, url: linkURL)
-
-        var items: [Any] = [payload]
-        if let uiImage { items.append(uiImage) }
-        if let linkURL { items.append(linkURL) }
-
-        shareSheetItems = items
+        let shareText = buildShareText(format: shareFormat, url: challengeURL)
+        shareSheetItems = ShareItemsBuilder.build(text: shareText, image: uiImage, url: challengeURL)
         isPresentingShareSheet = true
+        vm.registerShareAction()
     }
 
     private func cleanupTempShareFile() {
@@ -138,6 +156,13 @@ public struct HomeView: View {
     private func copyCaption() {
         UIPasteboard.general.string = shareText
         toast("キャプションをコピーしました")
+    }
+
+    @MainActor
+    private func presentTextShare(text: String, url: URL? = nil) {
+        shareSheetItems = ShareItemsBuilder.build(text: text, image: nil, url: url)
+        isPresentingShareSheet = true
+        vm.registerShareAction()
     }
 
     // ✅ Challenge sheet 本体
@@ -185,7 +210,7 @@ public struct HomeView: View {
                 }
             }
             .padding()
-            .navigationTitle("Challenge")
+            .navigationTitle("チャレンジ回答")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("閉じる") { isPresentingChallenge = false }
@@ -205,8 +230,9 @@ public struct HomeView: View {
 
                         HStack(spacing: 10) {
                             Button { presentUnifiedShare() } label: {
-                                Label(isPreparingShareImage ? "準備中" : "投稿", systemImage: "paperplane.fill")
+                                AdaptiveActionButtonLabel(text: isPreparingShareImage ? "準備中" : "投稿", systemImage: "paperplane.fill")
                                     .fontWeight(.semibold)
+                                    .compactActionLabel()
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(isPreparingShareImage)
@@ -218,14 +244,16 @@ public struct HomeView: View {
                                     }
                                 }
                             } label: {
-                                Label(shareFormat.shortTitle, systemImage: "slider.horizontal.3")
+                                AdaptiveActionButtonLabel(text: shareFormat.shortTitle, systemImage: "slider.horizontal.3")
                                     .fontWeight(.semibold)
+                                    .compactActionLabel()
                             }
                             .buttonStyle(.bordered)
 
                             Button { copyCaption() } label: {
-                                Label("コピー", systemImage: "doc.on.doc")
+                                AdaptiveActionButtonLabel(text: "コピー", systemImage: "doc.on.doc")
                                     .fontWeight(.semibold)
+                                    .compactActionLabel()
                             }
                             .buttonStyle(.bordered)
 
@@ -244,11 +272,115 @@ public struct HomeView: View {
 
                         GlassCard {
                             VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    SectionHeader(title: "シェアミッション", systemImage: "megaphone.fill")
+                                    Spacer()
+                                    Text("累計 \(vm.shareMissionLifetimeCount)投稿")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                ProgressView(
+                                    value: Double(min(vm.shareMissionDailyCount, vm.shareMissionDailyTarget)),
+                                    total: Double(vm.shareMissionDailyTarget)
+                                )
+
+                                HStack {
+                                    Text("今日の進捗 \(vm.shareMissionDailyCount)/\(vm.shareMissionDailyTarget)")
+                                        .font(.subheadline)
+                                    Spacer()
+                                    Text(vm.shareMissionClaimedToday ? "受取済み" : "未受取")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                HStack {
+                                    Text("連続シェア \(vm.shareMissionStreakDays)日")
+                                        .font(.subheadline)
+                                    Spacer()
+                                    Text("ベスト \(vm.shareMissionBestStreakDays)日")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Text("連続\(vm.shareMissionStreakBonusEveryDays)日ごとにボーナス（チケット+\(vm.shareMissionStreakRewardTickets)） / 次まであと\(vm.shareMissionDaysUntilStreakBonus)日")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+
+                                if !vm.canClaimShareMissionReward {
+                                    Text("あと\(vm.shareMissionRemainingCount)回シェアで報酬解放（チケット+\(vm.shareMissionRewardTickets)）")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Button {
+                                    vm.claimShareMissionReward()
+                                } label: {
+                                    AdaptiveActionButtonLabel(text: "報酬を受け取る +\(vm.shareMissionRewardTickets)", systemImage: "gift.fill")
+                                        .fontWeight(.semibold)
+                                        .compactActionLabel()
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(!vm.canClaimShareMissionReward)
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
                                 SectionHeader(title: "今日のお題", systemImage: "quote.opening")
                                 Text(vm.promptText)
                                     .font(.title3)
                                     .fontWeight(.semibold)
                                     .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                SectionHeader(title: "今日のオーラ", systemImage: "sparkles")
+                                if vm.todayArtifact == nil {
+                                    Text("回答を保存すると、今日のオーラが生成されます。")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .frame(height: 120, alignment: .center)
+                                } else {
+                                    AuraView(colors: auraColors)
+                                }
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    SectionHeader(title: "書きやすくするヒント", systemImage: "sparkle.magnifyingglass")
+                                    Spacer()
+                                    Text("回答のヒント")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                ForEach(Array(vm.promptBoosters.enumerated()), id: \.offset) { _, booster in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Image(systemName: "sparkles")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .padding(.top, 3)
+                                        Text(booster)
+                                            .font(.subheadline)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                        Spacer(minLength: 10)
+                                        Button("使う") {
+                                            vm.applyPromptBooster(booster)
+                                            isAnswerFocused = true
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                    .padding(10)
+                                    .background(.thinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
                             }
                         }
 
@@ -283,7 +415,7 @@ public struct HomeView: View {
                                     SectionHeader(title: "作品プレビュー", systemImage: "sparkles")
                                     Spacer()
                                     if vm.todayArtifact == nil {
-                                        Text("保存すると生成")
+                                        Text("保存後に自動生成")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -307,7 +439,7 @@ public struct HomeView: View {
                                         TagGrid(tags: art.keywords, accentSymbol: "number")
                                     }
                                 } else {
-                                    Text("まだ作品がありません。回答を書いて保存すると、題名・要約・タグが自動生成されます。")
+                                    Text("まだプレビューがありません。回答を保存すると、タイトル・要約・キーワードが自動で表示されます。")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -315,13 +447,64 @@ public struct HomeView: View {
                             }
                         }
 
-                        Button { vm.submit() } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "tray.and.arrow.down.fill")
-                                Text(vm.isAnsweredToday ? "更新して保存" : "保存する")
-                                    .fontWeight(.heavy)
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    SectionHeader(title: "シェア文テンプレート", systemImage: "megaphone.fill")
+                                    Spacer()
+                                    Text("そのまま共有できます")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Picker("トーン", selection: $viralTone) {
+                                    ForEach(ViralTone.allCases, id: \.self) { tone in
+                                        Text(tone.title).tag(tone)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+
+                                ForEach(Array(viralCaptionPack.enumerated()), id: \.offset) { index, caption in
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(caption)
+                                            .font(.caption)
+                                            .foregroundStyle(.primary)
+                                            .fixedSize(horizontal: false, vertical: true)
+
+                                        HStack(spacing: 8) {
+                                            Button {
+                                                UIPasteboard.general.string = caption
+                                                toast("テンプレ\(index + 1)をコピーしました")
+                                            } label: {
+                                                AdaptiveActionButtonLabel(text: "コピー", systemImage: "doc.on.doc")
+                                                    .compactActionLabel()
+                                            }
+                                            .buttonStyle(.bordered)
+
+                                            Button {
+                                                Task { @MainActor in
+                                                    let url = vm.buildChallengeShareURLForCurrentPrompt() ?? fallbackChallengeURL
+                                                    presentTextShare(text: caption, url: url)
+                                                }
+                                            } label: {
+                                                AdaptiveActionButtonLabel(text: "共有", systemImage: "square.and.arrow.up")
+                                                    .compactActionLabel()
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                        }
+                                    }
+                                    .padding(10)
+                                    .background(.thinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
                             }
-                            .frame(maxWidth: .infinity)
+                        }
+
+                        Button { vm.submit() } label: {
+                            AdaptiveActionButtonLabel(text: vm.isAnsweredToday ? "更新して保存" : "保存する", systemImage: "tray.and.arrow.down.fill")
+                                .fontWeight(.heavy)
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
@@ -413,17 +596,19 @@ public struct HomeView: View {
     // MARK: - Share text builder
 
     private enum ShareFormat: CaseIterable {
-        case x, instagram, line
+        case buzz, x, instagram, line
 
         var title: String {
             switch self {
-            case .x: return "X（短文）"
-            case .instagram: return "Instagram（長文）"
+            case .buzz: return "バズ向け（参加を促す）"
+            case .x: return "X（短め）"
+            case .instagram: return "Instagram（しっかり）"
             case .line: return "LINE（シンプル）"
             }
         }
         var shortTitle: String {
             switch self {
+            case .buzz: return "バズ"
             case .x: return "X"
             case .instagram: return "IG"
             case .line: return "LINE"
@@ -431,6 +616,7 @@ public struct HomeView: View {
         }
         var systemImage: String {
             switch self {
+            case .buzz: return "megaphone"
             case .x: return "text.bubble"
             case .instagram: return "photo.on.rectangle"
             case .line: return "message"
@@ -438,20 +624,156 @@ public struct HomeView: View {
         }
     }
 
-    private func buildShareText(format: ShareFormat) -> String {
+    private enum ViralTone: CaseIterable {
+        case challenge
+        case honest
+        case concise
+
+        var title: String {
+            switch self {
+            case .challenge: return "挑戦を促す"
+            case .honest: return "共感寄り"
+            case .concise: return "短く伝える"
+            }
+        }
+    }
+
+    private var viralCaptionPack: [String] {
         let prompt = vm.promptText.trimmingCharacters(in: .whitespacesAndNewlines)
         let answer = vm.answerText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let link = challengeURL?.absoluteString ?? ""
+        let normalizedAnswer = answer.isEmpty ? "（未回答）" : answer
+        let link = (vm.buildChallengeShareURLForCurrentPrompt() ?? fallbackChallengeURL)?.absoluteString ?? ""
+        let tagLine = viralTagLine
+        let baseHashTags = contextualHashTags
+
+        let candidates: [String]
+        switch viralTone {
+        case .challenge:
+            candidates = [
+                """
+                【1分内省チャレンジ】
+                お題: \(prompt)
+                私の答え: \(normalizedAnswer)
+                あなたの答えも聞かせてください
+                \(baseHashTags)
+                \(link)
+                """,
+                buildShareText(format: .buzz, url: URL(string: link)),
+                "今日の問い: \(prompt)\n答え: \(normalizedAnswer)\n\(tagLine)\n\(baseHashTags)\n\(link)"
+            ]
+        case .honest:
+            candidates = [
+                """
+                今日の内省メモ
+                お題: \(prompt)
+                率直な答え: \(normalizedAnswer)
+                \(tagLine)
+                \(baseHashTags)
+                \(link)
+                """,
+                buildShareText(format: .instagram, url: URL(string: link)),
+                "少しずつ言葉にするだけで、気持ちが整う。\nお題: \(prompt)\n答え: \(normalizedAnswer)\n\(baseHashTags)\n\(link)"
+            ]
+        case .concise:
+            candidates = [
+                buildShareText(format: .x, url: URL(string: link)),
+                "お題: \(prompt)\n答え: \(normalizedAnswer)\n\(baseHashTags)\n\(link)",
+                "1日1問のセルフチェック\n\(prompt)\n\(normalizedAnswer)\n\(baseHashTags) \(link)"
+            ]
+        }
+
+        var seen: Set<String> = []
+        return candidates
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
+    }
+
+    private var viralTagLine: String {
+        guard let art = vm.todayArtifact else {
+            return "今日も1分、自分の気持ちを言葉にする。"
+        }
+        let tags = Array(art.moodTags.prefix(2))
+        guard !tags.isEmpty else {
+            return art.summary
+        }
+        return "気分メモ: " + tags.joined(separator: "・")
+    }
+
+    private var contextualHashTags: String {
+        var tags: [String] = ["#MyDailyPhrase"]
+
+        if let art = vm.todayArtifact {
+            let moodToTag: [String: String] = [
+                "喜び": "#うれしかったこと",
+                "哀しみ": "#気持ちの整理",
+                "怒り": "#感情メモ",
+                "不安": "#不安との向き合い方",
+                "疲れ": "#休息メモ",
+                "挑戦": "#今日の挑戦",
+                "日常": "#日常ログ"
+            ]
+            for mood in art.moodTags.prefix(2) {
+                if let mapped = moodToTag[mood], !tags.contains(mapped) {
+                    tags.append(mapped)
+                }
+            }
+
+            for keyword in art.keywords.prefix(2) {
+                guard let keywordTag = makeKeywordHashTag(keyword),
+                      !tags.contains(keywordTag) else { continue }
+                tags.append(keywordTag)
+            }
+        }
+
+        let fallback = ["#振り返り", "#自己理解", "#習慣化"]
+        for tag in fallback where tags.count < 5 {
+            if !tags.contains(tag) {
+                tags.append(tag)
+            }
+        }
+        return tags.joined(separator: " ")
+    }
+
+    private func makeKeywordHashTag(_ keyword: String) -> String? {
+        let compact = keyword
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\t", with: "")
+        guard compact.count >= 2, compact.count <= 12 else { return nil }
+        if compact.contains("#") { return nil }
+        let isOnlyNumber = compact.unicodeScalars.allSatisfy { CharacterSet.decimalDigits.contains($0) }
+        if isOnlyNumber { return nil }
+        return "#\(compact)"
+    }
+
+    private func buildShareText(format: ShareFormat, url: URL?) -> String {
+        let prompt = vm.promptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let answer = vm.answerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let link = url?.absoluteString ?? ""
+        let hashTags = contextualHashTags
+        let streakLine = vm.streak >= 7 ? "連続\(vm.streak)日、続けられています。" : "1日1分の振り返りを継続中。"
 
         if let art = vm.todayArtifact {
             let tags = art.moodTags.isEmpty ? "" : " / " + art.moodTags.joined(separator: "・")
             switch format {
+            case .buzz:
+                return """
+                【3行内省チャレンジ】
+                \(streakLine)
+                お題: \(prompt)
+                私の答え: \(answer.isEmpty ? "（未回答）" : answer)
+                あなたならどう答える？
+                \(hashTags)
+                \(link)
+                """.trimmingCharacters(in: .whitespacesAndNewlines)
             case .x:
                 return """
                 【MyDailyPhrase】\(art.title)\(tags)
                 お題: \(prompt)
                 回答: \(answer.isEmpty ? "（未回答）" : answer)
-                #MyDailyPhrase
+                \(hashTags)
                 \(link)
                 """.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -468,7 +790,7 @@ public struct HomeView: View {
                 回答
                 \(answer.isEmpty ? "（未回答）" : answer)
 
-                #MyDailyPhrase #日記 #自己分析 #習慣化
+                \(hashTags)
                 \(link)
                 """.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -482,12 +804,22 @@ public struct HomeView: View {
             }
         } else {
             switch format {
+            case .buzz:
+                return """
+                【3行内省チャレンジ】
+                \(streakLine)
+                お題: \(prompt)
+                私の答え: \(answer.isEmpty ? "（未回答）" : answer)
+                あなたも参加してみて👇
+                \(hashTags)
+                \(link)
+                """.trimmingCharacters(in: .whitespacesAndNewlines)
             case .x:
                 return """
                 【MyDailyPhrase】
                 お題: \(prompt)
                 回答: \(answer.isEmpty ? "（未回答）" : answer)
-                #MyDailyPhrase
+                \(hashTags)
                 \(link)
                 """.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -501,7 +833,7 @@ public struct HomeView: View {
                 回答
                 \(answer.isEmpty ? "（未回答）" : answer)
 
-                #MyDailyPhrase #日記 #習慣化
+                \(hashTags)
                 \(link)
                 """.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -517,7 +849,42 @@ public struct HomeView: View {
     }
 }
 
+private extension View {
+    func compactActionLabel() -> some View {
+        lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .allowsTightening(true)
+            .truncationMode(.tail)
+    }
+}
+
 // MARK: - Private UI Parts
+
+private struct AuraView: View {
+    let colors: [Color]
+
+    var body: some View {
+        let gradientColors = colors.count > 1 ? colors : colors + [colors.first?.opacity(0.5) ?? .clear, .clear]
+        return AngularGradient(
+            gradient: Gradient(colors: gradientColors),
+            center: .center
+        )
+        .frame(height: 150)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct AdaptiveActionButtonLabel: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Label(text, systemImage: systemImage)
+            Image(systemName: systemImage)
+        }
+    }
+}
 
 private struct HomeGradientBackground: View {
     @Environment(\.currentDecorationId) private var decorationId
@@ -544,20 +911,23 @@ private struct HomeGradientBackground: View {
         )
     }
 
-    private enum DecorationStyle: String {
+    private enum DecorationStyle: String, CaseIterable {
         case classic, sakura, aurora, neon, gold
         static func from(_ raw: String) -> DecorationStyle {
-            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return DecorationStyle(rawValue: norm) ?? .classic
+            let resolved = DecorationThemeResolver.resolveStyleID(
+                from: raw,
+                supportedStyleIDs: Set(Self.allCases.map(\.rawValue))
+            )
+            return DecorationStyle(rawValue: resolved) ?? .classic
         }
 
         var tintColors: [Color] {
             switch self {
-            case .classic: return [Color.purple.opacity(0.10), Color.blue.opacity(0.08), Color.clear]
-            case .sakura:  return [Color.pink.opacity(0.12),   Color.purple.opacity(0.06), Color.clear]
-            case .aurora:  return [Color.green.opacity(0.10),  Color.blue.opacity(0.10),   Color.clear]
-            case .neon:    return [Color.cyan.opacity(0.10),   Color.purple.opacity(0.08), Color.clear]
-            case .gold:    return [Color.yellow.opacity(0.10), Color.orange.opacity(0.08), Color.clear]
+            case .classic: return [Color.indigo.opacity(0.25), Color.purple.opacity(0.2), .clear]
+            case .sakura:  return [Color(red: 1.0, green: 0.7, blue: 0.8).opacity(0.25), Color.pink.opacity(0.2), .clear]
+            case .aurora:  return [Color.mint.opacity(0.25),  Color.cyan.opacity(0.2),   .clear]
+            case .neon:    return [Color.pink.opacity(0.25),   Color.purple.opacity(0.2), Color.cyan.opacity(0.15), .clear]
+            case .gold:    return [Color.yellow.opacity(0.25), Color.orange.opacity(0.2), .clear]
             }
         }
     }

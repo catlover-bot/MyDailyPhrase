@@ -60,7 +60,7 @@ struct EntryDetailView: View {
                             UIPasteboard.general.string = shareText
                             copied = true
                         } label: {
-                            Label("コピー", systemImage: "doc.on.doc")
+                            AdaptiveActionButtonLabel(text: "コピー", systemImage: "doc.on.doc")
                                 .fontWeight(.semibold)
                         }
                         .buttonStyle(.bordered)
@@ -68,7 +68,7 @@ struct EntryDetailView: View {
                         Button {
                             presentUnifiedShare()
                         } label: {
-                            Label(isPreparingShare ? "準備中" : "投稿", systemImage: "paperplane.fill")
+                            AdaptiveActionButtonLabel(text: isPreparingShare ? "準備中" : "投稿", systemImage: "paperplane.fill")
                                 .fontWeight(.semibold)
                         }
                         .buttonStyle(.borderedProminent)
@@ -147,6 +147,18 @@ struct EntryDetailView: View {
 
 // MARK: - Background
 
+private struct AdaptiveActionButtonLabel: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Label(text, systemImage: systemImage)
+            Image(systemName: systemImage)
+        }
+    }
+}
+
 private struct DetailGradientBackground: View {
     @Environment(\.currentDecorationId) private var decorationId
     private var style: DecorationStyle { DecorationStyle.from(decorationId) }
@@ -170,11 +182,14 @@ private struct DetailGradientBackground: View {
         )
     }
 
-    private enum DecorationStyle: String {
+    private enum DecorationStyle: String, CaseIterable {
         case classic, sakura, aurora, neon, gold
         static func from(_ raw: String) -> DecorationStyle {
-            let norm = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return DecorationStyle(rawValue: norm) ?? .classic
+            let resolved = DecorationThemeResolver.resolveStyleID(
+                from: raw,
+                supportedStyleIDs: Set(Self.allCases.map(\.rawValue))
+            )
+            return DecorationStyle(rawValue: resolved) ?? .classic
         }
 
         var tintColors: [Color] {

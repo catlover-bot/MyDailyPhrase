@@ -56,6 +56,20 @@ struct ShareCardModel: Equatable {
 
 // MARK: - View
 
+private struct AuraView: View {
+    let colors: [Color]
+
+    var body: some View {
+        let gradientColors = colors.count > 1 ? colors : colors + [colors.first?.opacity(0.5) ?? .clear, .clear]
+        return AngularGradient(
+            gradient: Gradient(colors: gradientColors),
+            center: .center
+        )
+        .opacity(0.4)
+        .blur(radius: 40)
+    }
+}
+
 struct ShareCardView: View {
     let model: ShareCardModel
 
@@ -63,9 +77,32 @@ struct ShareCardView: View {
         DecorationStyle.from(model.decorationId)
     }
 
+    private func colorForMood(_ mood: String) -> Color {
+        switch mood {
+        case "喜び": return .yellow
+        case "哀しみ": return .blue
+        case "怒り": return .red
+        case "不安": return .purple
+        case "疲れ": return .gray
+        case "挑戦": return .orange
+        case "日常": return .green
+        default: return .clear
+        }
+    }
+
+    private var auraColors: [Color] {
+        let colors = model.moodTags.map { colorForMood($0) }.filter { $0 != .clear }
+        if colors.isEmpty {
+            return [Color.gray.opacity(0.3)]
+        }
+        return colors
+    }
+
     var body: some View {
         ZStack {
             background
+            AuraView(colors: auraColors)
+                .allowsHitTesting(false)
             decorationLayer
                 .allowsHitTesting(false)
 
@@ -122,7 +159,7 @@ struct ShareCardView: View {
 
     // MARK: - Decoration Style
 
-    private enum DecorationStyle: String {
+    private enum DecorationStyle: String, CaseIterable {
         case classic
         case paper
         case noir
@@ -133,10 +170,11 @@ struct ShareCardView: View {
         case gold
 
         static func from(_ raw: String) -> DecorationStyle {
-            let norm = raw
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .lowercased()
-            return DecorationStyle(rawValue: norm) ?? .classic
+            let resolved = DecorationThemeResolver.resolveStyleID(
+                from: raw,
+                supportedStyleIDs: Set(Self.allCases.map(\.rawValue))
+            )
+            return DecorationStyle(rawValue: resolved) ?? .classic
         }
     }
 
@@ -165,21 +203,21 @@ struct ShareCardView: View {
     private var baseTintColors: [Color] {
         switch decoration {
         case .classic:
-            return [Color.purple.opacity(0.12), Color.blue.opacity(0.08), Color.clear]
+            return [Color.indigo.opacity(0.3), Color.purple.opacity(0.25), .clear]
         case .paper:
-            return [Color.brown.opacity(0.08), Color.yellow.opacity(0.06), Color.clear]
+            return [Color(red: 0.9, green: 0.85, blue: 0.7).opacity(0.3), Color.brown.opacity(0.2), .clear]
         case .noir:
-            return [Color.black.opacity(0.10), Color.gray.opacity(0.06), Color.clear]
+            return [Color.gray.opacity(0.3), Color.black.opacity(0.25), .clear]
         case .sakura:
-            return [Color.pink.opacity(0.14), Color.purple.opacity(0.06), Color.clear]
+            return [Color(red: 1.0, green: 0.7, blue: 0.8).opacity(0.3), Color.pink.opacity(0.25), .clear]
         case .aurora:
-            return [Color.green.opacity(0.10), Color.blue.opacity(0.10), Color.clear]
+            return [Color.mint.opacity(0.3),  Color.cyan.opacity(0.25),   .clear]
         case .neon:
-            return [Color.cyan.opacity(0.10), Color.purple.opacity(0.08), Color.clear]
+            return [Color.pink.opacity(0.3),   Color.purple.opacity(0.25), Color.cyan.opacity(0.2), .clear]
         case .glitch:
-            return [Color.cyan.opacity(0.08), Color.red.opacity(0.06), Color.clear]
+            return [Color.cyan.opacity(0.3), Color.red.opacity(0.25), Color.blue.opacity(0.2), .clear]
         case .gold:
-            return [Color.yellow.opacity(0.12), Color.orange.opacity(0.08), Color.clear]
+            return [Color.yellow.opacity(0.3), Color.orange.opacity(0.25), .clear]
         }
     }
 
