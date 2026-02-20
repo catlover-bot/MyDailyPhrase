@@ -70,8 +70,14 @@
   - `access_token`
 
 ## Current Build Defaults
-- `AUTH_BACKEND_VERIFY_ENDPOINT`: `https://api.mydailyphrase.app/auth/verify`
-- `AUTH_GOOGLE_OAUTH_START_URL`: `https://api.mydailyphrase.app/oauth/google/start`
-- `AUTH_X_OAUTH_START_URL`: `https://api.mydailyphrase.app/oauth/x/start`
+- Debug:
+  - `AUTH_BACKEND_VERIFY_ENDPOINT`: `https://api.mydailyphrase.app/auth/verify`
+  - `AUTH_GOOGLE_OAUTH_START_URL`: `https://api.mydailyphrase.app/oauth/google/start`
+  - `AUTH_X_OAUTH_START_URL`: `https://api.mydailyphrase.app/oauth/x/start`
+- Release:
+  - `AUTH_BACKEND_VERIFY_ENDPOINT`: empty (external OAuth disabled)
+  - `AUTH_GOOGLE_OAUTH_START_URL`: empty (Google login disabled)
+  - `AUTH_X_OAUTH_START_URL`: empty (X login disabled)
 - `LEGAL_TERMS_URL`: `https://github.com/catlover-bot/MyDailyPhrase/blob/main/LEGAL_TERMS.md`
 - `LEGAL_PRIVACY_POLICY_URL`: `https://github.com/catlover-bot/MyDailyPhrase/blob/main/LEGAL_PRIVACY_POLICY.md`
+- `AUTH_BACKEND_VERIFY_BEARER_REQUIRED`: `NO` (if set to `YES`, `AUTH_BACKEND_VERIFY_BEARER` must be configured)

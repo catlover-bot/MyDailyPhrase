@@ -8,9 +8,11 @@ enum DecorationThemeResolver {
         if supportedStyleIDs.contains(norm) { return norm }
 
         let keywordStyles: [(style: String, keywords: [String])] = [
-            ("gold", ["gold", "royal", "crown", "phoenix", "celestial", "eclipse", "prism", "auric", "zenith", "nova"]),
+            ("starlight", ["starlight", "celestial", "nova", "galaxy", "singularity", "comet", "stardust", "moonlit", "eclipse", "zenith"]),
+            ("ocean", ["ocean", "marine", "teal", "ripple", "tidal"]),
+            ("gold", ["gold", "royal", "crown", "phoenix", "prism", "auric"]),
             ("neon", ["neon", "volt", "holo", "hologram", "cyber", "matrix", "arcade", "sonar"]),
-            ("aurora", ["aurora", "stardust", "crystal", "marine", "moonlit", "forest", "mint", "cloud", "nebula", "teal", "pearl", "sage"]),
+            ("aurora", ["aurora", "crystal", "forest", "mint", "cloud", "nebula", "pearl", "sage"]),
             ("sakura", ["sakura", "petal", "rose", "spring", "bloom"]),
             ("paper", ["paper", "linen", "retro", "plaid", "cotton", "denim", "fog"]),
             ("noir", ["noir", "shadow", "obsidian", "graphite", "ink", "inkdrop", "brick"]),

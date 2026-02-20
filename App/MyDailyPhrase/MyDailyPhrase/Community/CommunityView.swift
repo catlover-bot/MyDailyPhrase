@@ -531,8 +531,17 @@ struct CommunityView: View {
 
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text(entry.isMe ? "あなた" : entry.name)
-                                        .font(.subheadline.weight(.semibold))
+                                    if entry.isMe {
+                                        Text("あなた")
+                                            .font(.subheadline.weight(.semibold))
+                                    } else {
+                                        NavigationLink {
+                                            UserProfileView(userId: entry.userId, name: entry.name)
+                                        } label: {
+                                            Text(entry.name)
+                                                .font(.subheadline.weight(.semibold))
+                                        }
+                                    }
                                     if let badge = entry.seasonBadgeText {
                                         Text(badge)
                                             .font(.caption2.weight(.bold))

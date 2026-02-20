@@ -52,9 +52,16 @@ struct ThreadView: View {
                         .font(.title3)
                         .fontWeight(.semibold)
 
-                    Text("from: \(challenge.link.fromName) / dateKey: \(challenge.link.dateKey)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        NavigationLink {
+                            UserProfileView(userId: challenge.link.fromId, name: challenge.link.fromName)
+                        } label: {
+                            Text("from: \(challenge.link.fromName)")
+                        }
+                        Text("/ dateKey: \(challenge.link.dateKey)")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                     HStack(spacing: 12) {
                         if let room = challenge.link.room { Text("room: \(room)") }
@@ -163,9 +170,19 @@ struct ThreadView: View {
                         Card {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
-                                    Text(isMine ? "📝 あなた" : "📝 \(ev.link.fromName)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    if isMine {
+                                        Text("📝 あなた")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        NavigationLink {
+                                            UserProfileView(userId: ev.link.fromId, name: ev.link.fromName)
+                                        } label: {
+                                            Text("📝 \(ev.link.fromName)")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
                                     Spacer()
                                     Text(ev.createdAt, style: .time)
                                         .font(.caption)
@@ -190,9 +207,19 @@ struct ThreadView: View {
                         Card {
                             HStack {
                                 Text(ev.link.emoji).font(.title3)
-                                Text(isMine ? "あなた" : ev.link.fromName)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                if isMine {
+                                    Text("あなた")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    NavigationLink {
+                                        UserProfileView(userId: ev.link.fromId, name: ev.link.fromName)
+                                    } label: {
+                                        Text(ev.link.fromName)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                                 Spacer()
                                 Text(ev.createdAt, style: .time)
                                     .font(.caption)

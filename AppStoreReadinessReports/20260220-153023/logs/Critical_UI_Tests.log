@@ -1,0 +1,891 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -scheme MyDailyPhrase -destination id=8D714328-9145-4B4B-89EC-BC4F8217E0A6 -parallel-testing-enabled NO test "-only-testing:MyDailyPhraseUITests/AuthGateUITests" "-only-testing:MyDailyPhraseUITests/OnboardingFlowUITests" "-only-testing:MyDailyPhraseUITests/GachaFlowUITests" "-only-testing:MyDailyPhraseUITests/ProfileReleaseReadinessUITests"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  Data: /Users/hirotaka-m/MyDailyPhrase/Packages/Data @ local
+  Domain: /Users/hirotaka-m/MyDailyPhrase/Packages/Domain @ local
+  Presentation: /Users/hirotaka-m/MyDailyPhrase/Packages/Presentation @ local
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+warning: Building targets in manual order is deprecated - choose Dependency Order in scheme settings instead, or set DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING in any of the targets in the current scheme to suppress this warning
+note: Target dependency graph (8 targets)
+    Target 'MyDailyPhraseUITests' in project 'MyDailyPhrase'
+        ➜ Explicit dependency on target 'MyDailyPhrase' in project 'MyDailyPhrase'
+    Target 'MyDailyPhrase' in project 'MyDailyPhrase'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+        ➜ Explicit dependency on target 'Presentation' in project 'Presentation'
+        ➜ Explicit dependency on target 'Data' in project 'Data'
+    Target 'Data' in project 'Data'
+        ➜ Explicit dependency on target 'Data' in project 'Data'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+    Target 'Data' in project 'Data'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+    Target 'Presentation' in project 'Presentation'
+        ➜ Explicit dependency on target 'Presentation' in project 'Presentation'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+    Target 'Presentation' in project 'Presentation'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+    Target 'Domain' in project 'Domain'
+        ➜ Explicit dependency on target 'Domain' in project 'Domain'
+    Target 'Domain' in project 'Domain' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 821496d60b212ebf95f544cdff7a42b7
+Build description path: /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/XCBuildData/821496d60b212ebf95f544cdff7a42b7.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Domain.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Domain.modulemap (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Domain
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Domain.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator
+
+SwiftDriver Domain normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Domain -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name domain -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Domain (in target 'Domain' from project 'Domain')
+
+EmitSwiftModule normal arm64 (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    
+
+SwiftDriver\ Compilation Domain normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Domain -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name domain -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Domain (in target 'Domain' from project 'Domain')
+
+SwiftDriver\ Compilation\ Requirements Domain normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Domain -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name domain -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Domain-Swift.h /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-Swift.h (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Domain
+    builtin-swiftHeaderTool -arch arm64 /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-Swift.h -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Domain-Swift.h
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Domain.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.abi.json (in target 'Domain' from project 'Domain')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Domain
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Domain.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Presentation.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Presentation.modulemap (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Presentation
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Presentation.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator
+
+SwiftDriver Presentation normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Presentation -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name presentation -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Presentation (in target 'Presentation' from project 'Presentation')
+
+EmitSwiftModule normal arm64 (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    
+
+SwiftDriver\ Compilation Presentation normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Presentation -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name presentation -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Presentation (in target 'Presentation' from project 'Presentation')
+
+SwiftDriver\ Compilation\ Requirements Presentation normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Presentation -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name presentation -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Presentation-Swift.h /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-Swift.h (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Presentation
+    builtin-swiftHeaderTool -arch arm64 /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-Swift.h -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Presentation-Swift.h
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Presentation.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.abi.json (in target 'Presentation' from project 'Presentation')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Presentation
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Presentation.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Data.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Data.modulemap (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Data
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Data.modulemap /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator
+
+SwiftDriver Data normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Data -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name data -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Data (in target 'Data' from project 'Data')
+
+EmitSwiftModule normal arm64 (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    
+
+SwiftDriver\ Compilation Data normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Data -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name data -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Data (in target 'Data' from project 'Data')
+
+SwiftDriver\ Compilation\ Requirements Data normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Data -Onone -enforce-exclusivity\=checked @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -suppress-warnings -index-store-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -package-name data -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data_const_extract_protocols.json -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources-normal/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources/arm64 -Xcc -I/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-Swift.h -working-directory /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Data-Swift.h /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-Swift.h (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Data
+    builtin-swiftHeaderTool -arch arm64 /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-Swift.h -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/Data-Swift.h
+
+Copy /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Data.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.abi.json (in target 'Data' from project 'Data')
+    cd /Users/hirotaka-m/MyDailyPhrase/Packages/Data
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.abi.json /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/Data.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+ProcessProductPackaging /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/MyDailyPhrase.entitlements /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Entitlements:
+    
+    {
+}
+    
+    builtin-productPackagingUtility /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/MyDailyPhrase.entitlements -entitlements -format xml -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent
+
+ProcessProductPackaging /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/MyDailyPhrase.entitlements /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "9L8G486Q32.jp.catloverbot.MyDailyPhrase";
+    "com.apple.security.application-groups" =     (
+        "group.jp.catloverbot.MyDailyPhrase"
+    );
+}
+    
+    builtin-productPackagingUtility /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/MyDailyPhrase.entitlements -entitlements -format xml -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent
+
+ProcessProductPackagingDER /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent.der (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /usr/bin/derq query -f xml -i /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent.der --raw
+
+ProcessProductPackagingDER /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent.der (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /usr/bin/derq query -f xml -i /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent.der --raw
+
+ProcessInfoPlistFile /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/Info.plist /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/Info.plist (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    builtin-infoPlistUtility /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase/MyDailyPhrase/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/assetcatalog_generated_info.plist -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/Info.plist
+
+Ld /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib normal (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.1-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -O0 -L/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -filelist /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase.LinkFileList -install_name @rpath/MyDailyPhrase.debug.dylib -Xlinker -rpath -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase.swiftmodule @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase-linker-args.resp -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib -Xlinker -add_ast_path -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain.swiftmodule @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Domain.build/Debug-iphonesimulator/Domain.build/Objects-normal/arm64/Domain-linker-args.resp -Xlinker -add_ast_path -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation.swiftmodule @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Presentation.build/Debug-iphonesimulator/Presentation.build/Objects-normal/arm64/Presentation-linker-args.resp -Xlinker -add_ast_path -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data.swiftmodule @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/Data.build/Debug-iphonesimulator/Data.build/Objects-normal/arm64/Data-linker-args.resp
+
+ConstructStubExecutorLinkFileList /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase-ExecutorLinkFileList-normal-arm64.txt (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    construct-stub-executor-link-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+
+Ld /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase normal (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.1-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -O0 -L/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase-ExecutorLinkFileList-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app-Simulated.xcent.der /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase
+
+CopySwiftLibs /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/Frameworks --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/PlugIns --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/SystemExtensions --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name MyDailyPhrase --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk --xcode-version 17B100 --platform-family iOS --deployment-target 26.1 --bundle-identifier jp.catloverbot.MyDailyPhrase --output /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app --target-triple arm64-apple-ios26.1-simulator --binary-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase --dependency-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase_dependency_info.dat --stringsdata-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase.SwiftFileList --metadata-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.DependencyMetadataFileList --static-metadata-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.DependencyStaticMetadataFileList --swift-const-vals-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/Objects-normal/arm64/MyDailyPhrase.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-02-20 15:30:52.241 appintentsmetadataprocessor[40053:15677129] Starting appintentsmetadataprocessor export
+2026-02-20 15:30:52.243 appintentsmetadataprocessor[40053:15677129] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app/MyDailyPhrase.debug.dylib
+
+CodeSign /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --entitlements /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhrase.build/MyDailyPhrase.app.xcent --timestamp\=none --generate-entitlement-der /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app
+
+Validate /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app (in target 'MyDailyPhrase' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    builtin-validationUtility /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhrase.app -shallow-bundle -infoplist-subpath Info.plist
+
+ProcessProductPackaging "" /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "9L8G486Q32.jp.catloverbot.MyDailyPhraseUITests.xctrunner";
+    "keychain-access-groups" =     (
+        "9L8G486Q32.jp.catloverbot.MyDailyPhraseUITests.xctrunner"
+    );
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent
+
+ProcessProductPackagingDER /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent.der (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /usr/bin/derq query -f xml -i /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent.der --raw
+
+ProcessInfoPlistFile /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/Info.plist /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/empty-MyDailyPhraseUITests.plist (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    builtin-infoPlistUtility /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/empty-MyDailyPhraseUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/Info.plist
+
+Ld /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/MyDailyPhraseUITests normal (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.1-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -O0 -L/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/Developer/Library/Frameworks -filelist /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests.LinkFileList -Xlinker -rpath -Xlinker @loader_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests.swiftmodule @/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.xctest-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/MyDailyPhraseUITests
+
+ExtractAppIntentsMetadata (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name MyDailyPhraseUITests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk --xcode-version 17B100 --platform-family iOS --deployment-target 26.1 --bundle-identifier jp.catloverbot.MyDailyPhraseUITests --output /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest --target-triple arm64-apple-ios26.1-simulator --binary-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/MyDailyPhraseUITests --dependency-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests_dependency_info.dat --stringsdata-file /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests.SwiftFileList --metadata-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.DependencyMetadataFileList --static-metadata-file-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/MyDailyPhraseUITests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/Objects-normal/arm64/MyDailyPhraseUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-02-20 15:30:52.560 appintentsmetadataprocessor[40061:15677160] Starting appintentsmetadataprocessor export
+2026-02-20 15:30:52.562 appintentsmetadataprocessor[40061:15677160] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/MyDailyPhraseUITests --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/Frameworks --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/PlugIns --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/SystemExtensions --scan-folder /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Intermediates.noindex/MyDailyPhrase.build/Debug-iphonesimulator/MyDailyPhraseUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+CodeSign /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest (in target 'MyDailyPhraseUITests' from project 'MyDailyPhrase')
+    cd /Users/hirotaka-m/MyDailyPhrase/App/MyDailyPhrase
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Build/Products/Debug-iphonesimulator/MyDailyPhraseUITests-Runner.app/PlugIns/MyDailyPhraseUITests.xctest
+
+2026-02-20 15:30:57.415743+0900 MyDailyPhraseUITests-Runner[40075:15677523] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'Selected tests' started at 2026-02-20 15:30:58.275.
+Test Suite 'MyDailyPhraseUITests.xctest' started at 2026-02-20 15:30:58.276.
+Test Suite 'AuthGateUITests' started at 2026-02-20 15:30:58.276.
+Test Case '-[MyDailyPhraseUITests.AuthGateUITests testLoginGateAppearsWhenNoLinkedAuth]' started.
+    t =     0.00s Start Test at 2026-02-20 15:30:58.276
+    t =     0.05s Set Up
+    t =     0.05s Open jp.catloverbot.MyDailyPhrase
+    t =     0.05s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.72s         Setting up automation session
+    t =     1.61s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     3.40s Waiting 8.0s for "auth.login.apple" Button to exist
+    t =     4.43s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.apple" Button`
+    t =     4.43s         Checking existence of `"auth.login.apple" Button`
+    t =     4.57s Waiting 2.0s for "auth.login.google" Button to exist
+    t =     5.60s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.google" Button`
+    t =     5.60s         Checking existence of `"auth.login.google" Button`
+    t =     5.61s         Capturing element debug description
+    t =     6.58s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.google" Button`
+    t =     6.58s         Checking existence of `"auth.login.google" Button`
+    t =     6.60s         Capturing element debug description
+    t =     6.60s     Checking existence of `"auth.login.google" Button`
+    t =     6.62s Collecting debug information to assist test failure triage
+    t =     6.62s     Requesting snapshot of accessibility hierarchy for app with pid 40086
+    t =     6.64s Waiting 2.0s for "auth.login.x" Button to exist
+    t =     7.66s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.x" Button`
+    t =     7.66s         Checking existence of `"auth.login.x" Button`
+    t =     7.68s         Capturing element debug description
+    t =     8.64s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.x" Button`
+    t =     8.64s         Checking existence of `"auth.login.x" Button`
+    t =     8.65s         Capturing element debug description
+    t =     8.65s     Checking existence of `"auth.login.x" Button`
+    t =     8.66s Collecting debug information to assist test failure triage
+    t =     8.66s     Requesting snapshot of accessibility hierarchy for app with pid 40086
+    t =     8.67s Waiting 2.0s for "auth.login.guide" StaticText to exist
+    t =     9.70s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.guide" StaticText`
+    t =     9.70s         Checking existence of `"auth.login.guide" StaticText`
+    t =     9.72s Tear Down
+Test Case '-[MyDailyPhraseUITests.AuthGateUITests testLoginGateAppearsWhenNoLinkedAuth]' passed (9.966 seconds).
+Test Case '-[MyDailyPhraseUITests.AuthGateUITests testUnlinkReturnsToLoginGate]' started.
+    t =     0.00s Start Test at 2026-02-20 15:31:08.245
+    t =     0.03s Set Up
+    t =     0.03s Open jp.catloverbot.MyDailyPhrase
+    t =     0.03s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.03s         Terminate jp.catloverbot.MyDailyPhrase:40086
+    t =     1.29s         Setting up automation session
+    t =     2.23s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.04s Checking existence of `"今日" Button`
+    t =     5.23s Waiting 1.2s for "プロフィール" Button to exist
+    t =     6.26s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =     6.26s         Checking existence of `"プロフィール" Button`
+    t =     6.35s         Capturing element debug description
+    t =     6.44s     Checking existence of `"プロフィール" Button`
+    t =     6.50s Collecting debug information to assist test failure triage
+    t =     6.50s     Requesting snapshot of accessibility hierarchy for app with pid 40118
+    t =     6.58s Waiting 1.2s for "Profile" Button to exist
+    t =     7.61s     Checking `Expect predicate `existsNoRetry == 1` for object "Profile" Button`
+    t =     7.61s         Checking existence of `"Profile" Button`
+    t =     7.70s         Capturing element debug description
+    t =     7.78s     Checking existence of `"Profile" Button`
+    t =     7.85s Collecting debug information to assist test failure triage
+    t =     7.85s     Requesting snapshot of accessibility hierarchy for app with pid 40118
+    t =     7.92s Waiting 1.2s for "More" Button to exist
+    t =     8.95s     Checking `Expect predicate `existsNoRetry == 1` for object "More" Button`
+    t =     8.95s         Checking existence of `"More" Button`
+    t =     9.01s Tap "More" Button
+    t =     9.01s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     9.01s     Find the "More" Button
+    t =     9.07s     Check for interrupting elements affecting "More" Button
+    t =     9.13s     Synthesize event
+    t =     9.43s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.94s Waiting 2.0s for "プロフィール" Button to exist
+    t =    11.97s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    11.97s         Checking existence of `"プロフィール" Button`
+    t =    12.03s         Capturing element debug description
+    t =    12.94s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    12.94s         Checking existence of `"プロフィール" Button`
+    t =    12.99s         Capturing element debug description
+    t =    12.99s     Checking existence of `"プロフィール" Button`
+    t =    13.02s Collecting debug information to assist test failure triage
+    t =    13.02s     Requesting snapshot of accessibility hierarchy for app with pid 40118
+    t =    13.05s Waiting 1.0s for "プロフィール" StaticText to exist
+    t =    14.05s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" StaticText`
+    t =    14.06s         Checking existence of `"プロフィール" StaticText`
+    t =    14.10s     Checking existence of `"プロフィール" StaticText`
+    t =    14.13s Tap "プロフィール" StaticText
+    t =    14.13s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    14.13s     Find the "プロフィール" StaticText
+    t =    14.15s     Check for interrupting elements affecting "プロフィール" StaticText
+    t =    14.17s     Synthesize event
+    t =    14.47s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    15.62s Waiting 1.0s for "profile.auth.unlink" Button to exist
+    t =    16.62s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.auth.unlink" Button`
+    t =    16.63s         Checking existence of `"profile.auth.unlink" Button`
+    t =    16.70s         Capturing element debug description
+    t =    16.70s     Checking existence of `"profile.auth.unlink" Button`
+    t =    16.74s Collecting debug information to assist test failure triage
+    t =    16.74s     Requesting snapshot of accessibility hierarchy for app with pid 40118
+    t =    16.81s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    16.81s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    16.81s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    16.85s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    16.89s     Synthesize event
+    t =    17.31s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    19.44s Waiting 0.5s for "profile.auth.unlink" Button to exist
+    t =    19.95s     Checking existence of `"profile.auth.unlink" Button`
+    t =    20.06s Collecting debug information to assist test failure triage
+    t =    20.06s     Requesting snapshot of accessibility hierarchy for app with pid 40118
+    t =    20.15s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    20.15s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    20.22s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    20.26s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    20.31s     Synthesize event
+    t =    20.73s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    22.83s Waiting 0.5s for "profile.auth.unlink" Button to exist
+    t =    23.33s     Checking existence of `"profile.auth.unlink" Button`
+    t =    23.45s Tap "profile.auth.unlink" Button
+    t =    23.45s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    23.45s     Find the "profile.auth.unlink" Button
+    t =    23.50s     Check for interrupting elements affecting "profile.auth.unlink" Button
+    t =    23.55s     Synthesize event
+    t =    23.85s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    23.85s Waiting 6.0s for "auth.login.apple" Button to exist
+    t =    24.88s     Checking `Expect predicate `existsNoRetry == 1` for object "auth.login.apple" Button`
+    t =    24.88s         Checking existence of `"auth.login.apple" Button`
+    t =    24.91s Tear Down
+Test Case '-[MyDailyPhraseUITests.AuthGateUITests testUnlinkReturnsToLoginGate]' passed (25.165 seconds).
+Test Suite 'AuthGateUITests' passed at 2026-02-20 15:31:33.410.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 35.132 (35.134) seconds
+Test Suite 'GachaFlowUITests' started at 2026-02-20 15:31:33.410.
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testForcedFailureCanRecover]' started.
+    t =     0.00s Start Test at 2026-02-20 15:31:33.411
+    t =     0.03s Set Up
+    t =     0.03s Open jp.catloverbot.MyDailyPhrase
+    t =     0.04s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.04s         Terminate jp.catloverbot.MyDailyPhrase:40118
+    t =     1.30s         Setting up automation session
+    t =     2.47s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.71s Waiting 6.0s for "ガチャ" Button to exist
+    t =     5.73s     Checking `Expect predicate `existsNoRetry == 1` for object "ガチャ" Button`
+    t =     5.73s         Checking existence of `"ガチャ" Button`
+    t =     5.89s Tap "ガチャ" Button
+    t =     5.89s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.89s     Find the "ガチャ" Button
+    t =     5.94s     Check for interrupting elements affecting "ガチャ" Button
+    t =     5.98s     Synthesize event
+    t =     6.27s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     7.72s Waiting 6.0s for "gacha.draw.once" Button to exist
+    t =     8.75s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =     8.75s         Checking existence of `"gacha.draw.once" Button`
+    t =     8.85s Waiting 5.0s for "gacha.draw.once" Button to exist
+    t =     9.88s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =     9.88s         Checking existence of `"gacha.draw.once" Button`
+    t =     9.96s Tap "gacha.draw.once" Button
+    t =     9.96s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     9.97s     Find the "gacha.draw.once" Button
+    t =    10.01s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    10.05s     Synthesize event
+    t =    10.06s         Scroll element to visible
+    t =    10.06s         Find the "gacha.draw.once" Button
+    t =    10.11s         Computed hit point {106, 639.83333333333326} after scrolling to visible
+    t =    10.40s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.40s Waiting 8.0s for "ガチャエラー" Alert to exist
+    t =    11.43s     Checking `Expect predicate `existsNoRetry == 1` for object "ガチャエラー" Alert`
+    t =    11.43s         Checking existence of `"ガチャエラー" Alert`
+    t =    11.53s Checking existence of `"再同期" Button`
+    t =    11.58s Tap "再同期" Button
+    t =    11.58s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.22s     Find the "再同期" Button
+    t =    12.31s     Check for interrupting elements affecting "再同期" Button
+    t =    12.36s     Synthesize event
+    t =    12.65s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    13.15s Waiting 5.0s for "gacha.draw.once" Button to exist
+    t =    14.18s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =    14.18s         Checking existence of `"gacha.draw.once" Button`
+    t =    14.26s Find the "gacha.draw.once" Button
+    t =    14.32s Tear Down
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testForcedFailureCanRecover]' passed (14.604 seconds).
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testGachaSpamTapDoesNotFreeze]' started.
+    t =     0.00s Start Test at 2026-02-20 15:31:48.017
+    t =     0.03s Set Up
+    t =     0.03s Open jp.catloverbot.MyDailyPhrase
+    t =     0.04s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.04s         Terminate jp.catloverbot.MyDailyPhrase:40165
+    t =     1.31s         Setting up automation session
+    t =     2.24s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.43s Waiting 6.0s for "ガチャ" Button to exist
+    t =     5.45s     Checking `Expect predicate `existsNoRetry == 1` for object "ガチャ" Button`
+    t =     5.45s         Checking existence of `"ガチャ" Button`
+    t =     5.61s Tap "ガチャ" Button
+    t =     5.61s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.61s     Find the "ガチャ" Button
+    t =     5.66s     Check for interrupting elements affecting "ガチャ" Button
+    t =     5.71s     Synthesize event
+    t =     5.99s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     7.61s Waiting 6.0s for "gacha.draw.once" Button to exist
+    t =     8.64s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =     8.64s         Checking existence of `"gacha.draw.once" Button`
+    t =     8.74s Waiting 5.0s for "gacha.draw.once" Button to exist
+    t =     9.77s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =     9.77s         Checking existence of `"gacha.draw.once" Button`
+    t =     9.85s Tap "gacha.draw.once" Button
+    t =     9.85s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     9.86s     Find the "gacha.draw.once" Button
+    t =     9.90s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =     9.95s     Synthesize event
+    t =     9.95s         Scroll element to visible
+    t =     9.95s         Find the "gacha.draw.once" Button
+    t =    10.01s         Computed hit point {106, 639.83333333333326} after scrolling to visible
+    t =    10.29s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.30s Tap "gacha.draw.once" Button
+    t =    10.30s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.30s     Find the "gacha.draw.once" Button
+    t =    10.36s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    10.40s     Synthesize event
+    t =    10.70s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.58s Tap "gacha.draw.once" Button
+    t =    11.58s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.59s     Find the "gacha.draw.once" Button
+    t =    11.67s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    11.72s     Synthesize event
+    t =    12.02s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.03s Tap "gacha.draw.once" Button
+    t =    12.03s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.03s     Find the "gacha.draw.once" Button
+    t =    12.11s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    12.16s     Synthesize event
+    t =    12.45s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.46s Tap "gacha.draw.once" Button
+    t =    12.46s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.46s     Find the "gacha.draw.once" Button
+    t =    12.55s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    12.59s     Synthesize event
+    t =    12.89s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.89s Tap "gacha.draw.once" Button
+    t =    12.89s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    12.90s     Find the "gacha.draw.once" Button
+    t =    12.98s     Check for interrupting elements affecting "gacha.draw.once" Button
+    t =    13.03s     Synthesize event
+    t =    13.32s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    13.33s Checking existence of `"gacha.cinematic.skip" Button`
+    t =    13.41s Checking existence of `"gacha.cinematic.result.close" Button`
+    t =    13.46s Waiting 1.0s for "ガチャエラー" Alert to exist
+    t =    14.47s     Checking `Expect predicate `existsNoRetry == 1` for object "ガチャエラー" Alert`
+    t =    14.47s         Checking existence of `"ガチャエラー" Alert`
+    t =    14.55s         Capturing element debug description
+    t =    14.56s     Checking existence of `"ガチャエラー" Alert`
+    t =    14.60s Collecting debug information to assist test failure triage
+    t =    14.61s     Requesting snapshot of accessibility hierarchy for app with pid 40186
+    t =    14.68s Waiting 2.0s for "gacha.cinematic.skip" Button to exist
+    t =    15.70s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.skip" Button`
+    t =    15.70s         Checking existence of `"gacha.cinematic.skip" Button`
+    t =    15.79s         Capturing element debug description
+    t =    16.68s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.skip" Button`
+    t =    16.68s         Checking existence of `"gacha.cinematic.skip" Button`
+    t =    16.77s         Capturing element debug description
+    t =    16.77s     Checking existence of `"gacha.cinematic.skip" Button`
+    t =    16.83s Collecting debug information to assist test failure triage
+    t =    16.83s     Requesting snapshot of accessibility hierarchy for app with pid 40186
+    t =    16.90s Waiting 10.0s for "gacha.cinematic.result.close" Button to exist
+    t =    17.93s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.result.close" Button`
+    t =    17.93s         Checking existence of `"gacha.cinematic.result.close" Button`
+    t =    18.02s Find the "gacha.cinematic.result.close" Button
+    t =    18.09s Tap "gacha.cinematic.result.close" Button
+    t =    18.09s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    18.09s     Find the "gacha.cinematic.result.close" Button
+    t =    18.14s     Check for interrupting elements affecting "gacha.cinematic.result.close" Button
+    t =    18.18s     Synthesize event
+    t =    18.48s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    19.31s Checking existence of `"gacha.draw.once" Button`
+    t =    19.39s Find the "gacha.draw.once" Button
+    t =    19.45s Tear Down
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testGachaSpamTapDoesNotFreeze]' passed (19.699 seconds).
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testSkipMovesToResult]' started.
+    t =     0.00s Start Test at 2026-02-20 15:32:07.716
+    t =     0.03s Set Up
+    t =     0.03s Open jp.catloverbot.MyDailyPhrase
+    t =     0.03s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.03s         Terminate jp.catloverbot.MyDailyPhrase:40186
+    t =     1.30s         Setting up automation session
+    t =     2.23s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.53s Waiting 6.0s for "ガチャ" Button to exist
+    t =     5.56s     Checking `Expect predicate `existsNoRetry == 1` for object "ガチャ" Button`
+    t =     5.56s         Checking existence of `"ガチャ" Button`
+    t =     5.71s Tap "ガチャ" Button
+    t =     5.71s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.71s     Find the "ガチャ" Button
+    t =     5.76s     Check for interrupting elements affecting "ガチャ" Button
+    t =     5.81s     Synthesize event
+    t =     6.10s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     7.41s Waiting 6.0s for "gacha.draw.once" Button to exist
+    t =     8.44s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.once" Button`
+    t =     8.44s         Checking existence of `"gacha.draw.once" Button`
+    t =     8.53s Waiting 5.0s for "gacha.draw.ten" Button to exist
+    t =     9.55s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.ten" Button`
+    t =     9.55s         Checking existence of `"gacha.draw.ten" Button`
+    t =     9.64s Tap "gacha.draw.ten" Button
+    t =     9.64s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     9.64s     Find the "gacha.draw.ten" Button
+    t =     9.69s     Check for interrupting elements affecting "gacha.draw.ten" Button
+    t =     9.73s     Synthesize event
+    t =     9.74s         Scroll element to visible
+    t =     9.74s         Find the "gacha.draw.ten" Button
+    t =     9.80s         Computed hit point {296, 639.83333333333326} after scrolling to visible
+    t =    10.08s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.09s Waiting 10.0s for "gacha.cinematic.skip" Button to exist
+    t =    11.11s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.skip" Button`
+    t =    11.11s         Checking existence of `"gacha.cinematic.skip" Button`
+    t =    11.17s Tap "gacha.cinematic.skip" Button
+    t =    11.17s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.49s     Find the "gacha.cinematic.skip" Button
+    t =    11.55s     Check for interrupting elements affecting "gacha.cinematic.skip" Button
+    t =    11.60s     Synthesize event
+    t =    11.89s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.89s Waiting 8.0s for "gacha.cinematic.result.close" Button to exist
+    t =    12.92s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.result.close" Button`
+    t =    12.92s         Checking existence of `"gacha.cinematic.result.close" Button`
+    t =    12.99s         Capturing element debug description
+    t =    13.91s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.cinematic.result.close" Button`
+    t =    13.91s         Checking existence of `"gacha.cinematic.result.close" Button`
+    t =    14.01s Tap "gacha.cinematic.result.close" Button
+    t =    14.01s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    14.02s     Find the "gacha.cinematic.result.close" Button
+    t =    14.08s     Check for interrupting elements affecting "gacha.cinematic.result.close" Button
+    t =    14.13s     Synthesize event
+    t =    14.42s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    15.47s Waiting 5.0s for "gacha.draw.ten" Button to exist
+    t =    16.49s     Checking `Expect predicate `existsNoRetry == 1` for object "gacha.draw.ten" Button`
+    t =    16.49s         Checking existence of `"gacha.draw.ten" Button`
+    t =    16.58s Tear Down
+Test Case '-[MyDailyPhraseUITests.GachaFlowUITests testSkipMovesToResult]' passed (16.849 seconds).
+Test Suite 'GachaFlowUITests' passed at 2026-02-20 15:32:24.566.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 51.152 (51.155) seconds
+Test Suite 'OnboardingFlowUITests' started at 2026-02-20 15:32:24.567.
+Test Case '-[MyDailyPhraseUITests.OnboardingFlowUITests testOnboardingFlowCompletesAndOpensMainTabs]' started.
+    t =     0.00s Start Test at 2026-02-20 15:32:24.568
+    t =     0.03s Set Up
+    t =     0.04s Open jp.catloverbot.MyDailyPhrase
+    t =     0.04s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.04s         Terminate jp.catloverbot.MyDailyPhrase:40209
+    t =     1.29s         Setting up automation session
+    t =     2.18s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.25s Checking existence of `"root.loading" Other`
+    t =     4.32s Checking existence of `"onboarding.title" StaticText`
+    t =     4.33s Checking existence of `"root.loading" Other`
+    t =     4.34s Waiting 8.0s for "onboarding.next" Button to exist
+    t =     5.37s     Checking `Expect predicate `existsNoRetry == 1` for object "onboarding.next" Button`
+    t =     5.37s         Checking existence of `"onboarding.next" Button`
+    t =     5.39s Tap "onboarding.next" Button
+    t =     5.39s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.39s     Find the "onboarding.next" Button
+    t =     5.41s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     5.43s     Synthesize event
+    t =     5.73s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     5.73s Waiting 4.0s for "onboarding.displayName" TextField to exist
+    t =     6.75s     Checking `Expect predicate `existsNoRetry == 1` for object "onboarding.displayName" TextField`
+    t =     6.75s         Checking existence of `"onboarding.displayName" TextField`
+    t =     6.78s Tap "onboarding.displayName" TextField
+    t =     6.78s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     6.78s     Find the "onboarding.displayName" TextField
+    t =     6.80s     Check for interrupting elements affecting "onboarding.displayName" TextField
+    t =     6.81s     Synthesize event
+    t =     7.11s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     7.50s Type 'UITest User' into "onboarding.displayName" TextField
+    t =     7.50s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     7.51s     Find the "onboarding.displayName" TextField
+    t =     7.53s     Check for interrupting elements affecting "onboarding.displayName" TextField
+    t =     7.55s     Synthesize event
+    t =     7.93s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     8.09s Get number of matches for: Descendants matching type Keyboard
+    t =     8.13s Checking existence of `"return" Button`
+    t =     8.18s Tap Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =     8.18s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     8.18s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =     8.20s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =     8.22s     Synthesize event
+    t =     8.62s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     8.62s Waiting 4.0s for "onboarding.next" Button to exist
+    t =     9.64s     Checking `Expect predicate `existsNoRetry == 1` for object "onboarding.next" Button`
+    t =     9.64s         Checking existence of `"onboarding.next" Button`
+    t =     9.69s Tap "onboarding.next" Button
+    t =     9.69s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     9.69s     Find the "onboarding.next" Button
+    t =     9.72s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     9.74s     Synthesize event
+    t =    10.03s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.04s Waiting 4.0s for "onboarding.finish" Button to exist
+    t =    11.06s     Checking `Expect predicate `existsNoRetry == 1` for object "onboarding.finish" Button`
+    t =    11.06s         Checking existence of `"onboarding.finish" Button`
+    t =    11.09s Tap "onboarding.finish" Button
+    t =    11.09s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.10s     Find the "onboarding.finish" Button
+    t =    11.12s     Check for interrupting elements affecting "onboarding.finish" Button
+    t =    11.14s     Synthesize event
+    t =    11.43s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    11.61s Checking existence of `"今日" Button`
+    t =    11.69s Tear Down
+Test Case '-[MyDailyPhraseUITests.OnboardingFlowUITests testOnboardingFlowCompletesAndOpensMainTabs]' passed (11.926 seconds).
+Test Suite 'OnboardingFlowUITests' passed at 2026-02-20 15:32:36.494.
+	 Executed 1 test, with 0 failures (0 unexpected) in 11.926 (11.928) seconds
+Test Suite 'ProfileReleaseReadinessUITests' started at 2026-02-20 15:32:36.495.
+Test Case '-[MyDailyPhraseUITests.ProfileReleaseReadinessUITests testNotificationDashboardShowsWeekdayAndTimingEvidence]' started.
+    t =     0.00s Start Test at 2026-02-20 15:32:36.499
+    t =     0.04s Set Up
+    t =     0.04s Open jp.catloverbot.MyDailyPhrase
+    t =     0.04s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.04s         Terminate jp.catloverbot.MyDailyPhrase:40237
+    t =     1.30s         Setting up automation session
+    t =     2.20s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.46s Waiting 1.2s for "プロフィール" Button to exist
+    t =     5.50s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =     5.50s         Checking existence of `"プロフィール" Button`
+    t =     5.65s         Capturing element debug description
+    t =     5.67s     Checking existence of `"プロフィール" Button`
+    t =     5.72s Collecting debug information to assist test failure triage
+    t =     5.72s     Requesting snapshot of accessibility hierarchy for app with pid 40248
+    t =     5.79s Waiting 1.2s for "Profile" Button to exist
+    t =     6.83s     Checking `Expect predicate `existsNoRetry == 1` for object "Profile" Button`
+    t =     6.83s         Checking existence of `"Profile" Button`
+    t =     6.89s         Capturing element debug description
+    t =     7.00s     Checking existence of `"Profile" Button`
+    t =     7.05s Collecting debug information to assist test failure triage
+    t =     7.05s     Requesting snapshot of accessibility hierarchy for app with pid 40248
+    t =     7.12s Waiting 1.2s for "More" Button to exist
+    t =     8.14s     Checking `Expect predicate `existsNoRetry == 1` for object "More" Button`
+    t =     8.14s         Checking existence of `"More" Button`
+    t =     8.23s Tap "More" Button
+    t =     8.23s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     8.23s     Find the "More" Button
+    t =     8.28s     Check for interrupting elements affecting "More" Button
+    t =     8.32s     Synthesize event
+    t =     8.62s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.11s Waiting 2.0s for "プロフィール" Button to exist
+    t =    11.15s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    11.15s         Checking existence of `"プロフィール" Button`
+    t =    11.21s         Capturing element debug description
+    t =    12.12s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    12.12s         Checking existence of `"プロフィール" Button`
+    t =    12.18s         Capturing element debug description
+    t =    12.18s     Checking existence of `"プロフィール" Button`
+    t =    12.21s Collecting debug information to assist test failure triage
+    t =    12.21s     Requesting snapshot of accessibility hierarchy for app with pid 40248
+    t =    12.24s Waiting 0.8s for "プロフィール" StaticText to exist
+    t =    13.04s     Checking existence of `"プロフィール" StaticText`
+    t =    13.09s Tap "プロフィール" StaticText
+    t =    13.09s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    13.09s     Find the "プロフィール" StaticText
+    t =    13.12s     Check for interrupting elements affecting "プロフィール" StaticText
+    t =    13.15s     Synthesize event
+    t =    13.44s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    14.48s Waiting 1.0s for "profile.notifications.ab.title" StaticText to exist
+    t =    15.49s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.notifications.ab.title" StaticText`
+    t =    15.49s         Checking existence of `"profile.notifications.ab.title" StaticText`
+    t =    15.60s         Capturing element debug description
+    t =    15.60s     Checking existence of `"profile.notifications.ab.title" StaticText`
+    t =    15.64s Collecting debug information to assist test failure triage
+    t =    15.64s     Requesting snapshot of accessibility hierarchy for app with pid 40248
+    t =    15.71s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    15.71s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    15.71s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    15.75s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    15.79s     Synthesize event
+    t =    16.21s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    18.36s Waiting 0.5s for "profile.notifications.ab.title" StaticText to exist
+    t =    18.86s     Checking existence of `"profile.notifications.ab.title" StaticText`
+    t =    19.07s Waiting 1.0s for "profile.notifications.ab.variantHeader.seasonMilestoneReady" StaticText to exist
+    t =    20.08s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.notifications.ab.variantHeader.seasonMilestoneReady" StaticText`
+    t =    20.08s         Checking existence of `"profile.notifications.ab.variantHeader.seasonMilestoneReady" StaticText`
+    t =    20.26s     Checking existence of `"profile.notifications.ab.variantHeader.seasonMilestoneReady" StaticText`
+    t =    20.38s Waiting 1.0s for "profile.notifications.ab.weekdayHeader.seasonMilestoneReady" StaticText to exist
+    t =    21.39s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.notifications.ab.weekdayHeader.seasonMilestoneReady" StaticText`
+    t =    21.39s         Checking existence of `"profile.notifications.ab.weekdayHeader.seasonMilestoneReady" StaticText`
+    t =    21.56s     Checking existence of `"profile.notifications.ab.weekdayHeader.seasonMilestoneReady" StaticText`
+    t =    21.68s Waiting 1.0s for "profile.notifications.ab.timingHeader.seasonMilestoneReminder" StaticText to exist
+    t =    22.69s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.notifications.ab.timingHeader.seasonMilestoneReminder" StaticText`
+    t =    22.69s         Checking existence of `"profile.notifications.ab.timingHeader.seasonMilestoneReminder" StaticText`
+    t =    22.85s     Checking existence of `"profile.notifications.ab.timingHeader.seasonMilestoneReminder" StaticText`
+    t =    22.97s Waiting 1.0s for "profile.notifications.ab.weekdayTimingHeader.seasonMilestoneReminder" StaticText to exist
+    t =    23.98s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.notifications.ab.weekdayTimingHeader.seasonMilestoneReminder" StaticText`
+    t =    23.98s         Checking existence of `"profile.notifications.ab.weekdayTimingHeader.seasonMilestoneReminder" StaticText`
+    t =    24.15s     Checking existence of `"profile.notifications.ab.weekdayTimingHeader.seasonMilestoneReminder" StaticText`
+    t =    24.27s Waiting 1.0s for "18:30" StaticText to exist
+    t =    25.27s     Checking `Expect predicate `existsNoRetry == 1` for object "18:30" StaticText`
+    t =    25.27s         Checking existence of `"18:30" StaticText`
+    t =    25.44s     Checking existence of `"18:30" StaticText`
+    t =    25.56s Waiting 1.0s for "20:30" StaticText to exist
+    t =    26.56s     Checking `Expect predicate `existsNoRetry == 1` for object "20:30" StaticText`
+    t =    26.56s         Checking existence of `"20:30" StaticText`
+    t =    26.73s     Checking existence of `"20:30" StaticText`
+    t =    26.85s Tear Down
+Test Case '-[MyDailyPhraseUITests.ProfileReleaseReadinessUITests testNotificationDashboardShowsWeekdayAndTimingEvidence]' passed (27.103 seconds).
+Test Case '-[MyDailyPhraseUITests.ProfileReleaseReadinessUITests testOAuthCallbackUnregisteredIsMissing]' started.
+    t =     0.00s Start Test at 2026-02-20 15:33:03.599
+    t =     0.03s Set Up
+    t =     0.03s Open jp.catloverbot.MyDailyPhrase
+    t =     0.03s     Launch jp.catloverbot.MyDailyPhrase
+    t =     0.03s         Terminate jp.catloverbot.MyDailyPhrase:40248
+    t =     1.29s         Setting up automation session
+    t =     2.20s         Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     4.43s Waiting 1.2s for "プロフィール" Button to exist
+    t =     5.46s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =     5.46s         Checking existence of `"プロフィール" Button`
+    t =     5.61s         Capturing element debug description
+    t =     5.63s     Checking existence of `"プロフィール" Button`
+    t =     5.69s Collecting debug information to assist test failure triage
+    t =     5.69s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =     5.76s Waiting 1.2s for "Profile" Button to exist
+    t =     6.78s     Checking `Expect predicate `existsNoRetry == 1` for object "Profile" Button`
+    t =     6.79s         Checking existence of `"Profile" Button`
+    t =     6.87s         Capturing element debug description
+    t =     6.97s     Checking existence of `"Profile" Button`
+    t =     7.04s Collecting debug information to assist test failure triage
+    t =     7.04s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =     7.11s Waiting 1.2s for "More" Button to exist
+    t =     8.13s     Checking `Expect predicate `existsNoRetry == 1` for object "More" Button`
+    t =     8.14s         Checking existence of `"More" Button`
+    t =     8.23s Tap "More" Button
+    t =     8.23s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =     8.23s     Find the "More" Button
+    t =     8.28s     Check for interrupting elements affecting "More" Button
+    t =     8.32s     Synthesize event
+    t =     8.63s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    10.09s Waiting 2.0s for "プロフィール" Button to exist
+    t =    11.13s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    11.13s         Checking existence of `"プロフィール" Button`
+    t =    11.16s         Capturing element debug description
+    t =    12.10s     Checking `Expect predicate `existsNoRetry == 1` for object "プロフィール" Button`
+    t =    12.10s         Checking existence of `"プロフィール" Button`
+    t =    12.15s         Capturing element debug description
+    t =    12.15s     Checking existence of `"プロフィール" Button`
+    t =    12.18s Collecting debug information to assist test failure triage
+    t =    12.18s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =    12.21s Waiting 0.8s for "プロフィール" StaticText to exist
+    t =    13.02s     Checking existence of `"プロフィール" StaticText`
+    t =    13.05s Tap "プロフィール" StaticText
+    t =    13.05s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    13.05s     Find the "プロフィール" StaticText
+    t =    13.08s     Check for interrupting elements affecting "プロフィール" StaticText
+    t =    13.11s     Synthesize event
+    t =    13.40s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    14.48s Waiting 1.0s for "profile.releaseReadiness.oauthCallback.status" StaticText to exist
+    t =    15.48s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    15.48s         Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    15.59s         Capturing element debug description
+    t =    15.59s     Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    15.64s Collecting debug information to assist test failure triage
+    t =    15.64s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =    15.71s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    15.71s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    15.71s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    15.75s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    15.78s     Synthesize event
+    t =    16.20s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    18.32s Waiting 0.5s for "profile.releaseReadiness.oauthCallback.status" StaticText to exist
+    t =    18.82s     Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    18.93s Collecting debug information to assist test failure triage
+    t =    18.93s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =    19.02s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    19.02s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    19.03s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    19.06s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    19.11s     Synthesize event
+    t =    19.53s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    21.67s Waiting 0.5s for "profile.releaseReadiness.oauthCallback.status" StaticText to exist
+    t =    22.17s     Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    22.29s Collecting debug information to assist test failure triage
+    t =    22.29s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =    22.38s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    22.38s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    22.39s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    22.43s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    22.48s     Synthesize event
+    t =    22.90s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    25.03s Waiting 0.5s for "profile.releaseReadiness.oauthCallback.status" StaticText to exist
+    t =    25.54s     Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    25.65s Collecting debug information to assist test failure triage
+    t =    25.65s     Requesting snapshot of accessibility hierarchy for app with pid 40284
+    t =    25.75s Swipe up Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    25.75s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    26.29s     Find the Target Application 'jp.catloverbot.MyDailyPhrase'
+    t =    26.37s     Check for interrupting elements affecting "MyDailyPhrase" Application
+    t =    26.42s     Synthesize event
+    t =    26.84s     Wait for jp.catloverbot.MyDailyPhrase to idle
+    t =    28.94s Waiting 0.5s for "profile.releaseReadiness.oauthCallback.status" StaticText to exist
+    t =    29.44s     Checking existence of `"profile.releaseReadiness.oauthCallback.status" StaticText`
+    t =    29.54s Find the "profile.releaseReadiness.oauthCallback.status" StaticText
+    t =    29.60s Waiting 1.0s for "profile.releaseReadiness.oauthCallback.detail" StaticText to exist
+    t =    30.61s     Checking `Expect predicate `existsNoRetry == 1` for object "profile.releaseReadiness.oauthCallback.detail" StaticText`
+    t =    30.61s         Checking existence of `"profile.releaseReadiness.oauthCallback.detail" StaticText`
+    t =    30.71s     Checking existence of `"profile.releaseReadiness.oauthCallback.detail" StaticText`
+    t =    30.77s Find the "profile.releaseReadiness.oauthCallback.detail" StaticText
+    t =    30.83s Find the "profile.releaseReadiness.oauthCallback.detail" StaticText
+    t =    30.89s Tear Down
+Test Case '-[MyDailyPhraseUITests.ProfileReleaseReadinessUITests testOAuthCallbackUnregisteredIsMissing]' passed (31.193 seconds).
+Test Suite 'ProfileReleaseReadinessUITests' passed at 2026-02-20 15:33:34.792.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 58.296 (58.297) seconds
+Test Suite 'MyDailyPhraseUITests.xctest' passed at 2026-02-20 15:33:34.793.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 156.506 (156.517) seconds
+Test Suite 'Selected tests' passed at 2026-02-20 15:33:34.795.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 156.506 (156.520) seconds
+2026-02-20 15:33:35.130 xcodebuild[40010:15676762] [MT] IDETestOperationsObserverDebug: 162.536 elapsed -- Testing started completed.
+2026-02-20 15:33:35.130 xcodebuild[40010:15676762] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-02-20 15:33:35.130 xcodebuild[40010:15676762] [MT] IDETestOperationsObserverDebug: 162.536 sec, +162.536 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/hirotaka-m/Library/Developer/Xcode/DerivedData/MyDailyPhrase-dmxsaszdabdicyhlaeyeabtgmiep/Logs/Test/Test-MyDailyPhrase-2026.02.20_15-30-44-+0900.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

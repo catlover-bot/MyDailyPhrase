@@ -50,27 +50,31 @@ struct LoginGateView: View {
                         .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
                         .accessibilityIdentifier("auth.login.apple")
 
-                        Button {
-                            Task { await vm.linkGoogleAccountUsingServerToken() }
-                        } label: {
-                            Label(vm.isLinkingExternalAuth ? "Google連携中…" : "Googleでログイン", systemImage: "g.circle")
-                                .compactActionLabel()
-                                .frame(maxWidth: .infinity)
+                        if vm.isGoogleLoginAvailable {
+                            Button {
+                                Task { await vm.linkGoogleAccountUsingServerToken() }
+                            } label: {
+                                Label(vm.isLinkingExternalAuth ? "Google連携中…" : "Googleでログイン", systemImage: "g.circle")
+                                    .compactActionLabel()
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(vm.isLinkingExternalAuth || !vm.canLinkGoogleAccount)
+                            .accessibilityIdentifier("auth.login.google")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(vm.isLinkingExternalAuth || !vm.canLinkGoogleAccount)
-                        .accessibilityIdentifier("auth.login.google")
 
-                        Button {
-                            Task { await vm.linkXAccountUsingServerToken() }
-                        } label: {
-                            Label(vm.isLinkingExternalAuth ? "X連携中…" : "Xでログイン", systemImage: "x.circle")
-                                .compactActionLabel()
-                                .frame(maxWidth: .infinity)
+                        if vm.isXLoginAvailable {
+                            Button {
+                                Task { await vm.linkXAccountUsingServerToken() }
+                            } label: {
+                                Label(vm.isLinkingExternalAuth ? "X連携中…" : "Xでログイン", systemImage: "x.circle")
+                                    .compactActionLabel()
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(vm.isLinkingExternalAuth || !vm.canLinkXAccount)
+                            .accessibilityIdentifier("auth.login.x")
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(vm.isLinkingExternalAuth || !vm.canLinkXAccount)
-                        .accessibilityIdentifier("auth.login.x")
 
                         if vm.canInputExternalAuthTokenManually {
                             SecureField("サーバー検証トークン（開発用）", text: $vm.externalAuthVerificationToken)
@@ -124,7 +128,8 @@ struct LoginGateView: View {
 
 private extension View {
     func compactActionLabel() -> some View {
-        lineLimit(1)
+        labelStyle(.titleAndIcon)
+            .lineLimit(1)
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)

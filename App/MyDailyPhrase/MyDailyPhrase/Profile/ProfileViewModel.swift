@@ -401,6 +401,14 @@ final class ProfileViewModel: ObservableObject {
         allowsManualExternalAuthTokenInput
     }
 
+    var isGoogleLoginAvailable: Bool {
+        oauthConfiguredProviders.contains(.google)
+    }
+
+    var isXLoginAvailable: Bool {
+        oauthConfiguredProviders.contains(.x)
+    }
+
     var canLinkGoogleAccount: Bool {
         canLinkExternalAccount(provider: .google)
     }
@@ -412,6 +420,9 @@ final class ProfileViewModel: ObservableObject {
     var externalAuthInputGuideText: String {
         if allowsManualExternalAuthTokenInput {
             return "DEBUGビルドでは検証トークンの手入力が使えます。Releaseでは無効化されます。"
+        }
+        if !isGoogleLoginAvailable && !isXLoginAvailable {
+            return "現在の本番設定では外部ログインは Sign in with Apple のみ対応しています。"
         }
         if oauthCallbackScheme == nil {
             return "OAuth callback scheme が未設定です（AUTH_OAUTH_CALLBACK_SCHEME）"
@@ -917,14 +928,20 @@ final class ProfileViewModel: ObservableObject {
     }
 
     var releaseReadinessChecks: [ReleaseReadinessCheck] {
+        let externalOAuthEnabled = !oauthConfiguredProviders.isEmpty
         let backendDetail: String
         let backendStatus: ReleaseReadinessStatus
-        if isServerAuthVerificationConfigured {
-            backendStatus = .ready
-            backendDetail = "外部ログイン検証API: \(serverAuthEndpointHost ?? "(host不明)")"
+        if externalOAuthEnabled {
+            if isServerAuthVerificationConfigured {
+                backendStatus = .ready
+                backendDetail = "外部ログイン検証API: \(serverAuthEndpointHost ?? "(host不明)")"
+            } else {
+                backendStatus = .missing
+                backendDetail = "外部ログイン検証APIが未設定（Info.plist: AUTH_BACKEND_VERIFY_ENDPOINT）"
+            }
         } else {
-            backendStatus = .missing
-            backendDetail = "外部ログイン検証APIが未設定（Info.plist: AUTH_BACKEND_VERIFY_ENDPOINT）"
+            backendStatus = .ready
+            backendDetail = "外部OAuthログインが無効化されているため、認証バックエンドは必須ではありません"
         }
 
         let termsStatus: ReleaseReadinessStatus = termsOfServiceURLValue == nil ? .missing : .ready
@@ -956,15 +973,15 @@ final class ProfileViewModel: ObservableObject {
             callbackDetail = "OAuth callback scheme が未設定（AUTH_OAUTH_CALLBACK_SCHEME）"
         }
 
-        let googleOAuthStatus: ReleaseReadinessStatus = oauthConfiguredProviders.contains(.google) ? .ready : .missing
+        let googleOAuthStatus: ReleaseReadinessStatus = .ready
         let googleOAuthDetail = oauthConfiguredProviders.contains(.google)
             ? "Google OAuth開始URLを構成済み"
-            : "Google OAuth開始URLが未設定（AUTH_GOOGLE_OAUTH_START_URL）"
+            : "Googleログインはこのリリースでは無効化されています"
 
-        let xOAuthStatus: ReleaseReadinessStatus = oauthConfiguredProviders.contains(.x) ? .ready : .missing
+        let xOAuthStatus: ReleaseReadinessStatus = .ready
         let xOAuthDetail = oauthConfiguredProviders.contains(.x)
             ? "X OAuth開始URLを構成済み"
-            : "X OAuth開始URLが未設定（AUTH_X_OAUTH_START_URL）"
+            : "Xログインはこのリリースでは無効化されています"
 
         let manualTokenStatus: ReleaseReadinessStatus = allowsManualExternalAuthTokenInput ? .warning : .ready
         let manualTokenDetail = allowsManualExternalAuthTokenInput
@@ -1001,10 +1018,10 @@ final class ProfileViewModel: ObservableObject {
         }
 
         return [
-            .init(id: "backend", title: "認証バックエンド", detail: backendDetail, status: backendStatus, required: true),
+            .init(id: "backend", title: "認証バックエンド", detail: backendDetail, status: backendStatus, required: externalOAuthEnabled),
             .init(id: "oauthCallback", title: "OAuth Callback", detail: callbackDetail, status: callbackStatus, required: true),
-            .init(id: "oauthGoogle", title: "Google OAuth開始URL", detail: googleOAuthDetail, status: googleOAuthStatus, required: true),
-            .init(id: "oauthX", title: "X OAuth開始URL", detail: xOAuthDetail, status: xOAuthStatus, required: true),
+            .init(id: "oauthGoogle", title: "Google OAuth開始URL", detail: googleOAuthDetail, status: googleOAuthStatus, required: false),
+            .init(id: "oauthX", title: "X OAuth開始URL", detail: xOAuthDetail, status: xOAuthStatus, required: false),
             .init(id: "loginGate", title: "初回ログイン必須", detail: loginGateDetail, status: loginGateStatus, required: true),
             .init(id: "terms", title: "利用規約", detail: termsDetail, status: termsStatus, required: true),
             .init(id: "privacy", title: "プライバシーポリシー", detail: privacyDetail, status: privacyStatus, required: true),
@@ -1032,6 +1049,36 @@ final class ProfileViewModel: ObservableObject {
         !releaseReadinessChecks.contains { $0.required && $0.status == .missing }
     }
 
+    var releaseReadinessReportText: String {
+        let checks = releaseReadinessChecks
+        var lines: [String] = [
+            "MyDailyPhrase Release Readiness Report",
+            "Generated: \(releaseReportTimestampString)",
+            "",
+            "Summary:",
+            releaseReadinessSummaryText,
+            ""
+        ]
+
+        lines.append("Checks:")
+        for check in checks {
+            let required = check.required ? "必須" : "任意"
+            lines.append("- [\(required)] \(check.title): \(check.status.title)")
+            lines.append("  \(check.detail)")
+        }
+
+        let notes = legalReadinessNotes
+        if !notes.isEmpty {
+            lines.append("")
+            lines.append("Notes:")
+            for note in notes {
+                lines.append("- \(note)")
+            }
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
     var legalReadinessNotes: [String] {
         var notes: [String] = [
             "監査ログには、認証連携・ガチャ・コミュニティ操作に関する監査イベントのみを保存します。",
@@ -1056,6 +1103,14 @@ final class ProfileViewModel: ObservableObject {
             notes.append("プロフィール復旧監視でWarningが出ています。Profile > Release Readiness の詳細を確認してください。")
         }
         return notes
+    }
+
+    private var releaseReportTimestampString: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        return formatter.string(from: Date())
     }
 
     func securityAuditTitle(_ event: SecurityAuditEvent) -> String {

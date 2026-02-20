@@ -228,47 +228,49 @@ public struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
 
-                        HStack(spacing: 10) {
-                            Button { presentUnifiedShare() } label: {
-                                AdaptiveActionButtonLabel(text: isPreparingShareImage ? "準備中" : "投稿", systemImage: "paperplane.fill")
-                                    .fontWeight(.semibold)
-                                    .compactActionLabel()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(isPreparingShareImage)
-
-                            Menu {
-                                Picker("共有形式", selection: $shareFormat) {
-                                    ForEach(ShareFormat.allCases, id: \.self) { f in
-                                        Label(f.title, systemImage: f.systemImage).tag(f)
-                                    }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                Button { presentUnifiedShare() } label: {
+                                    AdaptiveActionButtonLabel(text: isPreparingShareImage ? "準備中" : "投稿", systemImage: "paperplane.fill")
+                                        .fontWeight(.semibold)
+                                        .compactActionLabel()
                                 }
-                            } label: {
-                                AdaptiveActionButtonLabel(text: shareFormat.shortTitle, systemImage: "slider.horizontal.3")
-                                    .fontWeight(.semibold)
-                                    .compactActionLabel()
-                            }
-                            .buttonStyle(.bordered)
+                                .buttonStyle(.borderedProminent)
+                                .disabled(isPreparingShareImage)
 
-                            Button { copyCaption() } label: {
-                                AdaptiveActionButtonLabel(text: "コピー", systemImage: "doc.on.doc")
-                                    .fontWeight(.semibold)
-                                    .compactActionLabel()
-                            }
-                            .buttonStyle(.bordered)
+                                Menu {
+                                    Picker("共有形式", selection: $shareFormat) {
+                                        ForEach(ShareFormat.allCases, id: \.self) { f in
+                                            Label(f.title, systemImage: f.systemImage).tag(f)
+                                        }
+                                    }
+                                } label: {
+                                    AdaptiveActionButtonLabel(text: shareFormat.shortTitle, systemImage: "slider.horizontal.3")
+                                        .fontWeight(.semibold)
+                                        .compactActionLabel()
+                                }
+                                .buttonStyle(.bordered)
 
-                            Spacer()
+                                Button { copyCaption() } label: {
+                                    AdaptiveActionButtonLabel(text: "コピー", systemImage: "doc.on.doc")
+                                        .fontWeight(.semibold)
+                                        .compactActionLabel()
+                                }
+                                .buttonStyle(.bordered)
 
-                            HStack(spacing: 6) {
-                                Image(systemName: "flame.fill")
-                                Text("\(vm.streak)日").fontWeight(.semibold)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "flame.fill")
+                                    Text("\(vm.streak)日").fontWeight(.semibold)
+                                }
+                                .font(.subheadline)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Capsule())
                             }
-                            .font(.subheadline)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
+                            .padding(.vertical, 1)
                         }
+                        .accessibilityIdentifier("home.actionRow")
 
                         GlassCard {
                             VStack(alignment: .leading, spacing: 10) {
@@ -851,7 +853,8 @@ public struct HomeView: View {
 
 private extension View {
     func compactActionLabel() -> some View {
-        lineLimit(1)
+        labelStyle(.titleAndIcon)
+            .lineLimit(1)
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)
@@ -881,6 +884,10 @@ private struct AdaptiveActionButtonLabel: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             Label(text, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(text)
+                .fixedSize(horizontal: true, vertical: false)
             Image(systemName: systemImage)
         }
     }

@@ -15,8 +15,16 @@ final class AuthGateUITests: XCTestCase {
 
         let appleLogin = app.buttons["auth.login.apple"]
         XCTAssertTrue(appleLogin.waitForExistence(timeout: 8), "未ログイン時にログインゲートが表示されません")
-        XCTAssertTrue(app.buttons["auth.login.google"].exists)
-        XCTAssertTrue(app.buttons["auth.login.x"].exists)
+
+        let googleLogin = app.buttons["auth.login.google"]
+        let xLogin = app.buttons["auth.login.x"]
+        let googleExists = googleLogin.waitForExistence(timeout: 2)
+        let xExists = xLogin.waitForExistence(timeout: 2)
+
+        if !googleExists && !xExists {
+            let guide = app.staticTexts["auth.login.guide"]
+            XCTAssertTrue(guide.waitForExistence(timeout: 2), "外部ログイン非表示時のガイド文言が表示されません")
+        }
     }
 
     func testUnlinkReturnsToLoginGate() throws {

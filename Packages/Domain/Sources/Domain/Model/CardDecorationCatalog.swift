@@ -48,6 +48,9 @@ public enum CardDecorationCatalog {
         CardDecoration(id: "nebula",    name: "Nebula",    rarity: .epic, weight: 7),
         CardDecoration(id: "arcade",    name: "Arcade",    rarity: .epic, weight: 7),
         CardDecoration(id: "sonar",     name: "Sonar",     rarity: .epic, weight: 7),
+        CardDecoration(id: "starlight", name: "Starlight", rarity: .epic, weight: 8),
+        CardDecoration(id: "ocean",     name: "Ocean",     rarity: .epic, weight: 8),
+        CardDecoration(id: "comet",     name: "Comet",     rarity: .epic, weight: 7),
 
         // Legendary
         CardDecoration(id: "gold",      name: "Gold",      rarity: .legendary, weight: 3),
@@ -59,6 +62,8 @@ public enum CardDecorationCatalog {
         CardDecoration(id: "auric",     name: "Auric",     rarity: .legendary, weight: 1),
         CardDecoration(id: "zenith",    name: "Zenith",    rarity: .legendary, weight: 1),
         CardDecoration(id: "nova",      name: "Nova",      rarity: .legendary, weight: 1),
+        CardDecoration(id: "galaxy",      name: "Galaxy",      rarity: .legendary, weight: 1),
+        CardDecoration(id: "singularity", name: "Singularity", rarity: .legendary, weight: 1),
 
         // Season limited rewards (週次報酬専用 / 排出しない)
         CardDecoration(id: "season_bronze_sprout", name: "Sprout Emblem",  rarity: .rare,      weight: 0),

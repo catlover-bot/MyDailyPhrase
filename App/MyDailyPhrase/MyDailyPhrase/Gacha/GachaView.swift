@@ -1091,7 +1091,8 @@ struct GachaView: View {
 
 private extension View {
     func compactActionLabel() -> some View {
-        lineLimit(1)
+        labelStyle(.titleAndIcon)
+            .lineLimit(1)
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)

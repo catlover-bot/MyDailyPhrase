@@ -56,7 +56,7 @@ struct ProfileView: View {
                     Button {
                         gachaVM.grantDailyTicketIfNeeded()
                     } label: {
-                        Label("デイリー無料券を受け取る", systemImage: "calendar.badge.plus")
+                        Label("無料券を受け取る", systemImage: "calendar.badge.plus")
                             .compactActionLabel()
                     }
                     .buttonStyle(.bordered)
@@ -65,7 +65,7 @@ struct ProfileView: View {
                 NavigationLink {
                     GachaView(vm: gachaVM)
                 } label: {
-                    Label("ガチャで装飾を変更", systemImage: "sparkles")
+                    Label("ガチャを開く", systemImage: "sparkles")
                         .compactActionLabel()
                 }
             }
@@ -298,23 +298,27 @@ struct ProfileView: View {
                     .disabled(vm.isCheckingLinkedAuthState)
                 }
 
-                Button {
-                    Task { await vm.linkGoogleAccountUsingServerToken() }
-                } label: {
-                    Label(vm.isLinkingExternalAuth ? "Google連携中…" : "Googleでログイン", systemImage: "g.circle")
-                        .compactActionLabel()
+                if vm.isGoogleLoginAvailable {
+                    Button {
+                        Task { await vm.linkGoogleAccountUsingServerToken() }
+                    } label: {
+                        Label(vm.isLinkingExternalAuth ? "Google連携中…" : "Googleでログイン", systemImage: "g.circle")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(vm.isLinkingExternalAuth || !vm.canLinkGoogleAccount)
                 }
-                .buttonStyle(.bordered)
-                .disabled(vm.isLinkingExternalAuth || !vm.canLinkGoogleAccount)
 
-                Button {
-                    Task { await vm.linkXAccountUsingServerToken() }
-                } label: {
-                    Label(vm.isLinkingExternalAuth ? "X連携中…" : "Xでログイン", systemImage: "x.circle")
-                        .compactActionLabel()
+                if vm.isXLoginAvailable {
+                    Button {
+                        Task { await vm.linkXAccountUsingServerToken() }
+                    } label: {
+                        Label(vm.isLinkingExternalAuth ? "X連携中…" : "Xでログイン", systemImage: "x.circle")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(vm.isLinkingExternalAuth || !vm.canLinkXAccount)
                 }
-                .buttonStyle(.bordered)
-                .disabled(vm.isLinkingExternalAuth || !vm.canLinkXAccount)
 
                 if vm.canInputExternalAuthTokenManually {
                     SecureField("サーバー検証トークン（開発用）", text: $vm.externalAuthVerificationToken)
@@ -419,6 +423,15 @@ struct ProfileView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+
+                Button {
+                    UIPasteboard.general.string = vm.releaseReadinessReportText
+                    vm.lastMessage = "提出チェックレポートをコピーしました"
+                } label: {
+                    Label("提出チェックをコピー", systemImage: "doc.on.doc")
+                        .compactActionLabel()
+                }
+                .buttonStyle(.bordered)
 
                 ForEach(vm.releaseReadinessChecks) { item in
                     VStack(alignment: .leading, spacing: 4) {
@@ -796,7 +809,8 @@ struct ProfileView: View {
 
 private extension View {
     func compactActionLabel() -> some View {
-        lineLimit(1)
+        labelStyle(.titleAndIcon)
+            .lineLimit(1)
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)

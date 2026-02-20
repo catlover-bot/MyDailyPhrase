@@ -797,6 +797,18 @@ final class CommunityViewModel: ObservableObject {
         )
     }
 
+    func challenges(for userId: String) -> [ChallengeEvent] {
+        let allChallenges = listInboxChallenges() + listOutboxChallenges()
+        let targetTrimmedId = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !targetTrimmedId.isEmpty {
+            return allChallenges
+                .filter { $0.link.fromId == targetTrimmedId }
+                .sorted { $0.createdAt > $1.createdAt }
+        }
+        return []
+    }
+
     // MARK: - Room timeline
 
     private func updateUnreadCount(

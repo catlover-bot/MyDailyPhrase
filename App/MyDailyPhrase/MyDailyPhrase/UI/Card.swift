@@ -59,7 +59,7 @@ struct Card<Content: View>: View {
     // MARK: - Decoration Style
 
     private enum DecorationStyle: String, CaseIterable {
-        case classic, sakura, aurora, neon, gold
+        case classic, sakura, aurora, neon, gold, starlight, ocean
 
         static func from(_ raw: String) -> DecorationStyle {
             let resolved = DecorationThemeResolver.resolveStyleID(
@@ -109,6 +109,20 @@ struct Card<Content: View>: View {
                 startRadius: 20,
                 endRadius: 240
             )
+        case .starlight:
+            return RadialGradient(
+                colors: [Color(hex: 0x6a0dad).opacity(0.12), Color(hex: 0x00008b).opacity(0.10), Color.clear],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 240
+            )
+        case .ocean:
+            return RadialGradient(
+                colors: [Color.cyan.opacity(0.12), Color.blue.opacity(0.10), Color.clear],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 240
+            )
         }
     }
 
@@ -127,6 +141,10 @@ struct Card<Content: View>: View {
             neonLayer
         case .gold:
             EmptyView() // gold は枠で見せる（下で specialBorder）
+        case .starlight:
+            starlightLayer
+        case .ocean:
+            oceanLayer
         }
     }
 
@@ -185,6 +203,71 @@ struct Card<Content: View>: View {
                     .blur(radius: 0.9)
             )
             .blendMode(.screen)
+    }
+
+    private var starlightLayer: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            ZStack {
+                ForEach(0..<25, id: \.self) { i in
+                    let size = 1 + CGFloat(i % 5) * 0.8
+                    let p = starPosition(i, w: w, h: h)
+                    let opacity = starOpacity(i)
+
+                    Circle()
+                        .fill(starColor(i))
+                        .frame(width: size, height: size)
+                        .position(x: p.x, y: p.y)
+                        .opacity(opacity)
+                }
+            }
+            .blur(radius: 0.6)
+        }
+    }
+
+    private var oceanLayer: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.cyan.opacity(0.15),
+                    Color.blue.opacity(0.25)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .blendMode(.overlay)
+            .opacity(0.8)
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.1), .clear],
+                center: .top,
+                startRadius: 5,
+                endRadius: 150
+            )
+            .blendMode(.screen)
+            .opacity(0.5)
+        }
+    }
+
+    private func starPosition(_ i: Int, w: CGFloat, h: CGFloat) -> CGPoint {
+        func frac(_ x: CGFloat) -> CGFloat { x - floor(x) }
+        let a = frac(CGFloat(i) * 0.3180339887) // Use different seeds
+        let b = frac(CGFloat(i) * 0.6142135623)
+        let x = w * (0.05 + 0.90 * a)
+        let y = h * (0.05 + 0.90 * b)
+        return CGPoint(x: x, y: y)
+    }
+
+    private func starOpacity(_ i: Int) -> Double {
+        func frac(_ x: Double) -> Double { x - floor(x) }
+        return 0.3 + frac(Double(i) * 0.11) * 0.5
+    }
+
+    private func starColor(_ i: Int) -> Color {
+        let colors: [Color] = [.white.opacity(0.8), .cyan.opacity(0.5), .purple.opacity(0.4)]
+        return colors[i % colors.count]
     }
 
     // MARK: - Special Border

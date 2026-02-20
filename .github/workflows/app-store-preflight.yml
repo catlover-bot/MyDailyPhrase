@@ -1,0 +1,37 @@
+name: App Store Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_ui_tests:
+        description: "Run critical UI tests"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  preflight:
+    runs-on: macos-15
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run App Store preflight
+        run: |
+          if [[ "${{ inputs.run_ui_tests }}" == "true" ]]; then
+            SKIP_UI_TESTS=0 ./Scripts/app_store_preflight.sh "${GITHUB_WORKSPACE}/AppStoreReadinessReports"
+          else
+            SKIP_UI_TESTS=1 ./Scripts/app_store_preflight.sh "${GITHUB_WORKSPACE}/AppStoreReadinessReports"
+          fi
+
+      - name: Upload preflight report
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-preflight-report
+          path: AppStoreReadinessReports
+          if-no-files-found: error
