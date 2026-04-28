@@ -304,37 +304,40 @@ final class AppContainer {
         let getTodayEntry = GetTodayEntryUseCase(promptRepo: promptRepo, entryRepo: entryRepo, timeZone: timeZone)
         let saveTodayAnswer = SaveTodayAnswerUseCase(promptRepo: promptRepo, entryRepo: entryRepo, timeZone: timeZone)
         let computeStreak = ComputeStreakUseCase(entryRepo: entryRepo, timeZone: timeZone)
-        let getEntryByOffset = GetEntryByOffsetUseCase(entryRepo: entryRepo, timeZone: timeZone)
-        let getEntryByDateKey = GetEntryByDateKeyUseCase(promptRepo: promptRepo, entryRepo: entryRepo)
-        let saveAnswerByDateKey = SaveAnswerByDateKeyUseCase(entryRepo: entryRepo)
+        let countAnsweredEntriesInCurrentMonth = CountAnsweredEntriesInCurrentMonthUseCase(
+            entryRepo: entryRepo,
+            timeZone: timeZone
+        )
 
         return Presentation.HomeViewModel(
             getTodayEntry: getTodayEntry,
             saveTodayAnswer: saveTodayAnswer,
             computeStreak: computeStreak,
-            getEntryByOffset: getEntryByOffset,
-            enrichEntry: enrichEntry,
-            getEntryByDateKey: getEntryByDateKey,
-            saveAnswerByDateKey: saveAnswerByDateKey,
-            getMyProfile: getMyProfile,
-            updateMyProfile: updateMyProfile,
-            dailyFreeTicketBonusProvider: { [groupID = appGroupID] in
-                let defaults = UserDefaults(suiteName: groupID) ?? .standard
-                return defaults.bool(forKey: IAPStore.creatorPassEntitlementKey)
-                    ? IAPStore.creatorPassDailyBonusTickets
-                    : 0
-            },
-            shareDefaults: appGroupDefaults,
-            shareMissionTimeZone: timeZone,
-            makeChallengeShareURL: { [weak self] dateKey, prompt in
-                self?.makeChallengeShareURL(dateKey: dateKey, prompt: prompt)
-            }
+            countAnsweredEntriesInCurrentMonth: countAnsweredEntriesInCurrentMonth
         )
     }
 
     func makeHistoryViewModel() -> Presentation.HistoryViewModel {
         let listEntries = ListEntriesUseCase(entryRepo: entryRepo)
-        return Presentation.HistoryViewModel(listEntries: listEntries, toggleFavorite: toggleFavorite)
+        let deleteEntry = DeleteEntryUseCase(entryRepo: entryRepo)
+        return Presentation.HistoryViewModel(listEntries: listEntries, deleteEntry: deleteEntry)
+    }
+
+    func makeSettingsViewModel() -> Presentation.SettingsViewModel {
+        let deleteAllEntries = DeleteAllEntriesUseCase(entryRepo: entryRepo)
+        let reminderManager = DailyReminderManager(defaults: appGroupDefaults)
+        return Presentation.SettingsViewModel(
+            appVersionText: AppMetadata.versionBuildText,
+            privacyPolicyURL: AppLinks.privacyPolicy,
+            supportURL: AppLinks.support,
+            deleteAllEntries: deleteAllEntries,
+            loadReminderSettings: {
+                await reminderManager.loadSnapshot()
+            },
+            updateReminderSettings: { snapshot in
+                await reminderManager.update(snapshot: snapshot)
+            }
+        )
     }
 
     func makeReviewViewModel() -> Presentation.ReviewViewModel {

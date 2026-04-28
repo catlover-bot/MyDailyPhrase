@@ -41,6 +41,23 @@ public final class LocalPromptRepository: PromptRepository {
             ]
         ),
         (
+            key: "mood",
+            prompts: [
+                "今の気分を天気にたとえると？",
+                "今日いちばん強く残っている感情は？",
+                "気持ちが軽くなった瞬間はいつ？",
+                "少し引っかかっている気分の正体は何？",
+                "今の自分に必要な言葉は？",
+                "今日の心の波はどんな形だった？",
+                "安心できた場面はあった？",
+                "気分を切り替えるきっかけになったことは？",
+                "今日の感情を色で表すなら何色？",
+                "自分の気持ちに素直になれた瞬間は？",
+                "いま抱えているモヤモヤを一言で言うと？",
+                "今夜の自分を落ち着かせる一歩は？"
+            ]
+        ),
+        (
             key: "growth",
             prompts: [
                 "今日の学びは？",
@@ -89,6 +106,23 @@ public final class LocalPromptRepository: PromptRepository {
                 "やらないと決めることで前進できることは？",
                 "今日の判断で誇れる選択は？",
                 "次に壁が来たらどう乗り越える？"
+            ]
+        ),
+        (
+            key: "small_wins",
+            prompts: [
+                "今日の小さな達成は？",
+                "思ったよりちゃんとできたことは？",
+                "今日の自分を一つ認めるなら？",
+                "地味だけど前に進んだことは？",
+                "先週より少し良くなったことは？",
+                "今日は何を最後までやり切れた？",
+                "自分のためにできた小さな行動は？",
+                "今日の『よくやった』を一つ挙げるなら？",
+                "誰にも気づかれなくても誇れることは？",
+                "今日の積み上げを一言で残すなら？",
+                "迷いながらでも進めたことは？",
+                "明日の自信につながる小さな一歩は？"
             ]
         ),
         (
@@ -194,6 +228,12 @@ public final class LocalPromptRepository: PromptRepository {
     }()
 
     public init() {}
+
+    public var promptCount: Int {
+        promptPools.reduce(into: 0) { count, pool in
+            count += pool.prompts.count
+        }
+    }
 
     public func prompt(for dateKey: String) -> Prompt {
         guard !promptPools.isEmpty else {

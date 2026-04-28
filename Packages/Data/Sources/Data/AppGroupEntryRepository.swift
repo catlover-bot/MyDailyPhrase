@@ -4,12 +4,11 @@ import Domain
 public final class AppGroupEntryRepository: EntryRepository, @unchecked Sendable {
     private let defaults: UserDefaults
     private let storeKey = "MyDailyPhrase.entries.v1"
-    private let appGroupID: String
+    private let corruptBackupKey = "MyDailyPhrase.entries.corrupt.v1"
 
     private let lock = NSLock()
 
     public init(appGroupID: String) {
-        self.appGroupID = appGroupID
         if let ud = UserDefaults(suiteName: appGroupID) {
             self.defaults = ud
             #if DEBUG
@@ -25,24 +24,14 @@ public final class AppGroupEntryRepository: EntryRepository, @unchecked Sendable
 
     public func getEntry(dateKey: String) -> Entry? {
         withLock {
-            let (dict, hadError) = loadDictUnlocked()
-            if hadError { return nil }
+            let dict = loadDictUnlocked()
             return dict[dateKey]
         }
     }
 
     public func upsertEntry(_ entry: Entry) {
         withLock {
-            let (dict, hadError) = loadDictUnlocked()
-            // decode 失敗時に空dictで上書きして“全消し”になるのを防ぐ
-            guard !hadError else {
-                #if DEBUG
-                print("[AppGroupEntryRepository] decode failed previously; abort upsert to avoid wiping store.")
-                #endif
-                return
-            }
-
-            var newDict = dict
+            var newDict = loadDictUnlocked()
             newDict[entry.dateKey] = entry
             saveDictUnlocked(newDict)
 
@@ -55,9 +44,22 @@ public final class AppGroupEntryRepository: EntryRepository, @unchecked Sendable
 
     public func getAllEntries() -> [Entry] {
         withLock {
-            let (dict, hadError) = loadDictUnlocked()
-            if hadError { return [] }
+            let dict = loadDictUnlocked()
             return dict.values.sorted { $0.dateKey > $1.dateKey }
+        }
+    }
+
+    public func deleteEntry(dateKey: String) {
+        withLock {
+            var dict = loadDictUnlocked()
+            dict.removeValue(forKey: dateKey)
+            saveDictUnlocked(dict)
+        }
+    }
+
+    public func deleteAllEntries() {
+        withLock {
+            defaults.removeObject(forKey: storeKey)
         }
     }
 
@@ -71,16 +73,17 @@ public final class AppGroupEntryRepository: EntryRepository, @unchecked Sendable
 
     // MARK: - Storage (Unlocked)
 
-    private func loadDictUnlocked() -> ([String: Entry], hadError: Bool) {
-        guard let data = defaults.data(forKey: storeKey) else { return ([:], false) }
+    private func loadDictUnlocked() -> [String: Entry] {
+        guard let data = defaults.data(forKey: storeKey) else { return [:] }
         do {
-            let dict = try JSONDecoder().decode([String: Entry].self, from: data)
-            return (dict, false)
+            return try JSONDecoder().decode([String: Entry].self, from: data)
         } catch {
             #if DEBUG
             print("[AppGroupEntryRepository] decode failed:", error)
             #endif
-            return ([:], true)
+            defaults.set(data, forKey: corruptBackupKey)
+            defaults.removeObject(forKey: storeKey)
+            return [:]
         }
     }
 

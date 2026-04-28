@@ -3,10 +3,16 @@ import Foundation
 public struct ComputeStreakUseCase: Sendable {
     private let entryRepo: EntryRepository
     private let timeZone: TimeZone
+    private let nowProvider: @Sendable () -> Date
 
-    public init(entryRepo: EntryRepository, timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!) {
+    public init(
+        entryRepo: EntryRepository,
+        timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!,
+        nowProvider: @escaping @Sendable () -> Date = { Date() }
+    ) {
         self.entryRepo = entryRepo
         self.timeZone = timeZone
+        self.nowProvider = nowProvider
     }
 
     public func execute() -> Int {
@@ -20,7 +26,7 @@ public struct ComputeStreakUseCase: Sendable {
         cal.timeZone = timeZone
 
         var streak = 0
-        var cursor = Date()
+        var cursor = nowProvider()
         while true {
             let key = DateKey.key(for: cursor, timeZone: timeZone)
             if answered.contains(key) {

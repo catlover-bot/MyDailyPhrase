@@ -31,8 +31,8 @@ public enum DateKey {
     }
 
     /// UseCaseが呼んでいる: DateKey.todayKey(timeZone:)
-    public static func todayKey(timeZone: TimeZone) -> String {
-        key(for: Date(), timeZone: timeZone)
+    public static func todayKey(timeZone: TimeZone, now: Date = Date()) -> String {
+        key(for: now, timeZone: timeZone)
     }
 
     /// UseCaseが呼んでいる: DateKey.shiftedKey(from:days:timeZone:)
@@ -46,7 +46,7 @@ public enum DateKey {
     public static var todayKey: String { key(of: Date()) }
 
     public static func date(from key: String, calendar: Calendar = .current) -> Date? {
-        guard key.count == 8 else { return nil }
+        guard key.count == 8, key.allSatisfy(\.isNumber) else { return nil }
         let y = Int(key.prefix(4)) ?? 0
         let m = Int(key.dropFirst(4).prefix(2)) ?? 0
         let d = Int(key.dropFirst(6).prefix(2)) ?? 0
@@ -54,6 +54,12 @@ public enum DateKey {
         comps.year = y
         comps.month = m
         comps.day = d
-        return calendar.date(from: comps)
+        guard let date = calendar.date(from: comps) else { return nil }
+
+        let resolved = calendar.dateComponents([.year, .month, .day], from: date)
+        guard resolved.year == y, resolved.month == m, resolved.day == d else {
+            return nil
+        }
+        return date
     }
 }
