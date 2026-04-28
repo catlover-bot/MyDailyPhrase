@@ -1,19 +1,33 @@
 # App Store Readiness
 
+## Current status
+
+- Debug build passes:
+  `xcodebuild -project App/MyDailyPhrase/MyDailyPhrase.xcodeproj -scheme MyDailyPhrase -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath /tmp/MyDailyPhraseDerivedData CODE_SIGNING_ALLOWED=NO build`
+- Release build passes:
+  `xcodebuild -project App/MyDailyPhrase/MyDailyPhrase.xcodeproj -scheme MyDailyPhrase -configuration Release -destination 'generic/platform=iOS' -derivedDataPath /tmp/MyDailyPhraseDerivedDataRelease CODE_SIGNING_ALLOWED=NO build`
+- Swift package tests pass:
+  `Packages/Domain`, `Packages/Data`, and `Packages/Presentation`
+- Production App Icon is installed:
+  `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png`
+- App Icon validation:
+  PNG, `1024x1024`, square, RGB, `hasAlpha: no`
+- Next recommended step:
+  Commit the App Icon/doc updates, push `main`, then create a signed Archive in Xcode and upload that build to TestFlight.
+- TestFlight readiness:
+  Close to ready from a code-and-assets perspective, but still needs real-device smoke testing and final signing/archive validation.
+- App Store submission readiness:
+  Not ready yet because real-device QA and final screenshots are still outstanding.
+
 ## Current submission blockers
 
-1. App Icon is incomplete.
-   The asset catalog currently contains `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/Contents.json` only and no production PNG assets.
-   There is no production App Icon image in `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/`.
-   A final 1024x1024 PNG must be added to that `AppIcon.appiconset` before submission.
-
-2. Manual on-device QA is still required.
+1. Manual on-device QA is still required.
    This pass verified package tests and a generic iOS build, but App Review quality still depends on device validation across layout, persistence, deletion, and notification flows.
 
-3. Updated App Store screenshots must be captured for the new Home/History/Settings experience.
+2. Updated App Store screenshots must be captured for the new Home/History/Settings experience.
    Any older screenshots from the previous product shape should not be reused.
 
-4. Local reminder behavior must be verified on a real device.
+3. Local reminder behavior must be verified on a real device.
    The code requests notification permission only after explicit opt-in and schedules a repeating local reminder, but real-device confirmation is still required before submission.
 
 ## Required App Store Connect metadata
@@ -27,7 +41,7 @@
 - App privacy questionnaire
 - Version release notes
 - Review notes describing that data is stored locally on device and reminders use local notifications only
-- Final App Icon asset added in `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset`
+- Final App Icon asset in `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png`
 
 ## Privacy Policy URL TODO
 
@@ -112,5 +126,5 @@ Recommended only if the shipped build remains local-first with no reachable serv
 
 - The current implementation stores journal entries locally in UserDefaults/App Group storage.
 - The current implementation does not add analytics, tracking, login, or third-party SDKs to the journal flow.
-- Replace the App Icon with final production artwork in `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/` before uploading.
+- The App Icon asset catalog now references `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png` for the standard, dark, and tinted slots.
 - Confirm the submission build does not expose unfinished legacy surfaces that would conflict with the local-only journal positioning.
