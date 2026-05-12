@@ -2,6 +2,8 @@
 
 ## Current status
 
+- GitHub sync status:
+  Local `main` matches `origin/main`, and the working tree is clean at the time of this verification pass.
 - Debug build passes:
   `xcodebuild -project App/MyDailyPhrase/MyDailyPhrase.xcodeproj -scheme MyDailyPhrase -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath /tmp/MyDailyPhraseDerivedData CODE_SIGNING_ALLOWED=NO build`
 - Release build passes:
@@ -12,10 +14,12 @@
   `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png`
 - App Icon validation:
   PNG, `1024x1024`, square, RGB, `hasAlpha: no`
+- Archive dry-run status:
+  `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Commit the App Icon/doc updates, push `main`, then create a signed Archive in Xcode and upload that build to TestFlight.
+  Confirm signing, provisioning, and App Group capability setup in Xcode and the Apple Developer portal, then create a signed Archive and upload that build to TestFlight.
 - TestFlight readiness:
-  Close to ready from a code-and-assets perspective, but still needs real-device smoke testing and final signing/archive validation.
+  Ready from a code-and-assets perspective, pending signing/provisioning verification and Archive upload.
 - App Store submission readiness:
   Not ready yet because real-device QA and final screenshots are still outstanding.
 
@@ -29,6 +33,10 @@
 
 3. Local reminder behavior must be verified on a real device.
    The code requests notification permission only after explicit opt-in and schedules a repeating local reminder, but real-device confirmation is still required before submission.
+
+4. Signing and provisioning still need manual verification.
+   The local archive dry-run reached the signing stage and failed because no provisioning profile for `jp.catloverbot.MyDailyPhrase` was available in the local Xcode environment.
+   The App Group capability must also be confirmed in the Apple Developer portal and included in the final provisioning profile.
 
 ## Required App Store Connect metadata
 
@@ -128,3 +136,17 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The current implementation does not add analytics, tracking, login, or third-party SDKs to the journal flow.
 - The App Icon asset catalog now references `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png` for the standard, dark, and tinted slots.
 - Confirm the submission build does not expose unfinished legacy surfaces that would conflict with the local-only journal positioning.
+- Privacy and support URLs currently point to public GitHub pages. They can remain if they are intended to stay stable, but branded production URLs are preferable before final submission.
+
+## TestFlight checklist
+
+- [ ] Confirm Apple Developer team
+- [ ] Confirm Bundle ID exists in App Store Connect
+- [ ] Confirm App Group exists in Apple Developer portal
+- [ ] Confirm provisioning profile includes App Group
+- [ ] Archive in Xcode
+- [ ] Validate archive
+- [ ] Upload to App Store Connect
+- [ ] Wait for build processing
+- [ ] Add internal testers
+- [ ] Install via TestFlight on physical device
