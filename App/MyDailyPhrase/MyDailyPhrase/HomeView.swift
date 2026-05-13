@@ -5,17 +5,8 @@ import Presentation
 struct HomeView: View {
     @StateObject private var vm: HomeViewModel
 
-    let historyViewModel: HistoryViewModel
-    let settingsViewModel: SettingsViewModel
-
-    init(
-        viewModel: HomeViewModel,
-        historyViewModel: HistoryViewModel,
-        settingsViewModel: SettingsViewModel
-    ) {
+    init(viewModel: HomeViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
-        self.historyViewModel = historyViewModel
-        self.settingsViewModel = settingsViewModel
     }
 
     var body: some View {
@@ -30,7 +21,6 @@ struct HomeView: View {
                     answerCard
                     answerStateCard
                     progressSection
-                    shortcutsSection
                 }
             }
             .frame(maxWidth: 760)
@@ -192,53 +182,6 @@ struct HomeView: View {
         .accessibilityLabel("今月の回答数、\(vm.answeredThisMonthCount)件")
     }
 
-    private var shortcutsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("その他")
-                .font(.headline)
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 16) {
-                    historyLink
-                    settingsLink
-                }
-
-                VStack(spacing: 16) {
-                    historyLink
-                    settingsLink
-                }
-            }
-        }
-    }
-
-    private var historyLink: some View {
-        NavigationLink {
-            HistoryView(viewModel: historyViewModel)
-        } label: {
-            ShortcutCard(
-                title: "履歴を見る",
-                detail: "過去の回答を読み返す",
-                systemImage: "clock.arrow.circlepath"
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("履歴を見る")
-    }
-
-    private var settingsLink: some View {
-        NavigationLink {
-            SettingsView(viewModel: settingsViewModel)
-        } label: {
-            ShortcutCard(
-                title: "設定",
-                detail: "通知やプライバシーを確認",
-                systemImage: "gearshape"
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("設定を開く")
-    }
-
     private var loadingCard: some View {
         JournalCard {
             HStack(spacing: 12) {
@@ -341,40 +284,6 @@ private struct MetricCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-private struct ShortcutCard: View {
-    let title: String
-    let detail: String
-    let systemImage: String
-
-    var body: some View {
-        JournalCard {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: systemImage)
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 32, height: 32)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
             }
         }
     }

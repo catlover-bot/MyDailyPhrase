@@ -22,7 +22,7 @@ struct GachaView: View {
     @State private var showsDiagnostics = false
     @State private var drawTapLockedUntil: Date? = nil
 
-    enum Tab: String, CaseIterable {
+    enum Tab: String {
         case gacha = "ガチャ"
         case inventory = "所持"
         case exchange = "交換"
@@ -40,7 +40,7 @@ struct GachaView: View {
             header
 
             Picker("", selection: $tab) {
-                ForEach(Tab.allCases, id: \.self) { t in
+                ForEach(availableTabs, id: \.self) { t in
                     Text(t.rawValue).tag(t)
                 }
             }
@@ -60,19 +60,23 @@ struct GachaView: View {
                         bookPanel
                     case .history:
                         historyPanel
-                    case .shop:
+                    case .shop where FeatureFlags.paidGachaEnabled:
                         shopPanel
+                    case .shop:
+                        EmptyView()
                     }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 16)
             }
         }
-        .navigationTitle("Gacha")
+        .navigationTitle("ガチャ")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             vm.load()
-            await iap.configure()
+            if FeatureFlags.paidGachaEnabled {
+                await iap.configure()
+            }
         }
         .onAppear {
             handleStateChange(vm.state)
@@ -125,6 +129,14 @@ struct GachaView: View {
             revealTask?.cancel()
             spinWatchdogTask?.cancel()
         }
+    }
+
+    private var availableTabs: [Tab] {
+        var tabs: [Tab] = [.gacha, .inventory, .exchange, .book, .history]
+        if FeatureFlags.paidGachaEnabled {
+            tabs.append(.shop)
+        }
+        return tabs
     }
 
     // MARK: - Header
@@ -258,7 +270,7 @@ struct GachaView: View {
         VStack(spacing: 12) {
             bannerCard
 
-            if vm.seasonLimitedTotalCount > 0 {
+            if FeatureFlags.communityEnabled && vm.seasonLimitedTotalCount > 0 {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label(vm.seasonLimitedCollectionProgressText, systemImage: "calendar.badge.clock")
@@ -271,7 +283,7 @@ struct GachaView: View {
 
                     ProgressView(value: vm.seasonLimitedCollectionRate, total: 1.0)
 
-                    Text("限定デコはガチャ排出されません。コミュニティ週次ミッション報酬で獲得できます。")
+                    Text("限定デコは通常ガチャ対象外です。シーズン施策として順次開放予定です。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
@@ -380,35 +392,49 @@ struct GachaView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text(iap.isCreatorPassActive
-                         ? "Creator Passで毎日無料券ボーナス。チケットパック併用で回転率を上げられます。"
-                         : "チケットパック + Creator Pass で、毎日の無料券ボーナスと長期運用の回転率を両立できます。")
+                    Text(FeatureFlags.paidGachaEnabled
+                         ? (iap.isCreatorPassActive
+                            ? "Creator Passで毎日無料券ボーナス。チケットパック併用で回転率を上げられます。"
+                            : "チケットパック + Creator Pass で、毎日の無料券ボーナスと長期運用の回転率を両立できます。")
+                         : "毎日の無料券と交換所を使いながら、少しずつコレクションを増やせます。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    HStack(spacing: 8) {
-                        Button {
-                            tab = .shop
-                        } label: {
-                            Label("ショップへ", systemImage: "cart")
-                                .compactActionLabel()
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-
-                        if let bestId = iap.bestValueTicketProductID,
-                           let best = iap.ticketProducts.first(where: { $0.id == bestId }) {
+                    if FeatureFlags.paidGachaEnabled {
+                        HStack(spacing: 8) {
                             Button {
-                                Task { await iap.purchase(best) }
+                                tab = .shop
                             } label: {
-                                Label("おすすめ \(best.displayPrice)", systemImage: "sparkles")
+                                Label("ショップへ", systemImage: "cart")
                                     .compactActionLabel()
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.borderedProminent)
                             .controlSize(.small)
+
+                            if let bestId = iap.bestValueTicketProductID,
+                               let best = iap.ticketProducts.first(where: { $0.id == bestId }) {
+                                Button {
+                                    Task { await iap.purchase(best) }
+                                } label: {
+                                    Label("おすすめ \(best.displayPrice)", systemImage: "sparkles")
+                                        .compactActionLabel()
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
                         }
+                    } else {
+                        Button {
+                            vm.grantDailyTicketIfNeeded()
+                        } label: {
+                            Label("無料券を確認する", systemImage: "calendar.badge.plus")
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
                 }
                 .padding(12)
@@ -480,13 +506,13 @@ struct GachaView: View {
             Text("所持アイテム")
                 .font(.headline)
 
-            if vm.seasonLimitedTotalCount > 0 {
+            if FeatureFlags.communityEnabled && vm.seasonLimitedTotalCount > 0 {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(vm.seasonLimitedCollectionProgressText)
                         .font(.caption.weight(.semibold))
                     ProgressView(value: vm.seasonLimitedCollectionRate, total: 1.0)
                     if vm.seasonLimitedOwnedDecorations.isEmpty {
-                        Text("まだ限定デコはありません。コミュニティ週次ミッションで獲得できます。")
+                        Text("まだ限定デコはありません。今後のシーズン施策で順次追加予定です。")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -547,7 +573,7 @@ struct GachaView: View {
             Text("図鑑（全アイテム）")
                 .font(.headline)
 
-            Text("※「限定」アイテムはガチャ排出対象外です（週次ミッション報酬専用）")
+            Text("※「限定」アイテムは通常ガチャ対象外です")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -563,7 +589,7 @@ struct GachaView: View {
                         badge: vm.isSeasonLimited(d.id) ? "限定" : nil
                     ) {
                         if owned { vm.selectDecoration(id: d.id) }
-                        else if vm.isSeasonLimited(d.id) { vm.lastMessage = "期間限定デコです。コミュニティ週次ミッション報酬で獲得できます" }
+                        else if vm.isSeasonLimited(d.id) { vm.lastMessage = "期間限定デコです。通常ガチャ対象外です" }
                         else { vm.lastMessage = "未所持です。ガチャで獲得できます" }
                     }
                 }
