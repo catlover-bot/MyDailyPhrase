@@ -25,6 +25,9 @@ struct GachaView: View {
     @State private var previewItem: CardDecoration? = nil
     @State private var shareSheetItems: [Any] = []
     @State private var isPresentingShareSheet = false
+    @State private var rarityFilter: RarityFilter = .all
+    @State private var typeFilter: ItemTypeFilter = .all
+    @State private var collectionSort: CollectionSort = .newest
 
     enum Tab: String {
         case gacha = "ガチャ"
@@ -33,6 +36,73 @@ struct GachaView: View {
         case book = "コレクション"
         case history = "履歴"
         case shop = "購入"
+    }
+
+    enum RarityFilter: String, CaseIterable, Identifiable {
+        case all = "すべて"
+        case common = "ノーマル"
+        case rare = "レア"
+        case epic = "エピック"
+        case legendary = "レジェンド"
+
+        var id: String { rawValue }
+
+        var rarity: CardDecorationRarity? {
+            switch self {
+            case .all:
+                return nil
+            case .common:
+                return .common
+            case .rare:
+                return .rare
+            case .epic:
+                return .epic
+            case .legendary:
+                return .legendary
+            }
+        }
+    }
+
+    enum ItemTypeFilter: String, CaseIterable, Identifiable {
+        case all = "すべて"
+        case theme = "テーマ"
+        case profileTitle = "称号"
+        case shareTemplate = "共有"
+        case aura = "オーラ"
+        case paper = "紙面"
+        case reveal = "演出"
+        case badge = "バッジ"
+
+        var id: String { rawValue }
+
+        var itemType: DecorationItemType? {
+            switch self {
+            case .all:
+                return nil
+            case .theme:
+                return .fullTheme
+            case .profileTitle:
+                return .profileTitle
+            case .shareTemplate:
+                return .shareTemplate
+            case .aura:
+                return .auraStyle
+            case .paper:
+                return .journalPaper
+            case .reveal:
+                return .gachaRevealEffect
+            case .badge:
+                return .badge
+            }
+        }
+    }
+
+    enum CollectionSort: String, CaseIterable, Identifiable {
+        case newest = "新しい順"
+        case rarity = "レア順"
+        case name = "名前順"
+
+        var id: String { rawValue }
     }
 
     init(vm: GachaViewModel) {
@@ -164,6 +234,50 @@ struct GachaView: View {
             tabs.append(.shop)
         }
         return tabs
+    }
+
+    private var equippedItem: CardDecoration? {
+        CardDecorationCatalog.byId(vm.selectedDecorationId)
+    }
+
+    private var filteredOwnedItems: [CardDecoration] {
+        filteredItems(vm.ownedDecorations.map(\.item), ownedOnly: true)
+    }
+
+    private var filteredCollectionOwnedItems: [CardDecoration] {
+        filteredItems(vm.allDecorations.filter { vm.isOwned($0.id) }, ownedOnly: true)
+    }
+
+    private var filteredCollectionLockedItems: [CardDecoration] {
+        filteredItems(vm.allDecorations.filter { !vm.isOwned($0.id) }, ownedOnly: false)
+    }
+
+    private func filteredItems(_ items: [CardDecoration], ownedOnly: Bool) -> [CardDecoration] {
+        items
+            .filter { item in
+                if let rarity = rarityFilter.rarity, item.rarity != rarity {
+                    return false
+                }
+                if let itemType = typeFilter.itemType, vm.itemMetadata(for: item.id)?.itemType != itemType {
+                    return false
+                }
+                return true
+            }
+            .sorted { lhs, rhs in
+                switch collectionSort {
+                case .newest:
+                    let lhsDate = vm.ownedRecord(for: lhs.id)?.acquisitionDate ?? (ownedOnly ? .distantPast : .distantFuture)
+                    let rhsDate = vm.ownedRecord(for: rhs.id)?.acquisitionDate ?? (ownedOnly ? .distantPast : .distantFuture)
+                    if lhsDate != rhsDate { return lhsDate > rhsDate }
+                    if lhs.rarity.rank != rhs.rarity.rank { return lhs.rarity.rank > rhs.rarity.rank }
+                    return lhs.name < rhs.name
+                case .rarity:
+                    if lhs.rarity.rank != rhs.rarity.rank { return lhs.rarity.rank > rhs.rarity.rank }
+                    return lhs.name < rhs.name
+                case .name:
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+            }
     }
 
     // MARK: - Header
@@ -566,6 +680,23 @@ struct GachaView: View {
                 }
             }
 
+            if let equippedItem {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("装備中")
+                        .font(.subheadline.weight(.semibold))
+                    GachaCollectionTile(
+                        item: equippedItem,
+                        ownedCount: vm.ownedCount(for: equippedItem.id),
+                        isOwned: true,
+                        isEquipped: true
+                    ) {
+                        previewItem = equippedItem
+                    }
+                }
+            }
+
+            collectionControls
+
             if FeatureFlags.communityEnabled && vm.seasonLimitedTotalCount > 0 {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(vm.seasonLimitedCollectionProgressText)
@@ -583,16 +714,22 @@ struct GachaView: View {
             }
 
             LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-                ForEach(vm.ownedDecorations, id: \.item.id) { x in
+                ForEach(filteredOwnedItems, id: \.id) { item in
                     GachaCollectionTile(
-                        item: x.item,
-                        ownedCount: x.count,
+                        item: item,
+                        ownedCount: vm.ownedCount(for: item.id),
                         isOwned: true,
-                        isEquipped: vm.isSelected(x.item.id)
+                        isEquipped: vm.isSelected(item.id)
                     ) {
-                        previewItem = x.item
+                        previewItem = item
                     }
                 }
+            }
+
+            if filteredOwnedItems.isEmpty {
+                Text("この条件に合う所持アイテムはまだありません。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -635,16 +772,64 @@ struct GachaView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-                ForEach(vm.allDecorations, id: \.id) { d in
+            collectionControls
+
+            if let equippedItem {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("装備中")
+                        .font(.subheadline.weight(.semibold))
                     GachaCollectionTile(
-                        item: d,
-                        ownedCount: vm.ownedCount(for: d.id),
-                        isOwned: vm.isOwned(d.id),
-                        isEquipped: vm.isSelected(d.id)
+                        item: equippedItem,
+                        ownedCount: vm.ownedCount(for: equippedItem.id),
+                        isOwned: true,
+                        isEquipped: true
                     ) {
-                        previewItem = d
+                        previewItem = equippedItem
                     }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("所持")
+                    .font(.subheadline.weight(.semibold))
+                LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                    ForEach(filteredCollectionOwnedItems, id: \.id) { d in
+                        GachaCollectionTile(
+                            item: d,
+                            ownedCount: vm.ownedCount(for: d.id),
+                            isOwned: true,
+                            isEquipped: vm.isSelected(d.id)
+                        ) {
+                            previewItem = d
+                        }
+                    }
+                }
+                if filteredCollectionOwnedItems.isEmpty {
+                    Text("この条件に合う所持アイテムはまだありません。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("未所持")
+                    .font(.subheadline.weight(.semibold))
+                LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                    ForEach(filteredCollectionLockedItems, id: \.id) { d in
+                        GachaCollectionTile(
+                            item: d,
+                            ownedCount: vm.ownedCount(for: d.id),
+                            isOwned: vm.isOwned(d.id),
+                            isEquipped: vm.isSelected(d.id)
+                        ) {
+                            previewItem = d
+                        }
+                    }
+                }
+                if filteredCollectionLockedItems.isEmpty {
+                    Text("この条件では未所持アイテムがありません。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -652,6 +837,47 @@ struct GachaView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var collectionControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    rarityFilterPicker
+                    typeFilterPicker
+                }
+
+                VStack(spacing: 10) {
+                    rarityFilterPicker
+                    typeFilterPicker
+                }
+            }
+
+            Picker("並び順", selection: $collectionSort) {
+                ForEach(CollectionSort.allCases) { sort in
+                    Text(sort.rawValue).tag(sort)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var rarityFilterPicker: some View {
+        Picker("レア度", selection: $rarityFilter) {
+            ForEach(RarityFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var typeFilterPicker: some View {
+        Picker("種類", selection: $typeFilter) {
+            ForEach(ItemTypeFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
     }
 
     private var historyPanel: some View {
@@ -1009,9 +1235,10 @@ struct GachaView: View {
             itemName: item.name,
             rarityLabel: GachaThemePresentation.rarityLabel(for: item.rarity),
             flavorText: GachaThemePresentation.flavorText(for: item),
-            revealPhrase: GachaThemePresentation.revealPhrase(for: item.rarity),
+            revealPhrase: GachaThemePresentation.revealPhrase(for: item),
             statusLine: vm.isSelected(item.id) ? "現在プロフィールに反映中" : "プロフィールや共有カードに反映できます",
-            decorationId: item.id
+            decorationId: item.id,
+            profileTitle: GachaThemePresentation.profileTitle(for: item)
         )
 
         let text = GachaThemePresentation.shareText(

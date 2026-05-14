@@ -33,6 +33,8 @@ public struct UpdateMyProfileUseCase: Sendable {
 
         // ✅ 新：管理の本体
         ownedDecorationCounts: [String: Int]? = nil,
+        ownedDecorationRecords: [String: OwnedDecorationRecord]? = nil,
+        equippedDecorationSet: EquippedDecorationSet? = nil,
         decorationShards: Int? = nil,
         pityCount: Int? = nil,
 
@@ -47,6 +49,7 @@ public struct UpdateMyProfileUseCase: Sendable {
             { p in
                 if let displayName { p.displayName = displayName }
                 if let selectedDecorationId { p.selectedDecorationId = selectedDecorationId }
+                if let equippedDecorationSet { p.equippedDecorationSet = equippedDecorationSet }
                 if clearLinkedAuth {
                     p.linkedAuthProvider = nil
                     p.linkedAuthUserId = nil
@@ -99,12 +102,22 @@ public struct UpdateMyProfileUseCase: Sendable {
                     }
                     p.ownedDecorationCounts = cleaned
                 }
+                if let ownedDecorationRecords {
+                    p.ownedDecorationRecords = ownedDecorationRecords
+                }
 
                 // ownedDecorationIds が渡ってきたら「所持保証」として counts に反映（破壊的に消さない）
                 if let ownedDecorationIds {
                     for id in ownedDecorationIds {
                         let cur = p.ownedDecorationCounts[id] ?? 0
                         p.ownedDecorationCounts[id] = max(1, cur)
+                        let existing = p.ownedDecorationRecords[id]
+                        let ensuredCount = max(max(1, existing?.count ?? 0), p.ownedDecorationCounts[id] ?? 0)
+                        p.ownedDecorationRecords[id] = OwnedDecorationRecord(
+                            acquisitionDate: existing?.acquisitionDate ?? .distantPast,
+                            source: existing?.source ?? (id == CardDecorationCatalog.classicId ? .defaultItem : .event),
+                            count: ensuredCount
+                        )
                     }
                 }
 

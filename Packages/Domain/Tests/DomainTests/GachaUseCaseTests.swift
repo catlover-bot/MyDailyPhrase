@@ -181,6 +181,48 @@ struct GachaUseCaseTests {
         #expect(after.gachaTickets == 1)
         #expect(after.lastFreeTicketDateKey != nil)
     }
+
+    @Test("新規獲得は所持レコードに保存される")
+    func drawStoresOwnedDecorationRecord() {
+        let repo = InMemoryUserProfileRepository()
+        repo.saveMyProfile(
+            UserProfile(
+                userId: "u-record",
+                displayName: "tester",
+                selectedDecorationId: CardDecorationCatalog.classicId,
+                ownedDecorationCounts: [CardDecorationCatalog.classicId: 1],
+                ownedDecorationRecords: [
+                    CardDecorationCatalog.classicId: OwnedDecorationRecord(
+                        acquisitionDate: .distantPast,
+                        source: .defaultItem,
+                        count: 1
+                    )
+                ],
+                gachaTickets: 1
+            )
+        )
+
+        let drawDate = Date(timeIntervalSince1970: 1_700_000_000)
+        let get = GetMyProfileUseCase(repo: repo)
+        let update = UpdateMyProfileUseCase(repo: repo, makeId: { "u-record" })
+        let draw = DrawDecorationGachaUseCase(
+            get: get,
+            update: update,
+            pityThreshold: 80,
+            nowProvider: { drawDate }
+        )
+
+        let summary = draw(count: 1)
+        let drawnId = try! #require(summary.drawn.first?.id)
+        let after = get()
+        let record = after.ownedDecorationRecords[drawnId]
+
+        #expect(record?.count == after.ownedDecorationCounts[drawnId])
+        #expect(record?.acquisitionDate == drawDate || record?.source == .defaultItem)
+        if drawnId != CardDecorationCatalog.classicId {
+            #expect(record?.source == .freeGacha)
+        }
+    }
 }
 
 private final class InMemoryUserProfileRepository: UserProfileRepository, @unchecked Sendable {

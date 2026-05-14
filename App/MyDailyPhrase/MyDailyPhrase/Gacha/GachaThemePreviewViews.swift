@@ -19,6 +19,7 @@ struct GachaThemePreviewContent: View {
             heroCard
             journalPreviewCard
             profilePreviewCard
+            sharePreviewCard
             usageCard
         }
     }
@@ -32,7 +33,7 @@ struct GachaThemePreviewContent: View {
                             .font(.system(.title2, design: .rounded, weight: .bold))
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text(GachaThemePresentation.revealPhrase(for: item.rarity))
+                        Text(GachaThemePresentation.revealPhrase(for: item))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -52,11 +53,13 @@ struct GachaThemePreviewContent: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
                         detailChip(systemImage: "sparkles", text: ownershipState.label)
+                        detailChip(systemImage: "square.stack.3d.up", text: GachaThemePresentation.itemTypeLabel(for: item))
                         detailChip(systemImage: "shippingbox", text: isOwned ? "所持 x\(max(1, ownedCount))" : "コレクション未登録")
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
                         detailChip(systemImage: "sparkles", text: ownershipState.label)
+                        detailChip(systemImage: "square.stack.3d.up", text: GachaThemePresentation.itemTypeLabel(for: item))
                         detailChip(systemImage: "shippingbox", text: isOwned ? "所持 x\(max(1, ownedCount))" : "コレクション未登録")
                     }
                 }
@@ -98,6 +101,14 @@ struct GachaThemePreviewContent: View {
                     HStack(spacing: 8) {
                         Text(profileDisplayName)
                             .font(.headline)
+                        if let title = GachaThemePresentation.profileTitle(for: item) {
+                            Text(title)
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial)
+                                .clipShape(Capsule())
+                        }
                         if isEquipped {
                             Text("装備中")
                                 .font(.caption2.weight(.bold))
@@ -119,6 +130,42 @@ struct GachaThemePreviewContent: View {
         }
     }
 
+    private var sharePreviewCard: some View {
+        Card("共有カード", decorationId: item.id) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("ひとこと日記")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(GachaThemePresentation.rarityLabel(for: item.rarity))
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial)
+                        .clipShape(Capsule())
+                }
+
+                Text(item.name)
+                    .font(.headline)
+
+                if let template = GachaThemePresentation.shareTemplateName(for: item) {
+                    Text(template)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial)
+                        .clipShape(Capsule())
+                }
+
+                Text(GachaThemePresentation.sampleShareCaption(for: item, isEquipped: isEquipped))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     private var usageCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("どこで使われる？", systemImage: "rectangle.on.rectangle.angled")
@@ -128,6 +175,10 @@ struct GachaThemePreviewContent: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if !GachaThemePresentation.applicableSurfaceLabels(for: item).isEmpty {
+                FlexibleSurfaceChips(labels: GachaThemePresentation.applicableSurfaceLabels(for: item))
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,6 +198,24 @@ struct GachaThemePreviewContent: View {
             .padding(.vertical, 7)
             .background(.ultraThinMaterial)
             .clipShape(Capsule())
+    }
+}
+
+private struct FlexibleSurfaceChips: View {
+    let labels: [String]
+
+    var body: some View {
+        LazyVGrid(columns: [.init(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+            ForEach(labels, id: \.self) { label in
+                Text(label)
+                    .font(.caption.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+            }
+        }
     }
 }
 
@@ -181,10 +250,10 @@ struct GachaCollectionTile: View {
                             .font(.headline.weight(.semibold))
                             .lineLimit(1)
 
-                        Text(GachaThemePresentation.flavorText(for: item))
+                        Text(GachaThemePresentation.itemTypeLabel(for: item))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                            .lineLimit(1)
                     }
                 }
                 .frame(height: 146)
@@ -265,7 +334,7 @@ struct GachaThemePreviewSheet: View {
                         onShare()
                     }
                 } label: {
-                    Label("カードを共有", systemImage: "square.and.arrow.up")
+                    Label("共有する", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -281,7 +350,7 @@ struct GachaThemePreviewSheet: View {
         Button {
             onEquip()
         } label: {
-            Label(isEquipped ? "現在装備中" : "プロフィールに反映", systemImage: isEquipped ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark")
+            Label(isEquipped ? "現在装備中" : "今すぐ使う", systemImage: isEquipped ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
@@ -307,6 +376,7 @@ struct GachaShareCardModel: Equatable {
     let revealPhrase: String
     let statusLine: String
     let decorationId: String
+    let profileTitle: String?
 }
 
 struct GachaShareCardView: View {
@@ -351,6 +421,14 @@ struct GachaShareCardView: View {
                         Text(model.revealPhrase)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
+                        if let profileTitle = model.profileTitle {
+                            Text(profileTitle)
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial)
+                                .clipShape(Capsule())
+                        }
                         Text(model.flavorText)
                             .font(.body)
                             .fixedSize(horizontal: false, vertical: true)

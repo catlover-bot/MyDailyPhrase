@@ -8,6 +8,7 @@ struct RootView: View {
     private let historyVM: HistoryViewModel
     private let gachaVM: GachaViewModel
     private let profileVM: ProfileViewModel
+    private let communityLiteVM: CommunityLiteViewModel
     private let settingsVM: SettingsViewModel
     private let iapStore: IAPStore
 
@@ -19,6 +20,7 @@ struct RootView: View {
         self.historyVM = container.makeHistoryViewModel()
         self.gachaVM = container.makeGachaViewModel()
         self.profileVM = container.makeProfileViewModel()
+        self.communityLiteVM = container.makeCommunityLiteViewModel()
         self.settingsVM = container.makeSettingsViewModel()
         self.iapStore = container.makeIAPStore()
     }
@@ -29,6 +31,7 @@ struct RootView: View {
             historyVM: historyVM,
             gachaVM: gachaVM,
             profileVM: profileVM,
+            communityLiteVM: communityLiteVM,
             settingsVM: settingsVM
         )
         .environmentObject(iapStore)
@@ -38,6 +41,7 @@ struct RootView: View {
             historyVM.load()
             gachaVM.load()
             profileVM.load()
+            communityLiteVM.load()
             if FeatureFlags.paidGachaEnabled {
                 await iapStore.configure()
             }

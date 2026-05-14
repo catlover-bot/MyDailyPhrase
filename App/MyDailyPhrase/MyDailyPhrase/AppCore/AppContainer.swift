@@ -363,6 +363,16 @@ final class AppContainer {
         )
     }
 
+    func makeCommunityLiteViewModel() -> CommunityLiteViewModel {
+        let computeStreak = ComputeStreakUseCase(entryRepo: entryRepo, timeZone: timeZone)
+        return CommunityLiteViewModel(
+            getMyProfile: getMyProfile,
+            computeStreak: computeStreak,
+            defaults: appGroupDefaults,
+            timeZone: timeZone
+        )
+    }
+
     // MARK: - App VMs
 
     func makeCommunityViewModel() -> CommunityViewModel {

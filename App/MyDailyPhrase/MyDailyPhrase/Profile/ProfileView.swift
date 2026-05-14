@@ -6,16 +6,27 @@ import Presentation
 struct ProfileView: View {
     @ObservedObject var vm: ProfileViewModel
     @ObservedObject var gachaVM: GachaViewModel
+    @ObservedObject var communityLiteVM: CommunityLiteViewModel
 
     @Environment(\.currentDecorationId) private var decorationId
 
-    init(vm: ProfileViewModel, gachaVM: GachaViewModel) {
+    init(vm: ProfileViewModel, gachaVM: GachaViewModel, communityLiteVM: CommunityLiteViewModel) {
         self.vm = vm
         self.gachaVM = gachaVM
+        self.communityLiteVM = communityLiteVM
     }
 
     private var equippedName: String {
         CardDecorationCatalog.byId(decorationId)?.name ?? decorationId
+    }
+
+    private var equippedItem: CardDecoration {
+        CardDecorationCatalog.byId(decorationId)
+            ?? CardDecoration(id: CardDecorationCatalog.classicId, name: equippedName, rarity: .common, weight: 0)
+    }
+
+    private var equippedTitle: String? {
+        GachaThemePresentation.profileTitle(for: equippedItem)
     }
 
     private var profileMonogram: String {
@@ -40,8 +51,16 @@ struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(vm.displayName.isEmpty ? "Me" : vm.displayName)
                                     .font(.headline)
+                                if let equippedTitle {
+                                    Text(equippedTitle)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(.thinMaterial)
+                                        .clipShape(Capsule())
+                                }
                                 Text(GachaThemePresentation.sampleProfileLine(
-                                    for: CardDecorationCatalog.byId(decorationId) ?? CardDecoration(id: decorationId, name: equippedName, rarity: .common, weight: 0),
+                                    for: equippedItem,
                                     isEquipped: true
                                 ))
                                 .font(.footnote)
@@ -88,6 +107,23 @@ struct ProfileView: View {
                 } label: {
                     Label("ガチャを開く", systemImage: "sparkles")
                         .compactActionLabel()
+                }
+            }
+
+            if FeatureFlags.communityLiteEnabled {
+                Section("みんなとつながる") {
+                    NavigationLink {
+                        CommunityLiteView(vm: communityLiteVM)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("みんなのチャレンジ", systemImage: "person.2.wave.2")
+                                .compactActionLabel()
+                            Text("公開フィードなしで、週間チャレンジ・プロフィールカード・招待リンクを安全に共有できます。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
             }
 

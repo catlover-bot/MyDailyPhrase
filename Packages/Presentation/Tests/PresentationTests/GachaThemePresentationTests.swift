@@ -39,4 +39,20 @@ struct GachaThemePresentationTests {
         #expect(!text.localizedCaseInsensitiveContains("debug"))
         #expect(!text.localizedCaseInsensitiveContains("audit"))
     }
+
+    @Test("share template items add a share-style line")
+    func shareTemplateItemsInfluenceSharePayload() {
+        let item = CardDecoration(
+            id: "stardust",
+            name: "Stardust",
+            rarity: .epic,
+            weight: 8
+        )
+
+        let text = GachaThemePresentation.shareText(item: item, isEquipped: true)
+
+        #expect(text.contains("共有スタイル:"))
+        #expect(text.contains("Stardust"))
+        #expect(!text.contains("stardust\n"))
+    }
 }

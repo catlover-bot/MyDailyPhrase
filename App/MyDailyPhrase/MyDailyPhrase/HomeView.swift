@@ -215,6 +215,8 @@ struct HomeView: View {
 }
 
 private struct JournalCard<Content: View>: View {
+    @Environment(\.currentDecorationId) private var decorationId
+
     enum BackgroundStyle {
         case standard
         case accent
@@ -246,20 +248,62 @@ private struct JournalCard<Content: View>: View {
 
     @ViewBuilder
     private var background: some View {
-        switch backgroundStyle {
-        case .standard:
-            Color(uiColor: .systemBackground)
-        case .accent:
-            LinearGradient(
-                colors: [
-                    Color.accentColor.opacity(0.24),
-                    Color.accentColor.opacity(0.10),
-                    Color(uiColor: .systemBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        ZStack {
+            switch backgroundStyle {
+            case .standard:
+                Color(uiColor: .systemBackground)
+            case .accent:
+                LinearGradient(
+                    colors: [
+                        Color.accentColor.opacity(0.24),
+                        Color.accentColor.opacity(0.10),
+                        Color(uiColor: .systemBackground)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+
+            decorationOverlay
         }
+    }
+
+    private var decorationOverlay: some View {
+        let style = DecorationThemeResolver.resolveStyleID(
+            from: decorationId,
+            supportedStyleIDs: [
+                "classic", "sakura", "aurora", "neon", "gold", "starlight", "ocean", "paper", "noir", "glitch"
+            ]
+        )
+
+        let colors: [Color]
+        switch style {
+        case "sakura":
+            colors = [Color.pink.opacity(0.10), Color.purple.opacity(0.04), .clear]
+        case "aurora":
+            colors = [Color.green.opacity(0.08), Color.blue.opacity(0.08), .clear]
+        case "neon", "glitch":
+            colors = [Color.cyan.opacity(0.09), Color.indigo.opacity(0.06), .clear]
+        case "gold":
+            colors = [Color.yellow.opacity(0.09), Color.orange.opacity(0.05), .clear]
+        case "starlight":
+            colors = [Color.indigo.opacity(0.10), Color.blue.opacity(0.06), .clear]
+        case "ocean":
+            colors = [Color.cyan.opacity(0.08), Color.blue.opacity(0.06), .clear]
+        case "paper":
+            colors = [Color.brown.opacity(0.06), Color.orange.opacity(0.03), .clear]
+        case "noir":
+            colors = [Color.gray.opacity(0.08), Color.black.opacity(0.04), .clear]
+        default:
+            colors = [Color.accentColor.opacity(0.04), Color.clear, Color.clear]
+        }
+
+        return LinearGradient(
+            colors: colors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .blendMode(.overlay)
     }
 }
 

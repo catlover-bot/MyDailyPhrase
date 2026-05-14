@@ -1,8 +1,12 @@
+import Presentation
+
 enum FeatureFlags {
-    static let paidGachaEnabled = false
+    static let paidGachaEnabled = ReleaseFeatureAvailability.paidGachaEnabled
     static let communityEnabled = false
+    static let publicCommunityEnabled = ReleaseFeatureAvailability.publicCommunityEnabled
+    static let communityLiteEnabled = ReleaseFeatureAvailability.communityLiteEnabled
     static let externalAccountLinkingEnabled = false
     static let advancedProfileToolsEnabled = false
-    static let nativeSharingEnabled = true
-    static let themePreviewEnabled = true
+    static let nativeSharingEnabled = ReleaseFeatureAvailability.nativeSharingEnabled
+    static let themePreviewEnabled = ReleaseFeatureAvailability.themePreviewEnabled
 }

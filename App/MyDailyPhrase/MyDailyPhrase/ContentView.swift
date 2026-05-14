@@ -6,6 +6,7 @@ struct ContentView: View {
     let historyVM: HistoryViewModel
     let gachaVM: GachaViewModel
     let profileVM: ProfileViewModel
+    let communityLiteVM: CommunityLiteViewModel
     let settingsVM: SettingsViewModel
 
     var body: some View {
@@ -32,7 +33,7 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                ProfileView(vm: profileVM, gachaVM: gachaVM)
+                ProfileView(vm: profileVM, gachaVM: gachaVM, communityLiteVM: communityLiteVM)
             }
             .tabItem {
                 Label("プロフィール", systemImage: "person.crop.circle")

@@ -146,6 +146,13 @@ final class GachaViewModel: ObservableObject {
 
     @Published private(set) var selectedDecorationId: String = CardDecorationCatalog.classicId
     @Published private(set) var ownedCounts: [String: Int] = [CardDecorationCatalog.classicId: 1]
+    @Published private(set) var ownedRecords: [String: OwnedDecorationRecord] = [
+        CardDecorationCatalog.classicId: OwnedDecorationRecord(
+            acquisitionDate: .distantPast,
+            source: .defaultItem,
+            count: 1
+        )
+    ]
     @Published private(set) var profileDisplayName: String = "Me"
     @Published private(set) var profileUserId: String = "-"
     @Published private(set) var hasUnlimitedTickets: Bool = false
@@ -235,6 +242,7 @@ final class GachaViewModel: ObservableObject {
     }
 
     var allDecorations: [CardDecoration] { CardDecorationCatalog.all }
+    var allDecorationItems: [DecorationItem] { CardDecorationCatalog.items }
 
     private var seasonLimitedCatalog: [CardDecoration] {
         CardDecorationCatalog.all.filter { CardDecorationCatalog.isSeasonLimited($0.id) }
@@ -365,6 +373,10 @@ final class GachaViewModel: ObservableObject {
         }
     }
 
+    func itemMetadata(for id: String) -> DecorationItem? {
+        CardDecorationCatalog.item(for: id)
+    }
+
     func isOwned(_ id: String) -> Bool {
         (ownedCounts[id] ?? 0) > 0
     }
@@ -375,6 +387,10 @@ final class GachaViewModel: ObservableObject {
 
     func isSeasonLimited(_ id: String) -> Bool {
         CardDecorationCatalog.isSeasonLimited(id)
+    }
+
+    func ownedRecord(for id: String) -> OwnedDecorationRecord? {
+        ownedRecords[id]
     }
 
     func isSelected(_ id: String) -> Bool {
@@ -855,9 +871,17 @@ final class GachaViewModel: ObservableObject {
                 var counts = p.ownedDecorationCounts
                 counts[CardDecorationCatalog.classicId] = max(1, counts[CardDecorationCatalog.classicId] ?? 1)
                 counts[item.id, default: 0] += 1
+                var records = p.ownedDecorationRecords
+                let existingRecord = records[item.id]
+                records[item.id] = OwnedDecorationRecord(
+                    acquisitionDate: existingRecord?.acquisitionDate ?? Date(),
+                    source: existingRecord?.source ?? .exchange,
+                    count: counts[item.id] ?? 1
+                )
 
                 _ = update(
                     ownedDecorationCounts: counts,
+                    ownedDecorationRecords: records,
                     decorationShards: max(0, p.decorationShards - cost)
                 )
                 return .success(decorationId: item.id, name: item.name, cost: cost)
@@ -872,6 +896,12 @@ final class GachaViewModel: ObservableObject {
                 counts[CardDecorationCatalog.classicId] = max(1, counts[CardDecorationCatalog.classicId] ?? 1)
                 counts[decorationId, default: 0] += 1
                 self.ownedCounts = counts
+                let previousRecord = self.ownedRecords[decorationId]
+                self.ownedRecords[decorationId] = OwnedDecorationRecord(
+                    acquisitionDate: previousRecord?.acquisitionDate ?? Date(),
+                    source: previousRecord?.source ?? .exchange,
+                    count: counts[decorationId] ?? 1
+                )
                 self.shards = max(0, self.shards - cost)
                 self.lastMessage = "交換: 「\(name)」 (欠片-\(cost))"
                 self.appendSecurityAudit(
@@ -1085,8 +1115,16 @@ final class GachaViewModel: ObservableObject {
         profileUserId = p.userId
         seasonMilestoneClaimedIDs = loadSeasonMilestoneClaims(for: p.userId, weekKey: seasonWeekKey)
         ownedCounts = p.ownedDecorationCounts
+        ownedRecords = p.ownedDecorationRecords
         if (ownedCounts[CardDecorationCatalog.classicId] ?? 0) <= 0 {
             ownedCounts[CardDecorationCatalog.classicId] = 1
+        }
+        if ownedRecords[CardDecorationCatalog.classicId] == nil {
+            ownedRecords[CardDecorationCatalog.classicId] = OwnedDecorationRecord(
+                acquisitionDate: .distantPast,
+                source: .defaultItem,
+                count: 1
+            )
         }
         publishSeasonMilestoneUpdateIfNeeded()
     }
@@ -1104,6 +1142,25 @@ final class GachaViewModel: ObservableObject {
             counts[item.id, default: 0] += 1
         }
         ownedCounts = counts
+
+        var records = ownedRecords
+        if records[CardDecorationCatalog.classicId] == nil {
+            records[CardDecorationCatalog.classicId] = OwnedDecorationRecord(
+                acquisitionDate: .distantPast,
+                source: .defaultItem,
+                count: 1
+            )
+        }
+        let drawDate = Date()
+        for item in summary.drawn {
+            let existingRecord = records[item.id]
+            records[item.id] = OwnedDecorationRecord(
+                acquisitionDate: existingRecord?.acquisitionDate ?? drawDate,
+                source: existingRecord?.source ?? .freeGacha,
+                count: counts[item.id] ?? 1
+            )
+        }
+        ownedRecords = records
     }
 
     func recoverFromStuckSpinIfNeeded() {
@@ -1476,7 +1533,7 @@ final class GachaViewModel: ObservableObject {
     }
 }
 
-private extension CardDecorationRarity {
+extension CardDecorationRarity {
     var rank: Int {
         switch self {
         case .common: return 1

@@ -46,51 +46,28 @@ public enum GachaThemePresentation {
     }
 
     public static func flavorText(for item: CardDecoration) -> String {
-        let normalized = item.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        if containsAny(normalized, ["sakura", "paper", "linen", "cotton", "plaid"]) {
-            return "やわらかな余白と落ち着きで、言葉をやさしく包みます。"
-        }
-        if containsAny(normalized, ["ocean", "marine", "teal", "ripple", "tidal", "sonar"]) {
-            return "静かな波のような透明感で、気持ちを澄ませてくれるテーマです。"
-        }
-        if containsAny(normalized, ["neon", "hologram", "matrix", "arcade", "volt", "glitch"]) {
-            return "光のアクセントが一言を印象的に見せてくれる、都会的なデコレーションです。"
-        }
-        if containsAny(normalized, ["aurora", "crystal", "mint", "cloud", "nebula", "pearl", "sage"]) {
-            return "淡い光の重なりで、何気ない一日にも余韻を残してくれます。"
-        }
-        if containsAny(normalized, ["gold", "royal", "phoenix", "prism", "auric", "crown", "halo"]) {
-            return "視線を集める華やかさで、プロフィールもシェアカードもぐっと映えます。"
-        }
-        if containsAny(normalized, ["stardust", "starlight", "nova", "galaxy", "celestial", "zenith", "comet", "moonlit", "eclipse", "singularity"]) {
-            return "夜空のきらめきをまとって、ひとことに物語の余韻を添えます。"
-        }
-        if containsAny(normalized, ["noir", "graphite", "ink", "inkdrop", "obsidian", "brick", "fog"]) {
-            return "コントラストを効かせた落ち着いた質感で、言葉そのものを引き立てます。"
+        let metadata = CardDecorationCatalog.item(for: item.id)
+        if let flavorText = metadata?.flavorText, !flavorText.isEmpty {
+            return flavorText
         }
 
-        switch item.rarity {
-        case .common:
-            return "毎日の記録にそっと寄り添う、使いやすいベーシックテーマです。"
-        case .rare:
-            return "少し気分を変えたい日にちょうどいい、印象のあるテーマです。"
-        case .epic:
-            return "いつもの一文を、見返したくなる一枚に変えてくれます。"
-        case .legendary:
-            return "特別な存在感で、装備した瞬間に世界観が切り替わるテーマです。"
-        }
+        return fallbackFlavorText(for: item)
     }
 
     public static func usageText(for item: CardDecoration) -> String {
-        switch item.rarity {
-        case .common, .rare:
-            return "プロフィールカードとプレビューカードで雰囲気が変わります。"
-        case .epic:
-            return "プロフィールカード、結果プレビュー、共有カードで存在感を発揮します。"
-        case .legendary:
-            return "プロフィールカード、共有カード、結果プレビューで強い個性が出ます。"
+        let labels = applicableSurfaceLabels(for: item)
+        if labels.isEmpty {
+            switch item.rarity {
+            case .common, .rare:
+                return "プロフィールカードとプレビューカードで雰囲気が変わります。"
+            case .epic:
+                return "プロフィールカード、結果プレビュー、共有カードで存在感を発揮します。"
+            case .legendary:
+                return "プロフィールカード、共有カード、結果プレビューで強い個性が出ます。"
+            }
         }
+
+        return labels.joined(separator: "・") + " に反映されます。"
     }
 
     public static func sampleJournalAnswer(for item: CardDecoration) -> String {
@@ -112,6 +89,9 @@ public enum GachaThemePresentation {
 
     public static func sampleProfileLine(for item: CardDecoration, isEquipped: Bool) -> String {
         let base = isEquipped ? "現在の装備テーマ" : "プロフィールに反映できます"
+        if let title = profileTitle(for: item) {
+            return "\(base) ・ \(title)"
+        }
         switch item.rarity {
         case .common:
             return "\(base) ・ 日々の記録に寄り添う定番"
@@ -144,15 +124,128 @@ public enum GachaThemePresentation {
         let equipLine = isEquipped
             ? "いまはこのテーマを装備中です。"
             : "プロフィールやカードに反映できるテーマです。"
+        let titleLine = profileTitle(for: item).map { "プロフィール称号: \($0)" }
+        let templateLine = shareTemplateName(for: item).map { "共有スタイル: \($0)" }
 
-        return [
+        return (
+            [
             appDisplayName,
             "\(item.name) を引きました",
             rarity,
             flavor,
             equipLine
-        ]
+            ] + [titleLine, templateLine].compactMap { $0 }
+        )
         .joined(separator: "\n")
+    }
+
+    public static func decorationItem(for item: CardDecoration) -> DecorationItem {
+        CardDecorationCatalog.item(for: item.id)
+            ?? DecorationItem(
+                id: item.id,
+                displayName: item.name,
+                rarity: item.rarity,
+                flavorText: fallbackFlavorText(for: item),
+                itemType: .fullTheme,
+                applicableSurfaces: [.profileCard, .shareCard, .journalCard],
+                palette: DecorationPalette(primaryHex: "#93A1B0", secondaryHex: "#485362", accentHex: "#F2F5F8"),
+                previewStyle: .softCard
+            )
+    }
+
+    public static func revealPhrase(for item: CardDecoration) -> String {
+        decorationItem(for: item).revealPhraseOverride ?? revealPhrase(for: item.rarity)
+    }
+
+    public static func profileTitle(for item: CardDecoration) -> String? {
+        decorationItem(for: item).profileTitle
+    }
+
+    public static func shareTemplateName(for item: CardDecoration) -> String? {
+        decorationItem(for: item).shareTemplateName
+    }
+
+    public static func itemTypeLabel(for item: CardDecoration) -> String {
+        itemTypeLabel(for: decorationItem(for: item))
+    }
+
+    public static func itemTypeLabel(for item: DecorationItem) -> String {
+        switch item.itemType {
+        case .fullTheme:
+            return "テーマ"
+        case .background:
+            return "背景"
+        case .cardFrame:
+            return "カード枠"
+        case .sticker:
+            return "ステッカー"
+        case .badge:
+            return "バッジ"
+        case .profileTitle:
+            return "プロフィール称号"
+        case .shareTemplate:
+            return "共有テンプレート"
+        case .gachaRevealEffect:
+            return "開封演出"
+        case .promptPack:
+            return "お題パック"
+        case .journalPaper:
+            return "紙面テーマ"
+        case .auraStyle:
+            return "オーラ"
+        }
+    }
+
+    public static func applicableSurfaceLabels(for item: CardDecoration) -> [String] {
+        decorationItem(for: item).applicableSurfaces.map(surfaceLabel(for:))
+    }
+
+    public static func sampleShareCaption(for item: CardDecoration, isEquipped: Bool) -> String {
+        let template = shareTemplateName(for: item) ?? "ひとことカード"
+        let status = isEquipped ? "装備中" : "共有カードに反映可能"
+        return "\(template) ・ \(status)"
+    }
+
+    public static func surfaceLabel(for surface: DecorationSurface) -> String {
+        switch surface {
+        case .journalCard:
+            return "ひとことカード"
+        case .promptCard:
+            return "お題カード"
+        case .profileCard:
+            return "プロフィール"
+        case .shareCard:
+            return "共有カード"
+        case .gachaResultCard:
+            return "ガチャ結果"
+        case .gachaCapsule:
+            return "開封演出"
+        case .appBackground:
+            return "背景アクセント"
+        case .badge:
+            return "バッジ"
+        case .sticker:
+            return "ステッカー"
+        case .auraFrame:
+            return "オーラ枠"
+        case .titlePlate:
+            return "称号プレート"
+        case .collectionCard:
+            return "コレクション"
+        }
+    }
+
+    private static func fallbackFlavorText(for item: CardDecoration) -> String {
+        switch item.rarity {
+        case .common:
+            return "毎日の記録にそっと寄り添う、使いやすいベーシックテーマです。"
+        case .rare:
+            return "少し気分を変えたい日にちょうどいい、印象のあるテーマです。"
+        case .epic:
+            return "いつもの一文を、見返したくなる一枚に変えてくれます。"
+        case .legendary:
+            return "特別な存在感で、装備した瞬間に世界観が切り替わるテーマです。"
+        }
     }
 
     private static func containsAny(_ text: String, _ keywords: [String]) -> Bool {

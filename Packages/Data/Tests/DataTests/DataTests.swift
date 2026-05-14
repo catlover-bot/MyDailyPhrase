@@ -85,6 +85,44 @@ struct AppGroupUserProfileRepositoryTests {
         #expect(repo.getMyProfile() == nil)
     }
 
+    @Test("owned records and equipped set round-trip through persistence")
+    func persistsOwnedRecordsAndEquippedSet() {
+        let suite = makeSuiteName()
+        defer { cleanupSuite(suite) }
+
+        let repo = AppGroupUserProfileRepository(appGroupID: suite, forceSynchronizeOnWrite: true)
+        let profile = UserProfile(
+            userId: "u-rich",
+            displayName: "tester",
+            selectedDecorationId: "gold",
+            equippedDecorationSet: EquippedDecorationSet(primaryDecorationId: "gold"),
+            ownedDecorationCounts: [
+                CardDecorationCatalog.classicId: 1,
+                "gold": 2
+            ],
+            ownedDecorationRecords: [
+                CardDecorationCatalog.classicId: OwnedDecorationRecord(
+                    acquisitionDate: .distantPast,
+                    source: .defaultItem,
+                    count: 1
+                ),
+                "gold": OwnedDecorationRecord(
+                    acquisitionDate: Date(timeIntervalSince1970: 1234),
+                    source: .freeGacha,
+                    count: 2
+                )
+            ]
+        )
+
+        repo.saveMyProfile(profile)
+        let recovered = repo.getMyProfile()
+
+        #expect(recovered?.selectedDecorationId == "gold")
+        #expect(recovered?.equippedDecorationSet.primaryDecorationId == "gold")
+        #expect(recovered?.ownedDecorationRecords["gold"]?.count == 2)
+        #expect(recovered?.ownedDecorationRecords["gold"]?.source == .freeGacha)
+    }
+
     private func makeSuiteName() -> String {
         "group.MyDailyPhrase.tests.\(UUID().uuidString)"
     }

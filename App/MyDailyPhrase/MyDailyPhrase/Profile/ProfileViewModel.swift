@@ -839,9 +839,9 @@ final class ProfileViewModel: ObservableObject {
 
     var shareProfileText: String {
         """
-        MyDailyPhrase
-        Name: \(displayNameSavedValue)
-        User ID: \(userId)
+        ひとこと日記
+        \(displayNameSavedValue) のプロフィールカード
+        #ひとこと日記
         """
     }
 

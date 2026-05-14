@@ -20,8 +20,13 @@
   free/local gacha is exposed, while paid gacha / Creator Pass purchase UI remains disabled by feature flag for the first release candidate.
 - Build 1.0 (3) theme-preview additions:
   the gacha result flow now includes a visual theme preview, sample journal card, sample profile card, equip action, and native share action.
-- Community status:
-  community-related surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, and terms requirements are finalized.
+- Build 1.0 (3) generalized gacha assets:
+  owned items now behave as reusable local customization assets instead of one-off result labels.
+  Depending on item type, they can affect profile identity, share card styling, preview cards, journal-card previews, and collection cards.
+- Community Lite status:
+  a safe local-first social layer is available from Profile, centered on weekly challenges, profile card sharing, achievement sharing, and invite-link sharing through the native share sheet.
+- Public community status:
+  full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Current TestFlight build number:
   `1.0 (3)`
 - Archive dry-run status:
@@ -45,6 +50,7 @@
    - the gacha result preview screen
    - the collection screen with owned / locked / equipped states
    - the equipped profile card after applying a new theme
+   - the weekly challenge / Community Lite share preview flow
 
 3. Local reminder behavior must be verified on a real device.
    The code requests notification permission only after explicit opt-in and schedules a repeating local reminder, but real-device confirmation is still required before submission.
@@ -99,6 +105,7 @@
 - Gacha result screen showing visual preview, rarity, equip action, and share action
 - Collection screen showing owned / locked / equipped themes
 - Profile tab with local display name and decoration state visible
+- Community Lite weekly challenge and profile-share preview
 - Settings screen with privacy/support/reminder sections
 - iPhone SE screenshots
 - Standard iPhone screenshots
@@ -124,7 +131,13 @@
 - Confirm “あとで使う” leaves the current equipped theme unchanged
 - Confirm “結果を共有” opens the native share sheet only after explicit user action
 - Confirm obtained items appear later in コレクション with correct owned / equipped state
-- Confirm profile tab does not expose login, community, or paid purchase flows
+- Confirm equipped items still apply after relaunch
+- Confirm profile tab does not expose login, paid purchase flows, or unsafe public community UI
+- Open Community Lite from Profile
+- Confirm weekly challenge prompt and preview card render correctly
+- Confirm weekly challenge share does not include the private answer by default
+- Confirm profile / invite / achievement share actions all require explicit user action
+- Confirm no public feed, comments, likes, or ranking UI appear in the shipped flow
 - Enable reminders from Settings
 - Disable reminders from Settings
 - Change reminder time
@@ -145,6 +158,8 @@
 - Gacha reveal animation with Reduce Motion enabled
 - Gacha result preview layout on iPhone SE
 - Collection / preview sheet layout on iPhone SE
+- Community Lite layout on iPhone SE
+- Weekly challenge share preview with large Dynamic Type
 - Notification permission denied path
 - Notification permission allowed path
 
@@ -167,11 +182,16 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The TestFlight candidate now exposes existing local engagement surfaces through the main tab bar.
 - Build 3 adds a stronger local-only gacha loop:
   users can draw, see a visual preview immediately, equip the theme from the result screen, find it later in コレクション, and share the result via the native iOS share sheet.
+- Gacha items are now generalized reusable local assets:
+  item metadata includes surfaces / type / palette / preview behavior so rewards can affect more than one user-facing card.
 - Theme application scope for this build is intentionally local and review-safe:
-  equipped decorations visibly affect the profile card, gacha result preview, collection preview, and gacha share cards.
+  equipped decorations visibly affect the profile card, gacha result preview, collection preview, gacha share cards, and journal-card previews.
   The app does not force a full global reskin of every screen in this release.
+- Community Lite is intentionally scoped to App-Review-safe sharing:
+  weekly challenges, profile cards, streak cards, and invite cards are shared only through the native share sheet.
+  Private journal answers are not shared by default.
 - Paid gacha / Creator Pass purchase UI is intentionally disabled by feature flag for the first release candidate.
-- Community UI is intentionally deferred from the shipped root navigation until moderation, reporting, blocking, privacy, and terms work is complete.
+- Full public community UI is intentionally deferred until moderation, reporting, blocking, privacy, and terms work is complete.
 - Privacy and support URLs currently point to public GitHub pages. They can remain if they are intended to stay stable, but branded production URLs are preferable before final submission.
 
 ## TestFlight checklist

@@ -14,6 +14,7 @@ public struct DrawDecorationGachaUseCase: Sendable {
     private let get: GetMyProfileUseCase
     private let update: UpdateMyProfileUseCase
     private let hasUnlimitedTicketsForUserId: @Sendable (String) -> Bool
+    private let nowProvider: @Sendable () -> Date
 
     /// 天井（Legendary確定までの上限）
     private let pityThreshold: Int
@@ -22,12 +23,14 @@ public struct DrawDecorationGachaUseCase: Sendable {
         get: GetMyProfileUseCase,
         update: UpdateMyProfileUseCase,
         pityThreshold: Int = 80,
-        hasUnlimitedTicketsForUserId: @escaping @Sendable (String) -> Bool = { _ in false }
+        hasUnlimitedTicketsForUserId: @escaping @Sendable (String) -> Bool = { _ in false },
+        nowProvider: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.get = get
         self.update = update
         self.pityThreshold = max(1, pityThreshold)
         self.hasUnlimitedTicketsForUserId = hasUnlimitedTicketsForUserId
+        self.nowProvider = nowProvider
     }
 
     /// ✅ pickupMultipliers:
@@ -116,6 +119,7 @@ public struct DrawDecorationGachaUseCase: Sendable {
         _ = update(
             selectedDecorationId: p.selectedDecorationId,
             ownedDecorationCounts: p.ownedDecorationCounts,
+            ownedDecorationRecords: p.ownedDecorationRecords,
             decorationShards: p.decorationShards,
             pityCount: p.pityCount,
             gachaTickets: p.gachaTickets
@@ -145,10 +149,21 @@ public struct DrawDecorationGachaUseCase: Sendable {
 
         if prev == 0 {
             newIds.insert(item.id)
+            p.ownedDecorationRecords[item.id] = OwnedDecorationRecord(
+                acquisitionDate: nowProvider(),
+                source: .freeGacha,
+                count: 1
+            )
         } else {
             let add = duplicateShard(for: item.rarity)
             p.decorationShards += add
             shards += add
+            let existing = p.ownedDecorationRecords[item.id]
+            p.ownedDecorationRecords[item.id] = OwnedDecorationRecord(
+                acquisitionDate: existing?.acquisitionDate ?? nowProvider(),
+                source: existing?.source ?? .freeGacha,
+                count: prev + 1
+            )
         }
     }
 

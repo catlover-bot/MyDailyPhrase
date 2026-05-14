@@ -145,12 +145,14 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
     // ===== Card Decoration / Gacha =====
     public var selectedDecorationId: String
+    public var equippedDecorationSet: EquippedDecorationSet
 
     /// 互換用：古い実装との橋渡し（UIで “所持” 判定に使っている箇所があれば残す）
     public var ownedDecorationIds: [String]
 
     /// ✅ 新: 所持数（ここを正にすることで、アイテム管理が強くなる）
     public var ownedDecorationCounts: [String: Int]
+    public var ownedDecorationRecords: [String: OwnedDecorationRecord]
 
     /// ✅ 新: 重複時に貯まる欠片（後で交換所に使う）
     public var decorationShards: Int
@@ -178,8 +180,18 @@ public struct UserProfile: Codable, Equatable, Sendable {
         authAuditTrail: [AuthAuditEvent] = [],
         securityAuditTrail: [SecurityAuditEvent] = [],
         selectedDecorationId: String = CardDecorationCatalog.classicId,
+        equippedDecorationSet: EquippedDecorationSet = EquippedDecorationSet(
+            primaryDecorationId: CardDecorationCatalog.classicId
+        ),
         ownedDecorationIds: [String] = [CardDecorationCatalog.classicId],
         ownedDecorationCounts: [String: Int] = [CardDecorationCatalog.classicId: 1],
+        ownedDecorationRecords: [String: OwnedDecorationRecord] = [
+            CardDecorationCatalog.classicId: OwnedDecorationRecord(
+                acquisitionDate: .distantPast,
+                source: .defaultItem,
+                count: 1
+            )
+        ],
         decorationShards: Int = 0,
         pityCount: Int = 0,
         gachaTickets: Int = 0,
@@ -196,8 +208,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
         self.authAuditTrail = authAuditTrail
         self.securityAuditTrail = securityAuditTrail
         self.selectedDecorationId = selectedDecorationId
+        self.equippedDecorationSet = equippedDecorationSet
         self.ownedDecorationIds = ownedDecorationIds
         self.ownedDecorationCounts = ownedDecorationCounts
+        self.ownedDecorationRecords = ownedDecorationRecords
         self.decorationShards = decorationShards
         self.pityCount = pityCount
         self.gachaTickets = gachaTickets
@@ -218,8 +232,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
         case authAuditTrail
         case securityAuditTrail
         case selectedDecorationId
+        case equippedDecorationSet
         case ownedDecorationIds
         case ownedDecorationCounts
+        case ownedDecorationRecords
         case decorationShards
         case pityCount
         case gachaTickets
@@ -244,11 +260,26 @@ public struct UserProfile: Codable, Equatable, Sendable {
         }
 
         self.selectedDecorationId = try c.decodeIfPresent(String.self, forKey: .selectedDecorationId) ?? CardDecorationCatalog.classicId
+        self.equippedDecorationSet = try c.decodeIfPresent(EquippedDecorationSet.self, forKey: .equippedDecorationSet)
+            ?? EquippedDecorationSet(primaryDecorationId: self.selectedDecorationId)
         self.ownedDecorationIds = try c.decodeIfPresent([String].self, forKey: .ownedDecorationIds) ?? [CardDecorationCatalog.classicId]
 
         // ✅ 新フィールドが無い古いJSONは ownedDecorationIds から復元
         self.ownedDecorationCounts = try c.decodeIfPresent([String: Int].self, forKey: .ownedDecorationCounts)
             ?? Dictionary(uniqueKeysWithValues: self.ownedDecorationIds.map { ($0, 1) })
+        self.ownedDecorationRecords = try c.decodeIfPresent([String: OwnedDecorationRecord].self, forKey: .ownedDecorationRecords)
+            ?? Dictionary(
+                uniqueKeysWithValues: self.ownedDecorationCounts.map { key, count in
+                    (
+                        key,
+                        OwnedDecorationRecord(
+                            acquisitionDate: .distantPast,
+                            source: key == CardDecorationCatalog.classicId ? .defaultItem : .event,
+                            count: max(0, count)
+                        )
+                    )
+                }
+            )
 
         self.decorationShards = try c.decodeIfPresent(Int.self, forKey: .decorationShards) ?? 0
         self.pityCount = try c.decodeIfPresent(Int.self, forKey: .pityCount) ?? 0
@@ -289,23 +320,58 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
         let validDecorationIDs = Set(CardDecorationCatalog.all.map(\.id))
 
-        var sanitizedCounts: [String: Int] = [:]
-        sanitizedCounts.reserveCapacity(ownedDecorationCounts.count)
+        var mergedRecords: [String: OwnedDecorationRecord] = [:]
+        mergedRecords.reserveCapacity(max(ownedDecorationCounts.count, ownedDecorationRecords.count))
+
         for (id, rawCount) in ownedDecorationCounts {
             guard validDecorationIDs.contains(id) else { continue }
             let normalizedCount = min(Self.maxOwnedDecorationCountPerId, max(0, rawCount))
-            if normalizedCount > 0 {
-                sanitizedCounts[id] = normalizedCount
+            guard normalizedCount > 0 else { continue }
+            let existing = ownedDecorationRecords[id]
+            mergedRecords[id] = OwnedDecorationRecord(
+                acquisitionDate: existing?.acquisitionDate ?? .distantPast,
+                source: existing?.source ?? (id == CardDecorationCatalog.classicId ? .defaultItem : .event),
+                count: normalizedCount
+            )
+        }
+
+        for (id, record) in ownedDecorationRecords {
+            guard validDecorationIDs.contains(id) else { continue }
+            let normalizedCount = min(Self.maxOwnedDecorationCountPerId, max(0, record.count))
+            guard normalizedCount > 0 else { continue }
+
+            if let existing = mergedRecords[id] {
+                mergedRecords[id] = OwnedDecorationRecord(
+                    acquisitionDate: min(existing.acquisitionDate, record.acquisitionDate),
+                    source: existing.source == .defaultItem ? record.source : existing.source,
+                    count: max(existing.count, normalizedCount)
+                )
+            } else {
+                mergedRecords[id] = OwnedDecorationRecord(
+                    acquisitionDate: record.acquisitionDate,
+                    source: record.source,
+                    count: normalizedCount
+                )
             }
         }
-        ownedDecorationCounts = sanitizedCounts
 
-        // classic は必ず所持
-        if (ownedDecorationCounts[CardDecorationCatalog.classicId] ?? 0) <= 0 {
-            ownedDecorationCounts[CardDecorationCatalog.classicId] = 1
+        if let classic = mergedRecords[CardDecorationCatalog.classicId] {
+            mergedRecords[CardDecorationCatalog.classicId] = OwnedDecorationRecord(
+                acquisitionDate: classic.acquisitionDate,
+                source: .defaultItem,
+                count: max(1, classic.count)
+            )
+        } else {
+            mergedRecords[CardDecorationCatalog.classicId] = OwnedDecorationRecord(
+                acquisitionDate: .distantPast,
+                source: .defaultItem,
+                count: 1
+            )
         }
 
-        // ownedDecorationIds は counts から再生成（互換維持）
+        ownedDecorationRecords = mergedRecords
+        ownedDecorationCounts = mergedRecords.mapValues(\.count)
+
         ownedDecorationIds = ownedDecorationCounts
             .filter { $0.value > 0 }
             .map { $0.key }
@@ -320,6 +386,20 @@ public struct UserProfile: Codable, Equatable, Sendable {
             || (ownedDecorationCounts[selectedDecorationId] ?? 0) <= 0 {
             selectedDecorationId = CardDecorationCatalog.classicId
         }
+
+        equippedDecorationSet.primaryDecorationId = selectedDecorationId
+        let selectedItem = CardDecorationCatalog.item(for: selectedDecorationId)
+
+        func equippedIDIfEligible(_ type: DecorationItemType) -> String? {
+            guard selectedItem?.itemType == type else { return nil }
+            return selectedDecorationId
+        }
+
+        equippedDecorationSet.profileTitleDecorationId = equippedIDIfEligible(.profileTitle)
+        equippedDecorationSet.shareTemplateDecorationId = equippedIDIfEligible(.shareTemplate)
+        equippedDecorationSet.badgeDecorationId = equippedIDIfEligible(.badge)
+        equippedDecorationSet.stickerDecorationId = equippedIDIfEligible(.sticker)
+        equippedDecorationSet.auraDecorationId = equippedIDIfEligible(.auraStyle)
 
         decorationShards = min(Self.maxDecorationShards, max(0, decorationShards))
         pityCount = min(Self.maxPityCount, max(0, pityCount))
