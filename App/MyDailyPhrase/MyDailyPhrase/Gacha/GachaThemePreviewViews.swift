@@ -1,0 +1,470 @@
+import SwiftUI
+import UIKit
+import Domain
+import Presentation
+
+struct GachaThemePreviewContent: View {
+    let item: CardDecoration
+    let ownedCount: Int
+    let isOwned: Bool
+    let isEquipped: Bool
+    let profileDisplayName: String
+
+    private var ownershipState: GachaThemeOwnershipState {
+        GachaThemePresentation.ownershipState(isOwned: isOwned, isEquipped: isEquipped)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            heroCard
+            journalPreviewCard
+            profilePreviewCard
+            usageCard
+        }
+    }
+
+    private var heroCard: some View {
+        Card(nil, decorationId: item.id) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.name)
+                            .font(.system(.title2, design: .rounded, weight: .bold))
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(GachaThemePresentation.revealPhrase(for: item.rarity))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    VStack(alignment: .trailing, spacing: 8) {
+                        GachaRarityBadge(rarity: item.rarity)
+                        GachaOwnershipBadge(state: ownershipState)
+                    }
+                }
+
+                Text(GachaThemePresentation.flavorText(for: item))
+                    .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        detailChip(systemImage: "sparkles", text: ownershipState.label)
+                        detailChip(systemImage: "shippingbox", text: isOwned ? "所持 x\(max(1, ownedCount))" : "コレクション未登録")
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        detailChip(systemImage: "sparkles", text: ownershipState.label)
+                        detailChip(systemImage: "shippingbox", text: isOwned ? "所持 x\(max(1, ownedCount))" : "コレクション未登録")
+                    }
+                }
+            }
+        }
+    }
+
+    private var journalPreviewCard: some View {
+        Card("ひとことカード", decorationId: item.id) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("サンプルお題", systemImage: "text.quote")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text("今日の終わりに、残しておきたい気持ちは？")
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(GachaThemePresentation.sampleJournalAnswer(for: item))
+                    .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var profilePreviewCard: some View {
+        Card("プロフィールカード", decorationId: item.id) {
+            HStack(alignment: .center, spacing: 12) {
+                Circle()
+                    .fill(item.rarity.previewAccent.opacity(0.22))
+                    .frame(width: 54, height: 54)
+                    .overlay {
+                        Text(profileInitial)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(item.rarity.previewAccent)
+                    }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(profileDisplayName)
+                            .font(.headline)
+                        if isEquipped {
+                            Text("装備中")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(item.rarity.previewAccent.opacity(0.18))
+                                .clipShape(Capsule())
+                        }
+                    }
+
+                    Text(GachaThemePresentation.sampleProfileLine(for: item, isEquipped: isEquipped))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var usageCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("どこで使われる？", systemImage: "rectangle.on.rectangle.angled")
+                .font(.subheadline.weight(.semibold))
+
+            Text(GachaThemePresentation.usageText(for: item))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var profileInitial: String {
+        let trimmed = profileDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String((trimmed.isEmpty ? "M" : trimmed).prefix(1)).uppercased()
+    }
+
+    private func detailChip(systemImage: String, text: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+    }
+}
+
+struct GachaCollectionTile: View {
+    let item: CardDecoration
+    let ownedCount: Int
+    let isOwned: Bool
+    let isEquipped: Bool
+    let onTap: () -> Void
+
+    private var ownershipState: GachaThemeOwnershipState {
+        GachaThemePresentation.ownershipState(isOwned: isOwned, isEquipped: isEquipped)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 10) {
+                Card(nil, decorationId: item.id) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top) {
+                            GachaRarityBadge(rarity: item.rarity)
+                            Spacer()
+                            if isEquipped {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(item.rarity.previewAccent)
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Text(item.name)
+                            .font(.headline.weight(.semibold))
+                            .lineLimit(1)
+
+                        Text(GachaThemePresentation.flavorText(for: item))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(height: 146)
+                .opacity(isOwned ? 1.0 : 0.72)
+
+                HStack(alignment: .center, spacing: 8) {
+                    GachaOwnershipBadge(state: ownershipState)
+                    Spacer(minLength: 0)
+                    Text(isOwned ? "x\(max(1, ownedCount))" : "Preview")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct GachaThemePreviewSheet: View {
+    let item: CardDecoration
+    let ownedCount: Int
+    let isOwned: Bool
+    let isEquipped: Bool
+    let profileDisplayName: String
+    let onEquip: () -> Void
+    let onShare: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                GachaThemePreviewContent(
+                    item: item,
+                    ownedCount: ownedCount,
+                    isOwned: isOwned,
+                    isEquipped: isEquipped,
+                    profileDisplayName: profileDisplayName
+                )
+                .padding(16)
+            }
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .navigationTitle(item.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("閉じる") {
+                        dismiss()
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                actionBar
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionBar: some View {
+        VStack(spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    equipButton
+                    laterButton
+                }
+
+                VStack(spacing: 10) {
+                    equipButton
+                    laterButton
+                }
+            }
+
+            if FeatureFlags.nativeSharingEnabled && isOwned {
+                Button {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                        onShare()
+                    }
+                } label: {
+                    Label("カードを共有", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(.ultraThinMaterial)
+    }
+
+    private var equipButton: some View {
+        Button {
+            onEquip()
+        } label: {
+            Label(isEquipped ? "現在装備中" : "プロフィールに反映", systemImage: isEquipped ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(!isOwned || isEquipped)
+    }
+
+    private var laterButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Label(isOwned ? "あとで使う" : "閉じる", systemImage: "xmark")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+    }
+}
+
+struct GachaShareCardModel: Equatable {
+    let appName: String
+    let itemName: String
+    let rarityLabel: String
+    let flavorText: String
+    let revealPhrase: String
+    let statusLine: String
+    let decorationId: String
+}
+
+struct GachaShareCardView: View {
+    let model: GachaShareCardModel
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.secondarySystemBackground),
+                    Color(.systemBackground)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(model.appName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("ガチャで新しいテーマを獲得")
+                            .font(.title2.weight(.bold))
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Text(model.rarityLabel)
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                }
+
+                Card(nil, decorationId: model.decorationId) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(model.itemName)
+                            .font(.system(.title, design: .rounded, weight: .bold))
+                        Text(model.revealPhrase)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(model.flavorText)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(height: 180)
+
+                HStack(spacing: 12) {
+                    Card("ひとことカード", decorationId: model.decorationId) {
+                        Text("短い一言でも、今日はちゃんと残しておきたい。")
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Card("プロフィール", decorationId: model.decorationId) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Me")
+                                .font(.headline)
+                            Text(model.statusLine)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Text(model.statusLine)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(18)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.black.opacity(0.06), lineWidth: 1)
+        )
+        .padding(18)
+    }
+}
+
+@MainActor
+enum GachaShareCardRenderer {
+    static func render(
+        model: GachaShareCardModel,
+        size: CGSize = CGSize(width: 360, height: 640),
+        scale: CGFloat = 3.0
+    ) -> ShareImage? {
+        let content = GachaShareCardView(model: model)
+            .frame(width: size.width, height: size.height)
+            .background(Color(.systemBackground))
+            .environment(\.colorScheme, .light)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = scale
+        renderer.isOpaque = true
+
+        guard let uiImage = renderer.uiImage else { return nil }
+        return ShareImage(image: uiImage)
+    }
+}
+
+struct GachaRarityBadge: View {
+    let rarity: CardDecorationRarity
+
+    var body: some View {
+        Label(GachaThemePresentation.rarityLabel(for: rarity), systemImage: "sparkles")
+            .font(.caption.weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(rarity.previewAccent.opacity(0.18))
+            .foregroundStyle(rarity.previewAccent)
+            .clipShape(Capsule())
+    }
+}
+
+struct GachaOwnershipBadge: View {
+    let state: GachaThemeOwnershipState
+
+    var body: some View {
+        Text(state.label)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(backgroundColor.opacity(0.14))
+            .foregroundStyle(backgroundColor)
+            .clipShape(Capsule())
+    }
+
+    private var backgroundColor: Color {
+        switch state {
+        case .equipped:
+            return .green
+        case .owned:
+            return .secondary
+        case .locked:
+            return .orange
+        }
+    }
+}
+
+private extension CardDecorationRarity {
+    var previewAccent: Color {
+        switch self {
+        case .common:
+            return .gray
+        case .rare:
+            return .blue
+        case .epic:
+            return .purple
+        case .legendary:
+            return .orange
+        }
+    }
+}

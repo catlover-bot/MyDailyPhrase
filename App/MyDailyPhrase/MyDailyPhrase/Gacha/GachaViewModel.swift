@@ -369,6 +369,10 @@ final class GachaViewModel: ObservableObject {
         (ownedCounts[id] ?? 0) > 0
     }
 
+    func ownedCount(for id: String) -> Int {
+        max(0, ownedCounts[id] ?? 0)
+    }
+
     func isSeasonLimited(_ id: String) -> Bool {
         CardDecorationCatalog.isSeasonLimited(id)
     }
@@ -1100,11 +1104,6 @@ final class GachaViewModel: ObservableObject {
             counts[item.id, default: 0] += 1
         }
         ownedCounts = counts
-
-        if let maxRank = summary.drawn.map({ $0.rarity.rank }).max(),
-           let best = summary.drawn.last(where: { $0.rarity.rank == maxRank }) {
-            selectedDecorationId = best.id
-        }
     }
 
     func recoverFromStuckSpinIfNeeded() {

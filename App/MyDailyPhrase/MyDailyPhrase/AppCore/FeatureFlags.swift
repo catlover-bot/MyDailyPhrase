@@ -3,4 +3,6 @@ enum FeatureFlags {
     static let communityEnabled = false
     static let externalAccountLinkingEnabled = false
     static let advancedProfileToolsEnabled = false
+    static let nativeSharingEnabled = true
+    static let themePreviewEnabled = true
 }

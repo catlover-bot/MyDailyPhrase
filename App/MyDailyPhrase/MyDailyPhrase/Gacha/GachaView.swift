@@ -8,6 +8,7 @@ struct GachaView: View {
     @ObservedObject var vm: GachaViewModel
     @EnvironmentObject private var iap: IAPStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var tab: Tab = .gacha
     @State private var revealSummary: GachaDrawSummary? = nil
@@ -21,12 +22,15 @@ struct GachaView: View {
     @State private var showsErrorAlert = false
     @State private var showsDiagnostics = false
     @State private var drawTapLockedUntil: Date? = nil
+    @State private var previewItem: CardDecoration? = nil
+    @State private var shareSheetItems: [Any] = []
+    @State private var isPresentingShareSheet = false
 
     enum Tab: String {
         case gacha = "ガチャ"
         case inventory = "所持"
         case exchange = "交換"
-        case book = "図鑑"
+        case book = "コレクション"
         case history = "履歴"
         case shop = "購入"
     }
@@ -99,7 +103,12 @@ struct GachaView: View {
                 GachaCinematicOverlay(
                     mode: mode,
                     pityMax: vm.pityMax,
+                    profileDisplayName: vm.profileDisplayName,
+                    equippedDecorationId: vm.selectedDecorationId,
                     onSkip: { skipReveal() },
+                    onEquip: { vm.selectDecoration(id: $0) },
+                    onShare: { presentThemeShare(for: $0) },
+                    onDrawAgain: canRepeatLastDraw ? { repeatLastDraw() } : nil,
                     onClose: { closeCinematic() }
                 )
                 .transition(.opacity)
@@ -124,6 +133,24 @@ struct GachaView: View {
             }
         } message: {
             Text(vm.currentErrorText ?? "不明なエラーが発生しました")
+        }
+        .sheet(item: $previewItem) { item in
+            GachaThemePreviewSheet(
+                item: item,
+                ownedCount: vm.ownedCount(for: item.id),
+                isOwned: vm.isOwned(item.id),
+                isEquipped: vm.isSelected(item.id),
+                profileDisplayName: vm.profileDisplayName,
+                onEquip: {
+                    vm.selectDecoration(id: item.id)
+                },
+                onShare: {
+                    presentThemeShare(for: item)
+                }
+            )
+        }
+        .sheet(isPresented: $isPresentingShareSheet) {
+            ShareSheet(activityItems: shareSheetItems)
         }
         .onDisappear {
             revealTask?.cancel()
@@ -269,6 +296,20 @@ struct GachaView: View {
     private var gachaPanel: some View {
         VStack(spacing: 12) {
             bannerCard
+
+            if FeatureFlags.themePreviewEnabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("テーマはプロフィール・共有カード・プレビューで見た目が変わります", systemImage: "sparkles.rectangle.stack")
+                        .font(.subheadline.weight(.semibold))
+                    Text("抽選後は、その場でプレビュー確認・装備・共有までできます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
 
             if FeatureFlags.communityEnabled && vm.seasonLimitedTotalCount > 0 {
                 VStack(alignment: .leading, spacing: 8) {
@@ -503,8 +544,27 @@ struct GachaView: View {
 
     private var inventoryPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("所持アイテム")
-                .font(.headline)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("所持アイテム")
+                        .font(.headline)
+                    Text("タップすると見た目を確認して、あとから装備できます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if FeatureFlags.nativeSharingEnabled,
+                   let equippedItem = CardDecorationCatalog.byId(vm.selectedDecorationId) {
+                    Button {
+                        presentThemeShare(for: equippedItem)
+                    } label: {
+                        Label("装備中を共有", systemImage: "square.and.arrow.up")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
 
             if FeatureFlags.communityEnabled && vm.seasonLimitedTotalCount > 0 {
                 VStack(alignment: .leading, spacing: 6) {
@@ -522,17 +582,15 @@ struct GachaView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                 ForEach(vm.ownedDecorations, id: \.item.id) { x in
-                    itemCard(
-                        title: x.item.name,
-                        subtitle: x.item.rarity.rawValue.uppercased(),
-                        trailing: "×\(x.count)",
-                        isSelected: vm.isSelected(x.item.id),
-                        isLocked: vm.isActionRunning,
-                        badge: vm.isSeasonLimited(x.item.id) ? "限定" : nil
+                    GachaCollectionTile(
+                        item: x.item,
+                        ownedCount: x.count,
+                        isOwned: true,
+                        isEquipped: vm.isSelected(x.item.id)
                     ) {
-                        vm.selectDecoration(id: x.item.id)
+                        previewItem = x.item
                     }
                 }
             }
@@ -555,7 +613,7 @@ struct GachaView: View {
 
                     itemCard(
                         title: d.name,
-                        subtitle: d.rarity.rawValue.uppercased(),
+                        subtitle: GachaThemePresentation.rarityLabel(for: d.rarity),
                         trailing: "欠片 \(cost)",
                         isSelected: vm.isSelected(d.id),
                         isLocked: !affordable || vm.isActionRunning,
@@ -570,30 +628,29 @@ struct GachaView: View {
 
     private var bookPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("図鑑（全アイテム）")
+            Text("コレクション")
                 .font(.headline)
+
+            Text("所持・未所持・装備中をまとめて確認できます。未所持アイテムもプレビュー可能です。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                ForEach(vm.allDecorations, id: \.id) { d in
+                    GachaCollectionTile(
+                        item: d,
+                        ownedCount: vm.ownedCount(for: d.id),
+                        isOwned: vm.isOwned(d.id),
+                        isEquipped: vm.isSelected(d.id)
+                    ) {
+                        previewItem = d
+                    }
+                }
+            }
 
             Text("※「限定」アイテムは通常ガチャ対象外です")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
-                ForEach(vm.allDecorations, id: \.id) { d in
-                    let owned = vm.isOwned(d.id)
-                    itemCard(
-                        title: d.name,
-                        subtitle: d.rarity.rawValue.uppercased(),
-                        trailing: owned ? "所持" : "未所持",
-                        isSelected: vm.isSelected(d.id),
-                        isLocked: !owned || vm.isActionRunning,
-                        badge: vm.isSeasonLimited(d.id) ? "限定" : nil
-                    ) {
-                        if owned { vm.selectDecoration(id: d.id) }
-                        else if vm.isSeasonLimited(d.id) { vm.lastMessage = "期間限定デコです。通常ガチャ対象外です" }
-                        else { vm.lastMessage = "未所持です。ガチャで獲得できます" }
-                    }
-                }
-            }
         }
     }
 
@@ -882,7 +939,12 @@ struct GachaView: View {
                 revealIndex = i
                 let drawn = summary.drawn
                 let isLegendary = drawn.indices.contains(i) && drawn[i].rarity == .legendary
-                let wait = isLegendary ? 420_000_000 : 260_000_000
+                let wait: UInt64
+                if reduceMotion {
+                    wait = isLegendary ? 180_000_000 : 120_000_000
+                } else {
+                    wait = isLegendary ? 420_000_000 : 260_000_000
+                }
                 try? await Task.sleep(nanoseconds: UInt64(wait))
             }
             if !Task.isCancelled {
@@ -923,6 +985,43 @@ struct GachaView: View {
         spinStartedAt = nil
         revealSummary = nil
         vm.closeResult()
+    }
+
+    private var canRepeatLastDraw: Bool {
+        vm.canDraw(count: lastDrawCount)
+    }
+
+    private func repeatLastDraw() {
+        requestDraw(count: lastDrawCount) {
+            if lastDrawCount >= 10 {
+                vm.drawTen()
+            } else {
+                vm.drawOnce()
+            }
+        }
+    }
+
+    private func presentThemeShare(for item: CardDecoration) {
+        guard FeatureFlags.nativeSharingEnabled else { return }
+
+        let model = GachaShareCardModel(
+            appName: "ひとこと日記",
+            itemName: item.name,
+            rarityLabel: GachaThemePresentation.rarityLabel(for: item.rarity),
+            flavorText: GachaThemePresentation.flavorText(for: item),
+            revealPhrase: GachaThemePresentation.revealPhrase(for: item.rarity),
+            statusLine: vm.isSelected(item.id) ? "現在プロフィールに反映中" : "プロフィールや共有カードに反映できます",
+            decorationId: item.id
+        )
+
+        let text = GachaThemePresentation.shareText(
+            appDisplayName: "ひとこと日記",
+            item: item,
+            isEquipped: vm.isSelected(item.id)
+        )
+        let image = GachaShareCardRenderer.render(model: model)?.image
+        shareSheetItems = ShareItemsBuilder.build(text: text, image: image, url: nil)
+        isPresentingShareSheet = true
     }
 
     private func featuredDisplayName(_ id: String) -> String {

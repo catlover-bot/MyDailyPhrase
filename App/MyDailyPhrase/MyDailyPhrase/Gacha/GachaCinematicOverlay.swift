@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import Domain
+import Presentation
 
 struct GachaCinematicOverlay: View {
 
@@ -18,11 +19,18 @@ struct GachaCinematicOverlay: View {
 
     let mode: Mode
     let pityMax: Int
+    let profileDisplayName: String
+    let equippedDecorationId: String
     let onSkip: () -> Void
+    let onEquip: (String) -> Void
+    let onShare: (CardDecoration) -> Void
+    let onDrawAgain: (() -> Void)?
     let onClose: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rotate = false
     @State private var pulse = false
+    @State private var selectedResultItemID: String?
 
     var body: some View {
         ZStack {
@@ -40,8 +48,13 @@ struct GachaCinematicOverlay: View {
             if !isSpinningMode {
                 portalBackground
                     .opacity(pulse ? 1.0 : 0.8)
-                    .scaleEffect(pulse ? 1.03 : 0.97)
-                    .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
+                    .scaleEffect(reduceMotion ? 1.0 : (pulse ? 1.03 : 0.97))
+                    .animation(
+                        reduceMotion
+                            ? .easeOut(duration: 0.18)
+                            : .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
+                        value: pulse
+                    )
             }
 
             VStack(spacing: 14) {
@@ -72,6 +85,10 @@ struct GachaCinematicOverlay: View {
         .onAppear {
             rotate = true
             pulse = true
+            synchronizeSelection(for: mode)
+        }
+        .onChange(of: mode) { _, newMode in
+            synchronizeSelection(for: newMode)
         }
     }
 
@@ -217,7 +234,8 @@ struct GachaCinematicOverlay: View {
                     FlipRevealCard(
                         item: item,
                         isNew: summary.newIds.contains(item.id),
-                        accent: theme.primary
+                        accent: theme.primary,
+                        reduceMotion: reduceMotion
                     )
                     .id("\(item.id)_\(safeIndex)")
                     .frame(maxWidth: .infinity)
@@ -232,12 +250,27 @@ struct GachaCinematicOverlay: View {
 
     private func resultView(summary: GachaDrawSummary) -> some View {
         let newCount = summary.newIds.count
+        let selectedItem = selectedResultItem(in: summary)
+        let canRepeat = onDrawAgain != nil
 
         return panelContainer {
-            VStack(spacing: 12) {
-                Text("結果")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("結果")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("見た目を確認して、その場で装備できます")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.76))
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if let selectedItem {
+                        GachaRarityBadge(rarity: selectedItem.rarity)
+                    }
+                }
 
                 HStack(spacing: 8) {
                     resultChip(title: "NEW", value: "\(newCount)")
@@ -245,24 +278,80 @@ struct GachaCinematicOverlay: View {
                     resultChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)")
                 }
 
-                LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
-                    ForEach(Array(summary.drawn.enumerated()), id: \.offset) { _, d in
-                        let isNew = summary.newIds.contains(d.id)
-                        MiniResultCard(item: d, isNew: isNew, accent: theme.primary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let selectedItem {
+                            GachaThemePreviewContent(
+                                item: selectedItem,
+                                ownedCount: max(1, summary.drawn.filter { $0.id == selectedItem.id }.count),
+                                isOwned: true,
+                                isEquipped: equippedDecorationId == selectedItem.id,
+                                profileDisplayName: profileDisplayName
+                            )
+                            .id("preview_\(selectedItem.id)_\(equippedDecorationId)")
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.98))
+                            )
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("今回の獲得アイテム")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.88))
+
+                            LazyVGrid(columns: [.init(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
+                                ForEach(Array(summary.drawn.enumerated()), id: \.offset) { _, item in
+                                    let isNew = summary.newIds.contains(item.id)
+                                    MiniResultCard(
+                                        item: item,
+                                        isNew: isNew,
+                                        isSelected: selectedItem?.id == item.id,
+                                        accent: theme.primary
+                                    ) {
+                                        selectedResultItemID = item.id
+                                        Haptics.impact(.soft)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                .scrollIndicators(.hidden)
 
-                Button {
-                    onClose()
-                    Haptics.impact(.light)
-                } label: {
-                    Text("閉じる")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                VStack(spacing: 10) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            equipButton(for: selectedItem)
+                            shareButton(for: selectedItem)
+                        }
+
+                        VStack(spacing: 10) {
+                            equipButton(for: selectedItem)
+                            shareButton(for: selectedItem)
+                        }
+                    }
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            laterButton
+                            if canRepeat {
+                                drawAgainButton
+                            }
+                        }
+
+                        VStack(spacing: 10) {
+                            laterButton
+                            if canRepeat {
+                                drawAgainButton
+                            }
+                        }
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("gacha.cinematic.result.close")
+                .padding(.top, 2)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -282,14 +371,20 @@ struct GachaCinematicOverlay: View {
             Circle()
                 .strokeBorder(theme.highlight.opacity(0.16), lineWidth: 2)
                 .frame(width: 300, height: 300)
-                .rotationEffect(.degrees(rotate ? 360 : 0))
-                .animation(.linear(duration: 6.0).repeatForever(autoreverses: false), value: rotate)
+                .rotationEffect(.degrees(reduceMotion ? 0 : (rotate ? 360 : 0)))
+                .animation(
+                    reduceMotion ? .default : .linear(duration: 6.0).repeatForever(autoreverses: false),
+                    value: rotate
+                )
 
             Circle()
                 .strokeBorder(theme.primary.opacity(0.14), lineWidth: 1)
                 .frame(width: 380, height: 380)
-                .rotationEffect(.degrees(rotate ? -360 : 0))
-                .animation(.linear(duration: 8.0).repeatForever(autoreverses: false), value: rotate)
+                .rotationEffect(.degrees(reduceMotion ? 0 : (rotate ? -360 : 0)))
+                .animation(
+                    reduceMotion ? .default : .linear(duration: 8.0).repeatForever(autoreverses: false),
+                    value: rotate
+                )
         }
         .frame(width: 520, height: 520)
     }
@@ -362,25 +457,102 @@ struct GachaCinematicOverlay: View {
         case .legendary: return 4
         }
     }
+
+    private func selectedResultItem(in summary: GachaDrawSummary) -> CardDecoration? {
+        if let selectedResultItemID,
+           let selected = summary.drawn.last(where: { $0.id == selectedResultItemID }) {
+            return selected
+        }
+        return defaultResultItem(in: summary)
+    }
+
+    private func defaultResultItem(in summary: GachaDrawSummary) -> CardDecoration? {
+        let newItems = summary.drawn.filter { summary.newIds.contains($0.id) }
+        let source = newItems.isEmpty ? summary.drawn : newItems
+        guard let maxRank = source.map({ rank($0.rarity) }).max() else { return nil }
+        return source.last(where: { rank($0.rarity) == maxRank })
+    }
+
+    private func synchronizeSelection(for mode: Mode) {
+        guard case .result(let summary) = mode else { return }
+        selectedResultItemID = defaultResultItem(in: summary)?.id
+    }
+
+    private func equipButton(for item: CardDecoration?) -> some View {
+        Button {
+            guard let item else { return }
+            onEquip(item.id)
+            Haptics.notify(.success)
+        } label: {
+            Label(
+                item.map { equippedDecorationId == $0.id ? "現在装備中" : "今すぐ使う" } ?? "今すぐ使う",
+                systemImage: item.map { equippedDecorationId == $0.id ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark" } ?? "person.crop.circle.badge.checkmark"
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(item == nil || item.map { equippedDecorationId == $0.id } == true)
+    }
+
+    private func shareButton(for item: CardDecoration?) -> some View {
+        Button {
+            guard let item else { return }
+            onShare(item)
+            Haptics.impact(.light)
+        } label: {
+            Label("結果を共有", systemImage: "square.and.arrow.up")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+        .disabled(item == nil || !FeatureFlags.nativeSharingEnabled)
+    }
+
+    private var laterButton: some View {
+        Button {
+            onClose()
+            Haptics.impact(.light)
+        } label: {
+            Label("あとで使う", systemImage: "clock")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("gacha.cinematic.result.close")
+    }
+
+    private var drawAgainButton: some View {
+        Button {
+            onDrawAgain?()
+            Haptics.impact(.medium)
+        } label: {
+            Label("もう一回ひく", systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+    }
 }
 
 private struct FlipRevealCard: View {
     let item: CardDecoration
     let isNew: Bool
     let accent: Color
+    let reduceMotion: Bool
 
     @State private var flipped = false
 
     var body: some View {
         ZStack {
-            if flipped && item.rarity == .legendary {
+            if flipped && item.rarity == .legendary && !reduceMotion {
                 LegendaryHalo(accent: accent)
             }
 
             Group {
                 if flipped {
                     Card(nil, decorationId: item.id) {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text(item.name)
                                     .font(.title3.weight(.bold))
@@ -395,9 +567,12 @@ private struct FlipRevealCard: View {
                                 }
                             }
 
-                            Text(item.rarity.rawValue.uppercased())
-                                .font(.caption)
+                            GachaRarityBadge(rarity: item.rarity)
+
+                            Text(GachaThemePresentation.flavorText(for: item))
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(2)
 
                             Text("タップでスキップ")
                                 .font(.caption2)
@@ -412,14 +587,24 @@ private struct FlipRevealCard: View {
                     }
                 }
             }
-            .rotation3DEffect(.degrees(flipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+            .rotation3DEffect(
+                .degrees(reduceMotion ? 0 : (flipped ? 180 : 0)),
+                axis: (x: 0, y: 1, z: 0)
+            )
+            .scaleEffect(reduceMotion ? (flipped ? 1.0 : 0.98) : 1.0)
+            .opacity(flipped ? 1.0 : (reduceMotion ? 0.75 : 1.0))
         }
-        .animation(.spring(response: 0.44, dampingFraction: 0.84), value: flipped)
+        .animation(
+            reduceMotion
+                ? .easeOut(duration: 0.22)
+                : .spring(response: 0.44, dampingFraction: 0.84),
+            value: flipped
+        )
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
                 flipped = true
                 Haptics.impact(item.rarity == .legendary ? .heavy : .medium)
-                if item.rarity == .legendary {
+                if item.rarity == .legendary && !reduceMotion {
                     Haptics.notify(.success)
                 }
             }
@@ -457,31 +642,40 @@ private struct LegendaryHalo: View {
 private struct MiniResultCard: View {
     let item: CardDecoration
     let isNew: Bool
+    let isSelected: Bool
     let accent: Color
+    let onTap: () -> Void
 
     var body: some View {
-        Card(nil, decorationId: item.id) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Circle()
-                        .fill(accent.opacity(0.7))
-                        .frame(width: 6, height: 6)
-                    Text(item.name)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-                    Spacer()
-                    if isNew { Image(systemName: "sparkles") }
+        Button(action: onTap) {
+            Card(nil, decorationId: item.id) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Circle()
+                            .fill(accent.opacity(0.7))
+                            .frame(width: 6, height: 6)
+                        Text(item.name)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                        Spacer()
+                        if isNew { Image(systemName: "sparkles") }
+                    }
+
+                    Text(GachaThemePresentation.rarityLabel(for: item.rarity))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(isNew ? "NEW" : "所持済み")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-
-                Text(item.rarity.rawValue.uppercased())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(isNew ? "NEW" : "dup")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isSelected ? accent.opacity(0.95) : .white.opacity(0.08), lineWidth: isSelected ? 2 : 1)
             }
         }
+        .buttonStyle(.plain)
     }
 }
 

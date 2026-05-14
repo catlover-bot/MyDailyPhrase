@@ -108,12 +108,6 @@ public struct DrawDecorationGachaUseCase: Sendable {
             p.gachaTickets = max(0, p.gachaTickets - n)
         }
 
-        // ✅ 自動装備：今回の中で最もレアなもの（同レアなら「最後に出た」もの）
-        if let maxRank = drawn.map({ $0.rarity.rank }).max(),
-           let best = drawn.last(where: { $0.rarity.rank == maxRank }) {
-            p.selectedDecorationId = best.id
-        }
-
         p.normalize()
 
         let ticketsAfter = p.gachaTickets
@@ -209,16 +203,5 @@ public struct DrawDecorationGachaUseCase: Sendable {
             if r < acc { return valid[idx] }
         }
         return valid.last!
-    }
-}
-
-private extension CardDecorationRarity {
-    var rank: Int {
-        switch self {
-        case .common: return 1
-        case .rare: return 2
-        case .epic: return 3
-        case .legendary: return 4
-        }
     }
 }

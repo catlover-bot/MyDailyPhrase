@@ -18,10 +18,12 @@
   `今日`, `履歴`, `ガチャ`, `プロフィール`, `設定`
 - First-release feature gating:
   free/local gacha is exposed, while paid gacha / Creator Pass purchase UI remains disabled by feature flag for the first release candidate.
+- Build 1.0 (3) theme-preview additions:
+  the gacha result flow now includes a visual theme preview, sample journal card, sample profile card, equip action, and native share action.
 - Community status:
   community-related surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, and terms requirements are finalized.
 - Current TestFlight build number:
-  `1.0 (2)`
+  `1.0 (3)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
@@ -38,6 +40,11 @@
 
 2. Updated App Store screenshots must be captured for the current tab-based experience.
    Any older screenshots from the previous product shape should not be reused.
+
+   New screenshot-worthy candidates now include:
+   - the gacha result preview screen
+   - the collection screen with owned / locked / equipped states
+   - the equipped profile card after applying a new theme
 
 3. Local reminder behavior must be verified on a real device.
    The code requests notification permission only after explicit opt-in and schedules a repeating local reminder, but real-device confirmation is still required before submission.
@@ -89,6 +96,8 @@
 - Home screen after answering today's prompt
 - History screen with saved entries
 - Gacha tab with the free/local collection flow visible
+- Gacha result screen showing visual preview, rarity, equip action, and share action
+- Collection screen showing owned / locked / equipped themes
 - Profile tab with local display name and decoration state visible
 - Settings screen with privacy/support/reminder sections
 - iPhone SE screenshots
@@ -110,6 +119,11 @@
 - Confirm Home resets after delete-all
 - Confirm History resets after delete-all
 - Confirm free gacha works without exposing any paid purchase UI
+- Confirm the gacha result screen shows a real visual preview, not text only
+- Confirm “今すぐ使う” equips the drawn theme immediately
+- Confirm “あとで使う” leaves the current equipped theme unchanged
+- Confirm “結果を共有” opens the native share sheet only after explicit user action
+- Confirm obtained items appear later in コレクション with correct owned / equipped state
 - Confirm profile tab does not expose login, community, or paid purchase flows
 - Enable reminders from Settings
 - Disable reminders from Settings
@@ -128,6 +142,9 @@
 - Dark mode
 - Large Dynamic Type
 - VoiceOver smoke test
+- Gacha reveal animation with Reduce Motion enabled
+- Gacha result preview layout on iPhone SE
+- Collection / preview sheet layout on iPhone SE
 - Notification permission denied path
 - Notification permission allowed path
 
@@ -148,6 +165,11 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The current implementation does not add analytics, tracking, login, or third-party SDKs to the journal flow.
 - The App Icon asset catalog now references `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png` for the standard, dark, and tinted slots.
 - The TestFlight candidate now exposes existing local engagement surfaces through the main tab bar.
+- Build 3 adds a stronger local-only gacha loop:
+  users can draw, see a visual preview immediately, equip the theme from the result screen, find it later in コレクション, and share the result via the native iOS share sheet.
+- Theme application scope for this build is intentionally local and review-safe:
+  equipped decorations visibly affect the profile card, gacha result preview, collection preview, and gacha share cards.
+  The app does not force a full global reskin of every screen in this release.
 - Paid gacha / Creator Pass purchase UI is intentionally disabled by feature flag for the first release candidate.
 - Community UI is intentionally deferred from the shipped root navigation until moderation, reporting, blocking, privacy, and terms work is complete.
 - Privacy and support URLs currently point to public GitHub pages. They can remain if they are intended to stay stable, but branded production URLs are preferable before final submission.

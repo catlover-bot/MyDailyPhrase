@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import Domain
+import Presentation
 
 struct ProfileView: View {
     @ObservedObject var vm: ProfileViewModel
@@ -17,16 +18,41 @@ struct ProfileView: View {
         CardDecorationCatalog.byId(decorationId)?.name ?? decorationId
     }
 
+    private var profileMonogram: String {
+        let trimmed = vm.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String((trimmed.isEmpty ? "M" : trimmed).prefix(1)).uppercased()
+    }
+
     var body: some View {
         Form {
             Section("デコ / ガチャ") {
                 Card("現在選択中：\(equippedName)", decorationId: decorationId) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("この雰囲気がアプリ内カードに反映されます")
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Color.accentColor.opacity(0.16))
+                                .frame(width: 44, height: 44)
+                                .overlay {
+                                    Text(profileMonogram)
+                                        .font(.headline.weight(.bold))
+                                }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(vm.displayName.isEmpty ? "Me" : vm.displayName)
+                                    .font(.headline)
+                                Text(GachaThemePresentation.sampleProfileLine(
+                                    for: CardDecorationCatalog.byId(decorationId) ?? CardDecoration(id: decorationId, name: equippedName, rarity: .common, weight: 0),
+                                    isEquipped: true
+                                ))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        Text("この見た目がプロフィールカード、ガチャ結果プレビュー、共有カードに反映されます。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        Text("サンプル")
-                            .font(.headline)
                     }
                 }
 

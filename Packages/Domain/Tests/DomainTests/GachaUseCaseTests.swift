@@ -127,8 +127,8 @@ struct GachaUseCaseTests {
         #expect(after.gachaTickets == 0)
     }
 
-    @Test("抽選後の装備は結果内の最高レア（同率は最後）に更新される")
-    func selectedDecorationBecomesBestFromDraw() {
+    @Test("抽選後も現在の装備は維持される")
+    func selectedDecorationStaysUnchangedAfterDraw() {
         let repo = InMemoryUserProfileRepository()
         repo.saveMyProfile(
             UserProfile(
@@ -148,11 +148,9 @@ struct GachaUseCaseTests {
 
         let summary = draw(count: 10)
         let after = get()
-        let highestRank = summary.drawn.map { rank(of: $0.rarity) }.max() ?? 1
-        let expected = summary.drawn.last(where: { rank(of: $0.rarity) == highestRank })
 
-        #expect(expected != nil)
-        #expect(after.selectedDecorationId == expected?.id)
+        #expect(!summary.drawn.isEmpty)
+        #expect(after.selectedDecorationId == CardDecorationCatalog.classicId)
     }
 
     @Test("無料券付与は同日2回目で付与されない")
@@ -217,14 +215,5 @@ private final class InMemoryUserProfileRepository: UserProfileRepository, @unche
         lock.lock()
         defer { lock.unlock() }
         return body()
-    }
-}
-
-private func rank(of rarity: CardDecorationRarity) -> Int {
-    switch rarity {
-    case .common: return 1
-    case .rare: return 2
-    case .epic: return 3
-    case .legendary: return 4
     }
 }
