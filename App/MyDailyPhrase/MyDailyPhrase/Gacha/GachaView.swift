@@ -66,6 +66,7 @@ struct GachaView: View {
     enum ItemTypeFilter: String, CaseIterable, Identifiable {
         case all = "すべて"
         case theme = "テーマ"
+        case promptPack = "お題"
         case profileTitle = "称号"
         case shareTemplate = "共有"
         case aura = "オーラ"
@@ -81,6 +82,8 @@ struct GachaView: View {
                 return nil
             case .theme:
                 return .fullTheme
+            case .promptPack:
+                return .promptPack
             case .profileTitle:
                 return .profileTitle
             case .shareTemplate:

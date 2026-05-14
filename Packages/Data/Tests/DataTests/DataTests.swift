@@ -131,3 +131,100 @@ struct AppGroupUserProfileRepositoryTests {
         UserDefaults.standard.removePersistentDomain(forName: suite)
     }
 }
+
+@Suite("AppGroupCommunityTemplateRepository")
+struct AppGroupCommunityTemplateRepositoryTests {
+    @Test("custom prompt seeds are stored locally")
+    func storesCustomPromptSeeds() {
+        let suite = makeSuiteName()
+        defer { cleanupSuite(suite) }
+
+        let repo = AppGroupCommunityTemplateRepository(appGroupID: suite, forceSynchronizeOnWrite: true)
+        var community = CommunityTemplate(
+            id: "creator.games.rpg",
+            name: "RPG好きの部屋",
+            description: "旅や仲間を語る部屋",
+            category: .games,
+            emoji: "🗺️",
+            createdAt: Date(timeIntervalSince1970: 1000),
+            creatorDisplayName: "Me",
+            creatorId: "me",
+            visibility: .inviteOnly,
+            promptPolicy: CommunityPromptPolicy(),
+            promptSchedule: .weekly,
+            promptPacks: ["retro"],
+            themeDecorationId: "retro",
+            allowedTags: ["games", "rpg"],
+            blockedWords: ["spoiler"],
+            isOfficialPreset: false,
+            requiresCreatorPassToCreate: true,
+            isJoined: true,
+            joinedAt: Date(timeIntervalSince1970: 1001),
+            customPromptSeeds: ["好きなジョブを一言で。", "また旅したい街は？"],
+            pinnedNextPromptText: "今週また会いたい仲間は？"
+        )
+        community.normalize()
+
+        repo.saveCommunity(community)
+        let loaded = repo.community(id: "creator.games.rpg")
+
+        #expect(loaded?.customPromptSeeds.count == 2)
+        #expect(loaded?.pinnedNextPromptText == "今週また会いたい仲間は？")
+        #expect(loaded?.isJoined == true)
+    }
+
+    @Test("community join state and response round-trip through persistence")
+    func persistsJoinStateAndResponse() {
+        let suite = makeSuiteName()
+        defer { cleanupSuite(suite) }
+
+        let repo = AppGroupCommunityTemplateRepository(appGroupID: suite, forceSynchronizeOnWrite: true)
+        let community = CommunityTemplate(
+            id: "official.games.general",
+            name: "ゲーム好きの部屋",
+            description: "ゲームの一言部屋",
+            category: .games,
+            emoji: "🎮",
+            createdAt: Date(timeIntervalSince1970: 1000),
+            creatorDisplayName: "official",
+            creatorId: "official",
+            visibility: .inviteOnly,
+            promptPolicy: CommunityPromptPolicy(),
+            promptSchedule: .daily,
+            promptPacks: [],
+            themeDecorationId: "arcade",
+            allowedTags: ["games"],
+            blockedWords: [],
+            isOfficialPreset: true,
+            requiresCreatorPassToCreate: false,
+            isJoined: false
+        )
+
+        repo.saveCommunity(community)
+        repo.setJoined(true, communityId: community.id, joinedAt: Date(timeIntervalSince1970: 2000))
+        repo.saveResponse(
+            CommunityResponse(
+                communityId: community.id,
+                promptKey: "20260514",
+                promptText: "最近いちばん時間を忘れたゲームは？",
+                answer: "最近はRPGに夢中",
+                updatedAt: Date(timeIntervalSince1970: 2001)
+            )
+        )
+
+        let loaded = repo.community(id: community.id)
+        let response = repo.response(communityId: community.id, promptKey: "20260514")
+
+        #expect(loaded?.isJoined == true)
+        #expect(loaded?.joinedAt == Date(timeIntervalSince1970: 2000))
+        #expect(response?.answer == "最近はRPGに夢中")
+    }
+
+    private func makeSuiteName() -> String {
+        "group.MyDailyPhrase.community.tests.\(UUID().uuidString)"
+    }
+
+    private func cleanupSuite(_ suite: String) {
+        UserDefaults.standard.removePersistentDomain(forName: suite)
+    }
+}

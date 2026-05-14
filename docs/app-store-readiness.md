@@ -24,11 +24,16 @@
   owned items now behave as reusable local customization assets instead of one-off result labels.
   Depending on item type, they can affect profile identity, share card styling, preview cards, journal-card previews, and collection cards.
 - Community Lite status:
-  a safe local-first social layer is available from Profile, centered on weekly challenges, profile card sharing, achievement sharing, and invite-link sharing through the native share sheet.
+  a safe local-first social layer is available from Profile, centered on weekly challenges, profile card sharing, achievement sharing, invite-style sharing, and preset community participation through the native share sheet.
+- Game Community Lite status:
+  Build `1.0 (4)` adds preset game communities plus a local prompt engine that generates stable community prompts from category, tags, schedule, and prompt tone.
+- Creator community creation status:
+  community creation is modeled and previewable locally, but production creation remains safely gated because Creator Pass / StoreKit enablement is still off by feature flag.
+  Free users can join and participate in preset communities without payment.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Current TestFlight build number:
-  `1.0 (3)`
+  `1.0 (4)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
@@ -58,6 +63,10 @@
 4. Signing and provisioning still need manual verification.
    The local archive dry-run reached the signing stage and failed because no provisioning profile for `jp.catloverbot.MyDailyPhrase` was available in the local Xcode environment.
    The App Group capability must also be confirmed in the Apple Developer portal and included in the final provisioning profile.
+
+5. Creator Pass purchase enablement is not production-ready.
+   Community creation is intentionally locked in production until StoreKit product IDs, App Store Connect IAP configuration, entitlement verification, and purchase UX are finalized.
+   The current build must not expose a broken purchase button or external payment link.
 
 ## Required App Store Connect metadata
 
@@ -106,6 +115,8 @@
 - Collection screen showing owned / locked / equipped themes
 - Profile tab with local display name and decoration state visible
 - Community Lite weekly challenge and profile-share preview
+- Preset game community detail screen with prompt preview and join state
+- Locked creator community creation preview with theme selection and prompt preview
 - Settings screen with privacy/support/reminder sections
 - iPhone SE screenshots
 - Standard iPhone screenshots
@@ -136,6 +147,13 @@
 - Open Community Lite from Profile
 - Confirm weekly challenge prompt and preview card render correctly
 - Confirm weekly challenge share does not include the private answer by default
+- Confirm preset game communities are browsable and joinable for free
+- Confirm joining and leaving a preset community updates local state correctly
+- Confirm community prompt generation stays stable for the same day / week
+- Confirm different game community presets produce appropriately different prompts
+- Confirm default community share does not include the answer text unless explicitly enabled
+- Confirm creator community creation shows a locked or gated state in production
+- Confirm no broken Creator Pass purchase button or external payment link appears
 - Confirm profile / invite / achievement share actions all require explicit user action
 - Confirm no public feed, comments, likes, or ranking UI appear in the shipped flow
 - Enable reminders from Settings
@@ -159,6 +177,7 @@
 - Gacha result preview layout on iPhone SE
 - Collection / preview sheet layout on iPhone SE
 - Community Lite layout on iPhone SE
+- Game community detail and creator preview layout on iPhone SE
 - Weekly challenge share preview with large Dynamic Type
 - Notification permission denied path
 - Notification permission allowed path
@@ -180,6 +199,18 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The current implementation does not add analytics, tracking, login, or third-party SDKs to the journal flow.
 - The App Icon asset catalog now references `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png` for the standard, dark, and tinted slots.
 - The TestFlight candidate now exposes existing local engagement surfaces through the main tab bar.
+- Build 3 adds a stronger local-only gacha loop:
+- Build 4 extends that loop into reusable community styling and safe social participation:
+  preset communities can reuse owned themes, share templates, titles, badges, and prompt-pack style items without requiring a backend or payment for participation.
+- Build 4 adds Game Community Lite:
+  preset game communities are joinable for free and use a deterministic local prompt engine to produce tailored daily or weekly prompts.
+- Paid users should eventually be able to create communities via Creator Pass, but production enablement must use StoreKit / IAP.
+  In this build, creator community creation remains safely gated and should be treated as a locked preview unless entitlement support is explicitly enabled for internal testing.
+- No paid gacha / IAP is exposed in the shipped flow.
+- No public unmoderated UGC is exposed in the shipped flow.
+- Native sharing is explicit user action only.
+- Private answers are not shared by default in community, weekly challenge, or profile-related share cards.
+- Full public community still requires moderation, reporting, blocking, delete-own-content, privacy, abuse-contact, and terms work before it can be enabled.
 - Build 3 adds a stronger local-only gacha loop:
   users can draw, see a visual preview immediately, equip the theme from the result screen, find it later in コレクション, and share the result via the native iOS share sheet.
 - Gacha items are now generalized reusable local assets:

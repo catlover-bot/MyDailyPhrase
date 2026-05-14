@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import Domain
 @testable import Presentation
 
 @Suite("Community Lite support")
@@ -46,6 +47,103 @@ struct CommunityLiteSupportTests {
         #expect(ReleaseFeatureAvailability.paidGachaEnabled == false)
         #expect(ReleaseFeatureAvailability.publicCommunityEnabled == false)
         #expect(ReleaseFeatureAvailability.communityLiteEnabled == true)
+        #expect(ReleaseFeatureAvailability.gameCommunityEnabled == true)
+        #expect(ReleaseFeatureAvailability.creatorPassEnabled == false)
+        #expect(ReleaseFeatureAvailability.creatorCommunityCreationEnabled == false)
         #expect(ReleaseFeatureAvailability.nativeSharingEnabled == true)
+    }
+
+    @Test("non-paid user cannot create community")
+    func nonPaidUserCannotCreateCommunity() {
+        let state = CommunityLiteSupport.creatorEntitlementState(
+            creatorPassEnabled: false,
+            creatorCommunityCreationEnabled: false,
+            creatorCommunityLocalDraftEnabled: true,
+            storeKitEntitled: false,
+            debugOverride: false
+        )
+
+        #expect(state.hasCreatorPass == false)
+        #expect(state.canCreateCommunity == false)
+        #expect(state.entitlementSource == .none)
+    }
+
+    @Test("creator-entitled user can create local community template")
+    func creatorEntitledUserCanCreateCommunity() {
+        let state = CommunityLiteSupport.creatorEntitlementState(
+            creatorPassEnabled: false,
+            creatorCommunityCreationEnabled: false,
+            creatorCommunityLocalDraftEnabled: true,
+            storeKitEntitled: false,
+            debugOverride: true
+        )
+
+        #expect(state.hasCreatorPass == true)
+        #expect(state.canCreateCommunity == true)
+        #expect(state.entitlementSource == .debugOverride)
+    }
+
+    @Test("default community share payload does not include answer")
+    func defaultCommunityShareExcludesAnswer() {
+        let community = CommunityLiteSupport.officialPresetCommunities()[0]
+        let prompt = CommunityPrompt(
+            id: "p1",
+            communityId: community.id,
+            text: "最近いちばん時間を忘れたゲームは？",
+            category: .games,
+            tags: ["games"],
+            dateKey: "20260514",
+            shareSafe: true,
+            createdBy: .system,
+            answerStyle: .onePhrase
+        )
+        let answer = "最近はRPGに夢中"
+
+        let text = CommunityLiteSupport.communityPromptShareText(
+            community: community,
+            prompt: prompt,
+            answer: answer,
+            includeAnswer: false,
+            reaction: .sparkles
+        )
+
+        #expect(!text.contains(answer))
+        #expect(text.contains("#ゲーム日記"))
+    }
+
+    @Test("explicit community answer share payload includes answer")
+    func explicitCommunityShareIncludesAnswer() {
+        let community = CommunityLiteSupport.officialPresetCommunities()[0]
+        let prompt = CommunityPrompt(
+            id: "p1",
+            communityId: community.id,
+            text: "最近いちばん時間を忘れたゲームは？",
+            category: .games,
+            tags: ["games"],
+            dateKey: "20260514",
+            shareSafe: true,
+            createdBy: .system,
+            answerStyle: .onePhrase
+        )
+        let answer = "最近はRPGに夢中"
+
+        let text = CommunityLiteSupport.communityPromptShareText(
+            community: community,
+            prompt: prompt,
+            answer: answer,
+            includeAnswer: true,
+            reaction: .sparkles
+        )
+
+        #expect(text.contains(answer))
+    }
+
+    @Test("joined community share text contains no debug identifiers")
+    func joinedCommunityShareTextAvoidsDebugIds() {
+        let community = CommunityLiteSupport.officialPresetCommunities()[0]
+        let text = CommunityLiteSupport.joinedCommunityShareText(community: community)
+
+        #expect(!text.contains(community.id))
+        #expect(text.contains(community.name))
     }
 }

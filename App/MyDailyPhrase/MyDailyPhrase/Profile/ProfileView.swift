@@ -118,7 +118,7 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Label("みんなのチャレンジ", systemImage: "person.2.wave.2")
                                 .compactActionLabel()
-                            Text("公開フィードなしで、週間チャレンジ・プロフィールカード・招待リンクを安全に共有できます。")
+                            Text("公開フィードなしで、ゲーム系コミュニティへの無料参加、週間チャレンジ、プロフィールカード共有を安全に楽しめます。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)

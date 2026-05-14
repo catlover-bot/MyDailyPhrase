@@ -1,11 +1,39 @@
 import Foundation
+import Domain
 
 public enum ReleaseFeatureAvailability {
     public static let paidGachaEnabled = false
     public static let publicCommunityEnabled = false
     public static let communityLiteEnabled = true
+    public static let gameCommunityEnabled = true
+    public static let creatorPassEnabled = false
+    public static let creatorCommunityCreationEnabled = false
+    public static let creatorCommunityLocalDraftEnabled = true
     public static let nativeSharingEnabled = true
     public static let themePreviewEnabled = true
+}
+
+public enum CreatorEntitlementSource: String, Equatable, Sendable {
+    case none
+    case storeKit
+    case debugOverride
+    case localMock
+}
+
+public struct CreatorEntitlementState: Equatable, Sendable {
+    public let hasCreatorPass: Bool
+    public let canCreateCommunity: Bool
+    public let entitlementSource: CreatorEntitlementSource
+
+    public init(
+        hasCreatorPass: Bool,
+        canCreateCommunity: Bool,
+        entitlementSource: CreatorEntitlementSource
+    ) {
+        self.hasCreatorPass = hasCreatorPass
+        self.canCreateCommunity = canCreateCommunity
+        self.entitlementSource = entitlementSource
+    }
 }
 
 public enum CommunityLiteReactionStamp: String, CaseIterable, Codable, Identifiable, Sendable {
@@ -64,6 +92,291 @@ public enum CommunityLiteSupport {
         ("ことばの旅", "今週の自分をひとことで表すなら？", "ことばの旅人", "今週のことばの旅に参加しました。"),
         ("明日へのメモ", "来週の自分に渡したい一言は？", "明日への手紙", "来週へ向けたひとことを残しました。")
     ]
+
+    public static func creatorEntitlementState(
+        creatorPassEnabled: Bool,
+        creatorCommunityCreationEnabled: Bool,
+        creatorCommunityLocalDraftEnabled: Bool,
+        storeKitEntitled: Bool,
+        debugOverride: Bool
+    ) -> CreatorEntitlementState {
+        if debugOverride && creatorCommunityLocalDraftEnabled {
+            return CreatorEntitlementState(
+                hasCreatorPass: true,
+                canCreateCommunity: true,
+                entitlementSource: .debugOverride
+            )
+        }
+
+        if storeKitEntitled {
+            return CreatorEntitlementState(
+                hasCreatorPass: true,
+                canCreateCommunity: creatorPassEnabled && creatorCommunityCreationEnabled,
+                entitlementSource: .storeKit
+            )
+        }
+
+        return CreatorEntitlementState(
+            hasCreatorPass: false,
+            canCreateCommunity: false,
+            entitlementSource: .none
+        )
+    }
+
+    public static func officialPresetCommunities() -> [CommunityTemplate] {
+        [
+            CommunityTemplate(
+                id: "official.games.general",
+                name: "ゲーム好きの部屋",
+                description: "最近遊んだ一本や推しキャラについて、気軽にひとこと残せる定番ルームです。",
+                category: .games,
+                emoji: "🎮",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .casual,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .onePhrase
+                ),
+                promptSchedule: .daily,
+                promptPacks: [],
+                themeDecorationId: "arcade",
+                allowedTags: ["games", "general"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.rpg",
+                name: "RPG好きの部屋",
+                description: "旅、仲間、世界観。RPGの余韻をひとことで残したい人向けです。",
+                category: .games,
+                emoji: "🗺️",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .deep,
+                    promptLength: .medium,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .shortMemo
+                ),
+                promptSchedule: .weekly,
+                promptPacks: ["retro"],
+                themeDecorationId: "retro",
+                allowedTags: ["games", "rpg", "story"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.fps",
+                name: "FPS好きの部屋",
+                description: "対戦の反省やクラッチの余韻を、短い言葉で残すゲーム部屋です。",
+                category: .games,
+                emoji: "🎯",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .challenge,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .ranking
+                ),
+                promptSchedule: .daily,
+                promptPacks: ["matrix"],
+                themeDecorationId: "matrix",
+                allowedTags: ["games", "fps", "competitive"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.nintendo",
+                name: "任天堂好きの部屋",
+                description: "明るく語りやすいお題で、思い出や好きなキャラを残せます。",
+                category: .games,
+                emoji: "🍄",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .nostalgic,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .recommendation
+                ),
+                promptSchedule: .weekly,
+                promptPacks: [],
+                themeDecorationId: "sakura",
+                allowedTags: ["games", "nintendo"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.indie",
+                name: "インディーゲーム好きの部屋",
+                description: "小さな傑作や雰囲気ゲーを静かに語りたい人向けのコミュニティです。",
+                category: .games,
+                emoji: "🌙",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .deep,
+                    promptLength: .medium,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .recommendation
+                ),
+                promptSchedule: .weekly,
+                promptPacks: [],
+                themeDecorationId: "moonlit",
+                allowedTags: ["games", "indie"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.backlog",
+                name: "積みゲー消化部",
+                description: "今週ひらきたい一本や、少しだけ進めたいゲームをゆるく残す部屋です。",
+                category: .games,
+                emoji: "📦",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .challenge,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .onePhrase
+                ),
+                promptSchedule: .daily,
+                promptPacks: [],
+                themeDecorationId: "graphite",
+                allowedTags: ["games", "backlog"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.retro",
+                name: "レトロゲーム部",
+                description: "昔のハードやドット絵の思い出を、やわらかく語れるクラシックな部屋です。",
+                category: .games,
+                emoji: "🕹️",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .nostalgic,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .shortMemo
+                ),
+                promptSchedule: .weekly,
+                promptPacks: ["retro", "arcade"],
+                themeDecorationId: "retro",
+                allowedTags: ["games", "retro"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.character",
+                name: "推しキャラ語り部",
+                description: "好きなキャラや世界観に絞って、気持ちを短く残すための部屋です。",
+                category: .games,
+                emoji: "💫",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .fun,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .onePhrase
+                ),
+                promptSchedule: .daily,
+                promptPacks: [],
+                themeDecorationId: "stardust",
+                allowedTags: ["games", "character"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.musicgame",
+                name: "音ゲー部",
+                description: "譜面、スコア、好きな一曲。音ゲーの気分を気軽に共有できる部屋です。",
+                category: .games,
+                emoji: "🎼",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .fun,
+                    promptLength: .short,
+                    privacyLevel: .safeToShare,
+                    answerStyle: .ranking
+                ),
+                promptSchedule: .daily,
+                promptPacks: [],
+                themeDecorationId: "neon",
+                allowedTags: ["games", "musicgame"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            ),
+            CommunityTemplate(
+                id: "official.games.competitive",
+                name: "対戦ゲーム反省会",
+                description: "勝ち筋や反省を落ち着いて振り返る、公開フィードなしの振り返り部屋です。",
+                category: .games,
+                emoji: "🔥",
+                createdAt: .distantPast,
+                creatorDisplayName: "ひとこと日記",
+                creatorId: "official",
+                visibility: .inviteOnly,
+                promptPolicy: CommunityPromptPolicy(
+                    tone: .challenge,
+                    promptLength: .medium,
+                    privacyLevel: .privateReflection,
+                    answerStyle: .shortMemo
+                ),
+                promptSchedule: .weekly,
+                promptPacks: ["matrix"],
+                themeDecorationId: "volt",
+                allowedTags: ["games", "competitive", "fps"],
+                blockedWords: [],
+                isOfficialPreset: true,
+                requiresCreatorPassToCreate: false,
+                isJoined: false
+            )
+        ]
+    }
 
     public static func weekKey(for date: Date, calendar: Calendar) -> String {
         let year = calendar.component(.yearForWeekOfYear, from: date)
@@ -136,6 +449,49 @@ public enum CommunityLiteSupport {
             lines.append("連続記録 \(streak)日")
         }
         lines.append("#ひとこと日記")
+        return lines.joined(separator: "\n")
+    }
+
+    public static func communityPromptShareText(
+        appDisplayName: String = "ひとこと日記",
+        community: CommunityTemplate,
+        prompt: CommunityPrompt,
+        answer: String?,
+        includeAnswer: Bool,
+        reaction: CommunityLiteReactionStamp
+    ) -> String {
+        var lines = [
+            appDisplayName,
+            "\(community.emoji) \(community.name)",
+            prompt.text,
+            "\(reaction.rawValue) コミュニティお題"
+        ]
+        if includeAnswer,
+           let answer = trimmed(answer),
+           !answer.isEmpty {
+            lines.append("一言: \(answer)")
+        }
+        lines.append("#ひとこと日記")
+        if community.category == .games {
+            lines.append("#ゲーム日記")
+            lines.append("#今日のゲームお題")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    public static func joinedCommunityShareText(
+        appDisplayName: String = "ひとこと日記",
+        community: CommunityTemplate
+    ) -> String {
+        var lines = [
+            appDisplayName,
+            "\(community.emoji) \(community.name) に参加しました",
+            community.description,
+            "#ひとこと日記"
+        ]
+        if community.category == .games {
+            lines.append("#ゲーム日記")
+        }
         return lines.joined(separator: "\n")
     }
 

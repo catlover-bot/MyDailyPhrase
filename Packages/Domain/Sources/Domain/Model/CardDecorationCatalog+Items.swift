@@ -32,6 +32,9 @@ public extension CardDecorationCatalog {
         if normalized.hasPrefix("season_") {
             return .badge
         }
+        if containsAny(normalized, ["retro", "arcade", "matrix"]) {
+            return .promptPack
+        }
         if containsAny(normalized, ["paper", "linen", "cotton", "denim", "retro", "plaid", "fog", "classic"]) {
             return .journalPaper
         }
@@ -75,7 +78,7 @@ public extension CardDecorationCatalog {
         case .gachaRevealEffect:
             return [.gachaCapsule, .gachaResultCard, .shareCard, .collectionCard]
         case .promptPack:
-            return [.promptCard, .journalCard, .collectionCard]
+            return [.promptCard, .journalCard, .shareCard, .collectionCard, .gachaResultCard]
         case .journalPaper:
             return [.journalCard, .promptCard, .collectionCard, .gachaResultCard]
         case .auraStyle:
@@ -241,6 +244,8 @@ public extension CardDecorationCatalog {
             return "外に共有したくなる見た目をつくる、共有向けのテーマです。"
         case .gachaRevealEffect:
             return "引いた瞬間から気分が上がる、演出寄りのテーマです。"
+        case .promptPack:
+            return "コミュニティやお題プレビューの空気感まで変えられる、実用寄りのテーマです。"
         case .journalPaper:
             return "毎日の記録を読み返しやすく整える、紙面寄りのテーマです。"
         case .auraStyle:

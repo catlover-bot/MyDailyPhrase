@@ -25,11 +25,18 @@ final class AppContainer {
 
     // ===== Profile / Challenge / Reaction =====
     private let profileRepo: UserProfileRepository
+    private let communityTemplateRepo: CommunityTemplateRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
 
     private let getMyProfile: GetMyProfileUseCase
     private let updateMyProfile: UpdateMyProfileUseCase
+    private let listCommunities: ListCommunitiesUseCase
+    private let saveCommunityTemplate: SaveCommunityTemplateUseCase
+    private let joinCommunity: JoinCommunityUseCase
+    private let leaveCommunity: LeaveCommunityUseCase
+    private let getCommunityResponse: GetCommunityResponseUseCase
+    private let saveCommunityResponse: SaveCommunityResponseUseCase
 
     // ✅ Gacha UseCases（強化）
     private let drawDecorationGacha: DrawDecorationGachaUseCase
@@ -92,11 +99,18 @@ final class AppContainer {
 
         // Profile / events repos
         self.profileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
+        self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
 
         self.getMyProfile = GetMyProfileUseCase(repo: profileRepo)
         self.updateMyProfile = UpdateMyProfileUseCase(repo: profileRepo)
+        self.listCommunities = ListCommunitiesUseCase(repo: communityTemplateRepo)
+        self.saveCommunityTemplate = SaveCommunityTemplateUseCase(repo: communityTemplateRepo)
+        self.joinCommunity = JoinCommunityUseCase(repo: communityTemplateRepo)
+        self.leaveCommunity = LeaveCommunityUseCase(repo: communityTemplateRepo)
+        self.getCommunityResponse = GetCommunityResponseUseCase(repo: communityTemplateRepo)
+        self.saveCommunityResponse = SaveCommunityResponseUseCase(repo: communityTemplateRepo)
 #if DEBUG
         Self.seedLinkedAuthForUITestIfNeeded(get: self.getMyProfile, update: self.updateMyProfile)
 #endif
@@ -368,8 +382,15 @@ final class AppContainer {
         return CommunityLiteViewModel(
             getMyProfile: getMyProfile,
             computeStreak: computeStreak,
+            listCommunities: listCommunities,
+            saveCommunityTemplate: saveCommunityTemplate,
+            joinCommunity: joinCommunity,
+            leaveCommunity: leaveCommunity,
+            getCommunityResponse: getCommunityResponse,
+            saveCommunityResponse: saveCommunityResponse,
             defaults: appGroupDefaults,
-            timeZone: timeZone
+            timeZone: timeZone,
+            creatorEntitlementService: CreatorEntitlementService(defaults: appGroupDefaults)
         )
     }
 
