@@ -153,6 +153,15 @@ struct CommunityLiteSupportTests {
         #expect(MonetizationProducts.gachaTicket50 == "jp.catloverbot.MyDailyPhrase.gacha.tickets50")
         #expect(MonetizationProducts.gachaTicket120 == "jp.catloverbot.MyDailyPhrase.gacha.tickets120")
         #expect(MonetizationProducts.creatorPassLifetime == "jp.catloverbot.MyDailyPhrase.creatorpass.lifetime")
+        #expect(MonetizationProducts.ticketPacks.count == 3)
+        #expect(MonetizationProducts.creatorPassProductIDs.count == 3)
         #expect(MonetizationProducts.ticketPack(for: MonetizationProducts.gachaTicket120)?.ticketCount == 120)
+    }
+
+    @Test("monetization copy contains no external payment link")
+    func monetizationCopyHasNoExternalPaymentLink() {
+        let allLines = MonetizationDisclosure.purchaseSafetyLines + MonetizationDisclosure.ownershipLines
+        #expect(allLines.allSatisfy { !$0.localizedCaseInsensitiveContains("http") })
+        #expect(allLines.allSatisfy { !$0.localizedCaseInsensitiveContains("https") })
     }
 }

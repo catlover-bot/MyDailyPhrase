@@ -289,6 +289,10 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - Free users can still participate in preset communities without payment.
 - No external payment links are present.
 
+## Review Notes draft
+
+`MyDailyPhrase` includes cosmetic-only paid gacha and a Creator Pass unlock for local community creation. Gacha rewards have no cash value and cannot be traded, sold, transferred, or cashed out. Odds are visible from the Gacha screen before paid draws. Duplicate rewards convert to local shards only. Creator Pass unlocks community creation, while community participation remains free. Public feed, comments, and ranking are disabled in this build. No external payment links are used.
+
 ## TestFlight checklist
 
 - [ ] Confirm Apple Developer team
