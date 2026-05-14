@@ -42,7 +42,7 @@ struct RootView: View {
             gachaVM.load()
             profileVM.load()
             communityLiteVM.load()
-            if FeatureFlags.paidGachaEnabled {
+            if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
                 await iapStore.configure()
             }
         }

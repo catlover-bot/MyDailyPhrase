@@ -25,6 +25,7 @@ struct GachaView: View {
     @State private var previewItem: CardDecoration? = nil
     @State private var shareSheetItems: [Any] = []
     @State private var isPresentingShareSheet = false
+    @State private var isPresentingOddsSheet = false
     @State private var rarityFilter: RarityFilter = .all
     @State private var typeFilter: ItemTypeFilter = .all
     @State private var collectionSort: CollectionSort = .newest
@@ -137,7 +138,7 @@ struct GachaView: View {
                         bookPanel
                     case .history:
                         historyPanel
-                    case .shop where FeatureFlags.paidGachaEnabled:
+                    case .shop where FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled:
                         shopPanel
                     case .shop:
                         EmptyView()
@@ -151,7 +152,7 @@ struct GachaView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             vm.load()
-            if FeatureFlags.paidGachaEnabled {
+            if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
                 await iap.configure()
             }
         }
@@ -222,6 +223,11 @@ struct GachaView: View {
                 }
             )
         }
+        .sheet(isPresented: $isPresentingOddsSheet) {
+            NavigationStack {
+                GachaOddsDisclosureView(vm: vm)
+            }
+        }
         .sheet(isPresented: $isPresentingShareSheet) {
             ShareSheet(activityItems: shareSheetItems)
         }
@@ -233,7 +239,7 @@ struct GachaView: View {
 
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.gacha, .inventory, .exchange, .book, .history]
-        if FeatureFlags.paidGachaEnabled {
+        if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
             tabs.append(.shop)
         }
         return tabs
@@ -550,15 +556,15 @@ struct GachaView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text(FeatureFlags.paidGachaEnabled
+                    Text((FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled)
                          ? (iap.isCreatorPassActive
-                            ? "Creator Passで毎日無料券ボーナス。チケットパック併用で回転率を上げられます。"
-                            : "チケットパック + Creator Pass で、毎日の無料券ボーナスと長期運用の回転率を両立できます。")
+                            ? "Creator Passで毎日無料券ボーナス。確率と重複時の欠片変換を確認してから、必要な分だけ回せます。"
+                            : "チケットパックと Creator Pass は安全に読み込めた商品だけ表示されます。参加は無料のままです。")
                          : "毎日の無料券と交換所を使いながら、少しずつコレクションを増やせます。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    if FeatureFlags.paidGachaEnabled {
+                    if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
                         HStack(spacing: 8) {
                             Button {
                                 tab = .shop
@@ -570,7 +576,19 @@ struct GachaView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
 
-                            if let bestId = iap.bestValueTicketProductID,
+                            Button {
+                                isPresentingOddsSheet = true
+                            } label: {
+                                Label("確率を見る", systemImage: "info.circle")
+                                    .compactActionLabel()
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            if FeatureFlags.paidGachaEnabled,
+                               iap.isTicketShopAvailable,
+                               let bestId = iap.bestValueTicketProductID,
                                let best = iap.ticketProducts.first(where: { $0.id == bestId }) {
                                 Button {
                                     Task { await iap.purchase(best) }
@@ -601,7 +619,18 @@ struct GachaView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("提供割合（通常時）")
+                HStack {
+                    Text("提供割合（通常時）")
+                    Spacer()
+                    Button {
+                        isPresentingOddsSheet = true
+                    } label: {
+                        Label("詳細", systemImage: "info.circle")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -645,6 +674,12 @@ struct GachaView: View {
 
                 ForEach(vm.oddsNotes, id: \.self) { note in
                     Text(note)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(MonetizationDisclosure.ownershipLines, id: \.self) { line in
+                    Text(line)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -929,6 +964,25 @@ struct GachaView: View {
             Text("ショップ")
                 .font(.headline)
 
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(MonetizationDisclosure.purchaseSafetyLines, id: \.self) { line in
+                    Text(line)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    isPresentingOddsSheet = true
+                } label: {
+                    Label("提供割合と重複時の扱いを確認する", systemImage: "info.circle")
+                        .compactActionLabel()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(12)
+            .background(.thinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+
             switch iap.state {
             case .idle, .loading:
                 HStack { ProgressView(); Text("読み込み中…") }
@@ -957,8 +1011,12 @@ struct GachaView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        if iap.creatorPassProducts.isEmpty {
-                            Text("Creator Pass商品がありません")
+                        if !FeatureFlags.creatorPassEnabled {
+                            Text("Creator Pass は現在準備中です")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else if !iap.isCreatorPassShopAvailable {
+                            Text(iap.creatorPassUnavailableMessage)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -969,7 +1027,9 @@ struct GachaView: View {
                                     HStack {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(p.displayName).fontWeight(.semibold)
-                                            Text(p.id).font(.caption2).foregroundStyle(.secondary)
+                                            Text(creatorPassCaption(for: p))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
                                         }
                                         Spacer()
                                         Text(p.displayPrice).fontWeight(.semibold)
@@ -980,6 +1040,12 @@ struct GachaView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
+
+                            Button("購入を復元") {
+                                Task { await iap.restoreCreatorPass() }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
                     }
 
@@ -991,8 +1057,12 @@ struct GachaView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-                        if iap.ticketProducts.isEmpty {
-                            Text("チケット商品がありません")
+                        if !FeatureFlags.paidGachaEnabled {
+                            Text("チケット商品の販売は現在準備中です")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else if !iap.isTicketShopAvailable {
+                            Text(iap.paidGachaUnavailableMessage)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -1016,6 +1086,9 @@ struct GachaView: View {
                                                 }
                                             }
                                             Text("チケット \(amount)")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                            Text("消費前に提供割合を確認できます")
                                                 .font(.caption2)
                                                 .foregroundStyle(.secondary)
                                             if let unitPriceText = iap.ticketUnitPriceText(for: p) {
@@ -1258,6 +1331,19 @@ struct GachaView: View {
         CardDecorationCatalog.byId(id)?.name ?? id
     }
 
+    private func creatorPassCaption(for product: Product) -> String {
+        switch MonetizationProducts.creatorPassKind(for: product.id) {
+        case .lifetime:
+            return "買い切り / コミュニティ作成を解放"
+        case .monthly:
+            return "月額 / コミュニティ作成を解放"
+        case .yearly:
+            return "年額 / コミュニティ作成を解放"
+        case nil:
+            return "コミュニティ作成を解放"
+        }
+    }
+
     private var diagnosticsPanel: some View {
         DisclosureGroup("状態監査（開発用）", isExpanded: $showsDiagnostics) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1451,5 +1537,122 @@ private extension View {
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)
+    }
+}
+
+private struct GachaOddsDisclosureView: View {
+    @ObservedObject var vm: GachaViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    private let duplicateRows: [(String, Int)] = [
+        ("ノーマル重複", GachaOddsPolicy.duplicateShardReward(for: .common)),
+        ("レア重複", GachaOddsPolicy.duplicateShardReward(for: .rare)),
+        ("エピック重複", GachaOddsPolicy.duplicateShardReward(for: .epic)),
+        ("レジェンド重複", GachaOddsPolicy.duplicateShardReward(for: .legendary))
+    ]
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("通常時の提供割合")
+                        .font(.headline)
+
+                    ForEach(vm.weightTable, id: \.label) { row in
+                        HStack {
+                            Text(row.label)
+                            Spacer()
+                            Text(row.value)
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.subheadline)
+                    }
+
+                    Text("最終更新: \(MonetizationProducts.oddsDisclosureVersion)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("アイテム別の目安")
+                        .font(.headline)
+
+                    ForEach(vm.itemWeightTable) { row in
+                        HStack(spacing: 8) {
+                            Text(row.name)
+                                .font(.subheadline.weight(.semibold))
+                            Text(row.rarity)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if row.isFeatured {
+                                Text("PICKUP")
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(.thinMaterial)
+                                    .clipShape(Capsule())
+                            }
+                            Spacer()
+                            Text(row.value)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("重複時の扱い")
+                        .font(.headline)
+
+                    ForEach(duplicateRows, id: \.0) { row in
+                        HStack {
+                            Text(row.0)
+                            Spacer()
+                            Text("欠片 +\(row.1)")
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.subheadline)
+                    }
+
+                    Text("欠片はローカルな装飾交換にのみ使えます。現金価値はなく、売買や譲渡はできません。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("注意事項")
+                        .font(.headline)
+
+                    ForEach(MonetizationDisclosure.ownershipLines + vm.oddsNotes, id: \.self) { line in
+                        Text(line)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(16)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .padding()
+        }
+        .navigationTitle("提供割合")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("閉じる") {
+                    dismiss()
+                }
+            }
+        }
     }
 }

@@ -17,7 +17,7 @@
 - Main navigation for the TestFlight candidate:
   `今日`, `履歴`, `ガチャ`, `プロフィール`, `設定`
 - First-release feature gating:
-  free/local gacha is exposed, while paid gacha / Creator Pass purchase UI remains disabled by feature flag for the first release candidate.
+  free/local gacha remains available, while paid gacha / Creator Pass UI is shown only when StoreKit products load successfully.
 - Build 1.0 (3) theme-preview additions:
   the gacha result flow now includes a visual theme preview, sample journal card, sample profile card, equip action, and native share action.
 - Build 1.0 (3) generalized gacha assets:
@@ -28,18 +28,20 @@
 - Game Community Lite status:
   Build `1.0 (4)` adds preset game communities plus a local prompt engine that generates stable community prompts from category, tags, schedule, and prompt tone.
 - Creator community creation status:
-  community creation is modeled and previewable locally, but production creation remains safely gated because Creator Pass / StoreKit enablement is still off by feature flag.
+  community creation now has a real StoreKit entitlement path in code, but it is still safely gated by Creator Pass entitlement.
   Free users can join and participate in preset communities without payment.
+- Paid gacha status:
+  Build `1.0 (5)` adds StoreKit-backed ticket pack support, centralized product IDs, odds disclosure UI, and duplicate-to-shard handling.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Current TestFlight build number:
-  `1.0 (4)`
+  `1.0 (5)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, and App Group capability setup in Xcode and the Apple Developer portal, then create a signed Archive and upload that build to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload that build to TestFlight.
 - TestFlight readiness:
-  Ready from a code-and-assets perspective, pending signing/provisioning verification and Archive upload.
+  Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:
   Not ready yet because real-device QA and final screenshots are still outstanding.
 
@@ -64,9 +66,11 @@
    The local archive dry-run reached the signing stage and failed because no provisioning profile for `jp.catloverbot.MyDailyPhrase` was available in the local Xcode environment.
    The App Group capability must also be confirmed in the Apple Developer portal and included in the final provisioning profile.
 
-5. Creator Pass purchase enablement is not production-ready.
-   Community creation is intentionally locked in production until StoreKit product IDs, App Store Connect IAP configuration, entitlement verification, and purchase UX are finalized.
-   The current build must not expose a broken purchase button or external payment link.
+5. App Store Connect IAP setup is still required.
+   The app code and local StoreKit file now support paid gacha tickets and Creator Pass, but App Store Connect products, screenshots, pricing, and sandbox/TestFlight validation are still required before release.
+
+6. Sandbox / TestFlight purchase validation is still required.
+   Cancelled, pending, failed, restored, and successful purchase flows must be verified on device before App Store submission.
 
 ## Required App Store Connect metadata
 
@@ -79,6 +83,7 @@
 - App privacy questionnaire
 - Version release notes
 - Review notes describing that data is stored locally on device and reminders use local notifications only
+- In-App Purchases metadata for ticket packs and Creator Pass
 - Final App Icon asset in `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png`
 
 ## Privacy Policy URL TODO
@@ -111,6 +116,7 @@
 - Home screen after answering today's prompt
 - History screen with saved entries
 - Gacha tab with the free/local collection flow visible
+- Gacha shop with odds disclosure and ticket purchase UI
 - Gacha result screen showing visual preview, rarity, equip action, and share action
 - Collection screen showing owned / locked / equipped themes
 - Profile tab with local display name and decoration state visible
@@ -137,6 +143,13 @@
 - Confirm Home resets after delete-all
 - Confirm History resets after delete-all
 - Confirm free gacha works without exposing any paid purchase UI
+- Confirm paid gacha purchase buttons only appear when StoreKit products load
+- Confirm odds disclosure is visible before spending paid tickets
+- Confirm duplicate items convert to local shards as disclosed
+- Confirm cancelled / pending / failed purchases do not grant tickets
+- Confirm verified ticket purchases increase ticket balance exactly once
+- Confirm Creator Pass purchase UI does not appear broken when products are unavailable
+- Confirm Creator Pass restore flow works when applicable
 - Confirm the gacha result screen shows a real visual preview, not text only
 - Confirm “今すぐ使う” equips the drawn theme immediately
 - Confirm “あとで使う” leaves the current equipped theme unchanged
@@ -153,6 +166,7 @@
 - Confirm different game community presets produce appropriately different prompts
 - Confirm default community share does not include the answer text unless explicitly enabled
 - Confirm creator community creation shows a locked or gated state in production
+- Confirm Creator Pass entitlement unlocks community creation only after verification
 - Confirm no broken Creator Pass purchase button or external payment link appears
 - Confirm profile / invite / achievement share actions all require explicit user action
 - Confirm no public feed, comments, likes, or ranking UI appear in the shipped flow
@@ -181,6 +195,10 @@
 - Weekly challenge share preview with large Dynamic Type
 - Notification permission denied path
 - Notification permission allowed path
+- Successful gacha ticket sandbox purchase
+- Cancelled gacha ticket sandbox purchase
+- Pending purchase behavior
+- Creator Pass restore / entitlement refresh
 
 ## App privacy answer recommendation
 
@@ -204,9 +222,14 @@ Recommended only if the shipped build remains local-first with no reachable serv
   preset communities can reuse owned themes, share templates, titles, badges, and prompt-pack style items without requiring a backend or payment for participation.
 - Build 4 adds Game Community Lite:
   preset game communities are joinable for free and use a deterministic local prompt engine to produce tailored daily or weekly prompts.
-- Paid users should eventually be able to create communities via Creator Pass, but production enablement must use StoreKit / IAP.
-  In this build, creator community creation remains safely gated and should be treated as a locked preview unless entitlement support is explicitly enabled for internal testing.
-- No paid gacha / IAP is exposed in the shipped flow.
+- Build 5 adds StoreKit-backed monetization support:
+  paid ticket packs, odds disclosure, duplicate-to-shard conversion, and Creator Pass entitlement handling are implemented in code and wired to the local StoreKit configuration.
+- Creator Pass uses StoreKit only.
+  No external payment links are present.
+- Community participation remains free.
+- Community creation is still gated by Creator Pass entitlement.
+- Paid gacha remains cosmetic/local only:
+  items have no cash value, no trading, no resale, and no marketplace.
 - No public unmoderated UGC is exposed in the shipped flow.
 - Native sharing is explicit user action only.
 - Private answers are not shared by default in community, weekly challenge, or profile-related share cards.
@@ -221,9 +244,50 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - Community Lite is intentionally scoped to App-Review-safe sharing:
   weekly challenges, profile cards, streak cards, and invite cards are shared only through the native share sheet.
   Private journal answers are not shared by default.
-- Paid gacha / Creator Pass purchase UI is intentionally disabled by feature flag for the first release candidate.
 - Full public community UI is intentionally deferred until moderation, reporting, blocking, privacy, and terms work is complete.
 - Privacy and support URLs currently point to public GitHub pages. They can remain if they are intended to stay stable, but branded production URLs are preferable before final submission.
+
+## IAP checklist
+
+### Paid gacha checklist
+
+- [ ] App Store Connect consumable products created
+- [ ] Product IDs match:
+  - `jp.catloverbot.MyDailyPhrase.gacha.tickets10`
+  - `jp.catloverbot.MyDailyPhrase.gacha.tickets50`
+  - `jp.catloverbot.MyDailyPhrase.gacha.tickets120`
+- [ ] Price tiers selected
+- [ ] Product metadata and screenshots added
+- [ ] Odds disclosure visible in app before spending paid tickets
+- [ ] Actual odds and displayed odds both derive from the same pool/weight source
+- [ ] Duplicate handling disclosed and tested
+- [ ] No cash value / trading / resale / marketplace
+- [ ] Sandbox purchase tested
+- [ ] Cancelled purchase tested
+- [ ] Pending purchase tested
+- [ ] Failed purchase tested
+
+### Creator Pass checklist
+
+- [ ] App Store Connect Creator Pass product created
+- [ ] Product type finalized:
+  - lifetime non-consumable
+  - or monthly/yearly subscription
+- [ ] Product ID matches code
+- [ ] Restore purchases / entitlement refresh tested
+- [ ] Community creation locks correctly when not entitled
+- [ ] Community creation unlocks correctly when entitled
+- [ ] Free users can still join preset communities
+
+## App Review notes for IAP
+
+- Paid gacha is cosmetic / local only.
+- Odds disclosure is available in the Gacha screen and purchase flow.
+- Duplicate rewards convert to local shards only.
+- Creator Pass unlocks community creation only.
+- Public community feed / comments / ranking remain disabled.
+- Free users can still participate in preset communities without payment.
+- No external payment links are present.
 
 ## TestFlight checklist
 

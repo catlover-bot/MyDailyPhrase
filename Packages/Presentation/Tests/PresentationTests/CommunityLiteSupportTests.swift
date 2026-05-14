@@ -44,20 +44,20 @@ struct CommunityLiteSupportTests {
 
     @Test("release feature flags keep risky features disabled")
     func featureAvailability() {
-        #expect(ReleaseFeatureAvailability.paidGachaEnabled == false)
+        #expect(ReleaseFeatureAvailability.paidGachaEnabled == true)
         #expect(ReleaseFeatureAvailability.publicCommunityEnabled == false)
         #expect(ReleaseFeatureAvailability.communityLiteEnabled == true)
         #expect(ReleaseFeatureAvailability.gameCommunityEnabled == true)
-        #expect(ReleaseFeatureAvailability.creatorPassEnabled == false)
-        #expect(ReleaseFeatureAvailability.creatorCommunityCreationEnabled == false)
+        #expect(ReleaseFeatureAvailability.creatorPassEnabled == true)
+        #expect(ReleaseFeatureAvailability.creatorCommunityCreationEnabled == true)
         #expect(ReleaseFeatureAvailability.nativeSharingEnabled == true)
     }
 
     @Test("non-paid user cannot create community")
     func nonPaidUserCannotCreateCommunity() {
         let state = CommunityLiteSupport.creatorEntitlementState(
-            creatorPassEnabled: false,
-            creatorCommunityCreationEnabled: false,
+            creatorPassEnabled: true,
+            creatorCommunityCreationEnabled: true,
             creatorCommunityLocalDraftEnabled: true,
             storeKitEntitled: false,
             debugOverride: false
@@ -71,8 +71,8 @@ struct CommunityLiteSupportTests {
     @Test("creator-entitled user can create local community template")
     func creatorEntitledUserCanCreateCommunity() {
         let state = CommunityLiteSupport.creatorEntitlementState(
-            creatorPassEnabled: false,
-            creatorCommunityCreationEnabled: false,
+            creatorPassEnabled: true,
+            creatorCommunityCreationEnabled: true,
             creatorCommunityLocalDraftEnabled: true,
             storeKitEntitled: false,
             debugOverride: true
@@ -145,5 +145,14 @@ struct CommunityLiteSupportTests {
 
         #expect(!text.contains(community.id))
         #expect(text.contains(community.name))
+    }
+
+    @Test("monetization product IDs stay centralized and stable")
+    func monetizationProductIDsStable() {
+        #expect(MonetizationProducts.gachaTicket10 == "jp.catloverbot.MyDailyPhrase.gacha.tickets10")
+        #expect(MonetizationProducts.gachaTicket50 == "jp.catloverbot.MyDailyPhrase.gacha.tickets50")
+        #expect(MonetizationProducts.gachaTicket120 == "jp.catloverbot.MyDailyPhrase.gacha.tickets120")
+        #expect(MonetizationProducts.creatorPassLifetime == "jp.catloverbot.MyDailyPhrase.creatorpass.lifetime")
+        #expect(MonetizationProducts.ticketPack(for: MonetizationProducts.gachaTicket120)?.ticketCount == 120)
     }
 }

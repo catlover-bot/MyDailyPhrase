@@ -2,12 +2,12 @@ import Foundation
 import Domain
 
 public enum ReleaseFeatureAvailability {
-    public static let paidGachaEnabled = false
+    public static let paidGachaEnabled = true
     public static let publicCommunityEnabled = false
     public static let communityLiteEnabled = true
     public static let gameCommunityEnabled = true
-    public static let creatorPassEnabled = false
-    public static let creatorCommunityCreationEnabled = false
+    public static let creatorPassEnabled = true
+    public static let creatorCommunityCreationEnabled = true
     public static let creatorCommunityLocalDraftEnabled = true
     public static let nativeSharingEnabled = true
     public static let themePreviewEnabled = true

@@ -406,51 +406,32 @@ final class GachaViewModel: ObservableObject {
     }
 
     var weightTable: [WeightRow] {
-        let pool = CardDecorationCatalog.pool
-        let total = max(1, pool.map(\.weight).reduce(0, +))
-
-        func sum(_ r: CardDecorationRarity) -> Int {
-            pool.filter { $0.rarity == r }.map(\.weight).reduce(0, +)
-        }
-
-        let rows: [(String, Int)] = [
-            ("COMMON", sum(.common)),
-            ("RARE", sum(.rare)),
-            ("EPIC", sum(.epic)),
-            ("LEGENDARY", sum(.legendary))
-        ]
-
-        return rows.map { (label, w) in
-            let pct = Double(w) / Double(total) * 100.0
-            return WeightRow(label: label, value: String(format: "%.1f%%", pct))
+        GachaOddsPolicy.rarityOdds(pool: CardDecorationCatalog.pool).map { row in
+            WeightRow(
+                label: GachaThemePresentation.rarityLabel(for: row.rarity),
+                value: String(format: "%.1f%%", row.probability * 100.0)
+            )
         }
     }
 
     var itemWeightTable: [ItemWeightRow] {
-        let multipliers = pickupMultipliers
-        let weighted: [(CardDecoration, Double, Bool)] = CardDecorationCatalog.pool.map { item in
-            let isFeatured = multipliers[item.id] != nil
-            let multiplier = max(0.0, multipliers[item.id] ?? 1.0)
-            return (item, Double(item.weight) * multiplier, isFeatured)
-        }
-
-        let total = max(0.0001, weighted.map(\.1).reduce(0.0, +))
-
-        return weighted
+        GachaOddsPolicy.itemOdds(
+            pool: CardDecorationCatalog.pool,
+            pickupMultipliers: pickupMultipliers
+        )
             .sorted { lhs, rhs in
-                if lhs.0.rarity.rank != rhs.0.rarity.rank {
-                    return lhs.0.rarity.rank > rhs.0.rarity.rank
+                if lhs.item.rarity.rank != rhs.item.rarity.rank {
+                    return lhs.item.rarity.rank > rhs.item.rarity.rank
                 }
-                return lhs.0.name < rhs.0.name
+                return lhs.item.name < rhs.item.name
             }
-            .map { item, effective, isFeatured in
-                let pct = effective / total * 100.0
+            .map { row in
                 return ItemWeightRow(
-                    id: item.id,
-                    name: item.name,
-                    rarity: item.rarity.rawValue.uppercased(),
-                    value: String(format: "%.2f%%", pct),
-                    isFeatured: isFeatured
+                    id: row.item.id,
+                    name: row.item.name,
+                    rarity: GachaThemePresentation.rarityLabel(for: row.item.rarity),
+                    value: String(format: "%.2f%%", row.probability * 100.0),
+                    isFeatured: row.isFeatured
                 )
             }
     }
@@ -493,21 +474,13 @@ final class GachaViewModel: ObservableObject {
         }
 
         let multipliers = pickupMultipliers
-        let legendaryBoost = Self.legendaryBoostMultiplier(pityCount: pity)
-        let weighted = CardDecorationCatalog.pool.map { item -> (rarity: CardDecorationRarity, weight: Double) in
-            let pickup = max(0.0, multipliers[item.id] ?? 1.0)
-            let pityWeight = item.rarity == .legendary ? legendaryBoost : 1.0
-            return (item.rarity, Double(item.weight) * pickup * pityWeight)
-        }
-
-        let total = weighted.map(\.weight).reduce(0.0, +)
-        guard total > 0 else { return "0.00%" }
-
-        let legendary = weighted
-            .filter { $0.rarity == .legendary }
-            .map(\.weight)
-            .reduce(0.0, +)
-        let pct = legendary / total * 100.0
+        let pct = (GachaOddsPolicy.rarityOdds(
+            pool: CardDecorationCatalog.pool,
+            pickupMultipliers: multipliers,
+            pityCount: pity
+        )
+        .first(where: { $0.rarity == .legendary })?
+        .probability ?? 0) * 100.0
         return String(format: "%.2f%%", pct)
     }
 
@@ -573,9 +546,7 @@ final class GachaViewModel: ObservableObject {
     }
 
     private static func legendaryBoostMultiplier(pityCount: Int) -> Double {
-        if pityCount < 60 { return 1.0 }
-        let t = min(1.0, Double(pityCount - 60) / 19.0)
-        return 1.0 + 9.0 * t
+        GachaOddsPolicy.legendaryBoostMultiplier(pityCount: pityCount)
     }
 
     private func refreshSeasonThemeContext(referenceDate: Date = Date()) {

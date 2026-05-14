@@ -223,6 +223,30 @@ struct GachaUseCaseTests {
             #expect(record?.source == .freeGacha)
         }
     }
+
+    @Test("重複時の欠片変換はレアリティごとに固定")
+    func duplicateShardRewardsAreStable() {
+        #expect(GachaOddsPolicy.duplicateShardReward(for: .common) == 1)
+        #expect(GachaOddsPolicy.duplicateShardReward(for: .rare) == 3)
+        #expect(GachaOddsPolicy.duplicateShardReward(for: .epic) == 10)
+        #expect(GachaOddsPolicy.duplicateShardReward(for: .legendary) == 30)
+    }
+
+    @Test("表示用の提供割合は抽選プールの重みと一致する")
+    func rarityOddsUseSameSourceAsDrawPool() {
+        let pool = CardDecorationCatalog.pool
+        let totalWeight = Double(pool.map(\.weight).reduce(0, +))
+        let commonWeight = Double(pool.filter { $0.rarity == .common }.map(\.weight).reduce(0, +))
+        let legendaryWeight = Double(pool.filter { $0.rarity == .legendary }.map(\.weight).reduce(0, +))
+
+        let rows = GachaOddsPolicy.rarityOdds(pool: pool)
+        let common = rows.first { $0.rarity == .common }
+        let legendary = rows.first { $0.rarity == .legendary }
+
+        #expect(common?.probability == commonWeight / totalWeight)
+        #expect(legendary?.probability == legendaryWeight / totalWeight)
+        #expect(rows.map(\.probability).reduce(0, +) == 1.0)
+    }
 }
 
 private final class InMemoryUserProfileRepository: UserProfileRepository, @unchecked Sendable {

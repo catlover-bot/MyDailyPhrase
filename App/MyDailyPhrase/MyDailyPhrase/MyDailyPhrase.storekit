@@ -20,12 +20,12 @@
       "internalID" : "C622F475",
       "localizations" : [
         {
-          "description" : "",
-          "displayName" : "",
+          "description" : "10枚分のガチャチケットです。装飾アイテムの抽選に使えます。",
+          "displayName" : "Gacha Tickets 10",
           "locale" : "en_US"
         }
       ],
-      "productID" : "mydailyphrase.gacha.ticket10",
+      "productID" : "jp.catloverbot.MyDailyPhrase.gacha.tickets10",
       "referenceName" : "GachaTicket10",
       "type" : "Consumable"
     },
@@ -35,14 +35,44 @@
       "internalID" : "C014B8C4",
       "localizations" : [
         {
-          "description" : "",
-          "displayName" : "",
+          "description" : "50枚分のガチャチケットです。装飾アイテムの抽選に使えます。",
+          "displayName" : "Gacha Tickets 50",
           "locale" : "en_US"
         }
       ],
-      "productID" : "mydailyphrase.gacha.ticket50",
+      "productID" : "jp.catloverbot.MyDailyPhrase.gacha.tickets50",
       "referenceName" : "GachaTicket50",
       "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "1600",
+      "familyShareable" : false,
+      "internalID" : "A1C2D3E4",
+      "localizations" : [
+        {
+          "description" : "120枚分のガチャチケットです。装飾アイテムの抽選に使えます。",
+          "displayName" : "Gacha Tickets 120",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "jp.catloverbot.MyDailyPhrase.gacha.tickets120",
+      "referenceName" : "GachaTicket120",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "1200",
+      "familyShareable" : false,
+      "internalID" : "B5F9K3M7",
+      "localizations" : [
+        {
+          "description" : "Unlocks creator community creation and advanced prompt customization.",
+          "displayName" : "Creator Pass Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "jp.catloverbot.MyDailyPhrase.creatorpass.lifetime",
+      "referenceName" : "CreatorPassLifetime",
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {

@@ -168,22 +168,13 @@ public struct DrawDecorationGachaUseCase: Sendable {
     }
 
     private func duplicateShard(for rarity: CardDecorationRarity) -> Int {
-        switch rarity {
-        case .common: return 1
-        case .rare: return 3
-        case .epic: return 10
-        case .legendary: return 30
-        }
+        GachaOddsPolicy.duplicateShardReward(for: rarity)
     }
 
     // MARK: - RNG (weighted + soft pity + pickup)
 
     private func legendaryBoostMultiplier(pityCount: Int) -> Double {
-        // 例：60回を超えたあたりからLegendaryが徐々に出やすくなる
-        // (60..79) で 1.0 -> 10.0 へ
-        if pityCount < 60 { return 1.0 }
-        let t = min(1.0, Double(pityCount - 60) / 19.0) // 60..79
-        return 1.0 + 9.0 * t
+        GachaOddsPolicy.legendaryBoostMultiplier(pityCount: pityCount)
     }
 
     private func pickWeighted(

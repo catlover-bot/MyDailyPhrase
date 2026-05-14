@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import StoreKit
 import Domain
+import Presentation
 
 @MainActor
 final class IAPStore: ObservableObject {
@@ -15,7 +16,7 @@ final class IAPStore: ObservableObject {
 
     enum ProductKind: Equatable {
         case ticketPack(amount: Int)
-        case creatorPass
+        case creatorPass(kind: CreatorPassProductKind?)
         case unknown
     }
 
@@ -35,35 +36,28 @@ final class IAPStore: ObservableObject {
     private let defaults: UserDefaults
 
     // ===== Config =====
-    private let ticketProductAmounts: [String: Int] = [
-        "mydailyphrase.gacha.ticket10": 10,
-        "mydailyphrase.gacha.ticket50": 50,
-        "mydailyphrase.gacha.ticket120": 120,
-        "mydailyphrase.gacha.ticket300": 300
-    ]
-    private let creatorPassProductIDs: Set<String> = [
-        "mydailyphrase.creatorpass.monthly",
-        "mydailyphrase.creatorpass.yearly"
-    ]
-
     // ===== Dedup =====
     private let processedKey = "MyDailyPhrase.iap.processedTxIds.v1"
     private let processedMaxCount = 200
     private var updatesTask: Task<Void, Never>? = nil
 
     private var productIDs: [String] {
-        Array(Set(Array(ticketProductAmounts.keys) + Array(creatorPassProductIDs))).sorted()
+        MonetizationProducts.allProductIDs
     }
 
     var ticketProducts: [Product] {
         products
-            .filter { ticketProductAmounts[$0.id] != nil }
+            .filter { MonetizationProducts.ticketPack(for: $0.id) != nil }
             .sorted { lhs, rhs in
-                let la = ticketProductAmounts[lhs.id] ?? 0
-                let ra = ticketProductAmounts[rhs.id] ?? 0
+                let la = MonetizationProducts.ticketPack(for: lhs.id)?.ticketCount ?? 0
+                let ra = MonetizationProducts.ticketPack(for: rhs.id)?.ticketCount ?? 0
                 if la != ra { return la < ra }
                 return lhs.id < rhs.id
             }
+    }
+
+    var isTicketShopAvailable: Bool {
+        state == .ready && !ticketProducts.isEmpty
     }
 
     var bestValueTicketProductID: String? {
@@ -82,11 +76,18 @@ final class IAPStore: ObservableObject {
 
     var creatorPassProducts: [Product] {
         products
-            .filter { creatorPassProductIDs.contains($0.id) }
+            .filter { MonetizationProducts.isCreatorPassProduct($0.id) }
             .sorted { lhs, rhs in
+                let leftRank = creatorPassSortRank(for: lhs.id)
+                let rightRank = creatorPassSortRank(for: rhs.id)
+                if leftRank != rightRank { return leftRank < rightRank }
                 if lhs.price != rhs.price { return lhs.price < rhs.price }
                 return lhs.id < rhs.id
             }
+    }
+
+    var isCreatorPassShopAvailable: Bool {
+        state == .ready && !creatorPassProducts.isEmpty
     }
 
     var creatorPassStatusText: String {
@@ -101,22 +102,31 @@ final class IAPStore: ObservableObject {
 
     var creatorPassBenefitLines: [String] {
         [
-            "今週急上昇のバズ通知を受け取れる",
-            "バズお題の投稿詳細を全件表示できる",
+            "コミュニティを作成できます",
+            "カスタムお題シードと7日/4週プレビューを使えます",
+            "所持テーマをコミュニティの見た目に反映できます",
             "毎日の無料券に +\(Self.creatorPassDailyBonusTickets) ボーナス"
         ]
     }
 
     var ticketValuePitchLines: [String] {
         [
-            "チケットは即時付与。思い立った瞬間に回せます",
-            "BEST VALUEのパックは長期運用向け",
-            "Creator Pass併用で毎日無料券ボーナス"
+            "チケットは検証済みの購入後に即時付与されます",
+            "購入前に提供割合と重複時の欠片変換を確認できます",
+            "アイテムに現金価値はなく、譲渡・売買はできません"
         ]
     }
 
+    var paidGachaUnavailableMessage: String {
+        "チケット商品の準備中です。商品設定が完了すると購入できます。"
+    }
+
+    var creatorPassUnavailableMessage: String {
+        "参加は無料です。コミュニティ作成のみCreator Pass機能です。商品設定完了後に購入できます。"
+    }
+
     func ticketAmount(for product: Product) -> Int {
-        ticketProductAmounts[product.id] ?? 0
+        MonetizationProducts.ticketPack(for: product.id)?.ticketCount ?? 0
     }
 
     func isBestValueTicketProduct(_ product: Product) -> Bool {
@@ -181,7 +191,11 @@ final class IAPStore: ObservableObject {
         do {
             let ps = try await Product.products(for: productIDs)
             self.products = ps.sorted { $0.id < $1.id }
-            state = .ready
+            if ps.isEmpty {
+                state = .failed("商品を取得できませんでした。しばらくしてから再度お試しください。")
+            } else {
+                state = .ready
+            }
         } catch {
             state = .failed("Productsの取得に失敗: \(error.localizedDescription)")
         }
@@ -196,6 +210,10 @@ final class IAPStore: ObservableObject {
         } catch {
             lastMessage = "同期に失敗: \(error.localizedDescription)"
         }
+    }
+
+    func restoreCreatorPass() async {
+        await sync()
     }
 
     // MARK: - Purchase
@@ -225,11 +243,11 @@ final class IAPStore: ObservableObject {
     }
 
     func kind(for product: Product) -> ProductKind {
-        if let amount = ticketProductAmounts[product.id] {
+        if let amount = MonetizationProducts.ticketPack(for: product.id)?.ticketCount {
             return .ticketPack(amount: amount)
         }
-        if creatorPassProductIDs.contains(product.id) {
-            return .creatorPass
+        if MonetizationProducts.isCreatorPassProduct(product.id) {
+            return .creatorPass(kind: MonetizationProducts.creatorPassKind(for: product.id))
         }
         return .unknown
     }
@@ -267,7 +285,7 @@ final class IAPStore: ObservableObject {
     }
 
     private func applyTransaction(_ tx: Transaction) async throws {
-        if creatorPassProductIDs.contains(tx.productID) {
+        if MonetizationProducts.isCreatorPassProduct(tx.productID) {
             await refreshCreatorPassEntitlement()
             if isCreatorPassActive {
                 lastMessage = "Creator Pass を有効化しました"
@@ -288,7 +306,7 @@ final class IAPStore: ObservableObject {
 
         for await entitlement in Transaction.currentEntitlements {
             guard let tx = try? verified(entitlement) else { continue }
-            guard creatorPassProductIDs.contains(tx.productID) else { continue }
+            guard MonetizationProducts.isCreatorPassProduct(tx.productID) else { continue }
             guard tx.revocationDate == nil else { continue }
 
             if let expiry = tx.expirationDate {
@@ -323,7 +341,7 @@ final class IAPStore: ObservableObject {
     // MARK: - Ticket Grant
 
     private func ticketAmount(for productID: String) -> Int {
-        ticketProductAmounts[productID] ?? 0
+        MonetizationProducts.ticketPack(for: productID)?.ticketCount ?? 0
     }
 
     private func unitPrice(for product: Product) -> Decimal? {
@@ -405,4 +423,17 @@ final class IAPStore: ObservableObject {
         f.timeStyle = .short
         return f
     }()
+
+    private func creatorPassSortRank(for productID: String) -> Int {
+        switch MonetizationProducts.creatorPassKind(for: productID) {
+        case .lifetime:
+            return 0
+        case .monthly:
+            return 1
+        case .yearly:
+            return 2
+        case nil:
+            return 99
+        }
+    }
 }
