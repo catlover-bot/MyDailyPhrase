@@ -2,10 +2,17 @@
 
 ## Scope
 
-Build `1.0 (5)` adds StoreKit2 support for:
+Build `1.0 (6)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
+
+This build also reorganizes the in-app UX so:
+
+- Gacha explains free usage and item value before purchase
+- Odds are easy to reach before paid spending
+- Creator Pass explains that participation is free and creation is premium
+- purchase UI fails safely when products do not load
 
 Free users should still be able to:
 
@@ -111,7 +118,7 @@ Recommended notes:
 9. Add review screenshots for each IAP if required by App Store Connect.
 10. Save and submit the IAPs for review together with the app version if needed.
 11. In Xcode, confirm the same product IDs are used in code and in the `.storekit` file.
-12. Upload Build `1.0 (5)` to TestFlight.
+12. Upload Build `1.0 (6)` to TestFlight.
 13. Wait for processing, then test purchases on device.
 
 ## Sandbox / TestFlight monetization QA checklist
@@ -121,6 +128,8 @@ Recommended notes:
 - [ ] Creator Pass price displays from StoreKit
 - [ ] When products fail to load, purchase buttons are not tappable
 - [ ] Unavailable state shows `準備中` or `購入できません`-style fallback, not a broken button
+- [ ] Gacha screen leads with free draw / collection value before purchase
+- [ ] Odds are reachable without entering an actual purchase flow
 - [ ] Buying `tickets10` grants `10`
 - [ ] Buying `tickets50` grants `50`
 - [ ] Buying `tickets120` grants `120`
@@ -167,6 +176,10 @@ Use for Creator Pass only.
 Use this as a starting point in App Store Connect review notes:
 
 `MyDailyPhrase` offers cosmetic-only gacha rewards and a Creator Pass unlock for local community creation. Gacha rewards have no cash value and cannot be traded, sold, transferred, or cashed out. Odds are visible from the Gacha screen before paid draws. Duplicate rewards convert to local shards only. Creator Pass unlocks community creation, while community participation remains free. Public feed, comments, and ranking are disabled in this build. No external payment links are used.
+
+Additional reviewer-facing UX note:
+
+`Today` is the private diary tab, `Gacha` is for cosmetic rewards and odds disclosure, `みんな` is the free community-participation tab, and Creator Pass only affects community creation. The app is designed to make free participation and private-by-default writing clear without requiring purchase.
 
 ## App Review reminders
 

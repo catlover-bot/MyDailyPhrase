@@ -31,9 +31,9 @@ struct GachaView: View {
     @State private var collectionSort: CollectionSort = .newest
 
     enum Tab: String {
-        case gacha = "ガチャ"
+        case gacha = "ひく"
         case inventory = "所持"
-        case exchange = "交換"
+        case exchange = "欠片交換"
         case book = "コレクション"
         case history = "履歴"
         case shop = "購入"
@@ -148,6 +148,7 @@ struct GachaView: View {
                 .padding(.bottom, 16)
             }
         }
+        .background(AppScreenBackground())
         .navigationTitle("ガチャ")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -238,7 +239,7 @@ struct GachaView: View {
     }
 
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.gacha, .inventory, .exchange, .book, .history]
+        var tabs: [Tab] = [.gacha, .book, .exchange, .history]
         if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
             tabs.append(.shop)
         }
@@ -295,7 +296,7 @@ struct GachaView: View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("チケット")
+                    Text("所持チケット")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -310,7 +311,7 @@ struct GachaView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 6) {
-                    Text("欠片")
+                    Text("重複欠片")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("\(vm.shards)")
@@ -418,6 +419,25 @@ struct GachaView: View {
 
     private var gachaPanel: some View {
         VStack(spacing: 12) {
+            AppSectionCard(
+                title: "ガチャでできること",
+                subtitle: "無料ガチャやチケットで装飾アイテムを集めると、プロフィール・共有カード・コミュニティカードの見た目を変えられます。"
+            ) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "無料ガチャあり", systemImage: "gift.fill", tint: .green)
+                        InfoBadge(title: "確率を先に確認", systemImage: "info.circle", tint: .indigo)
+                        InfoBadge(title: "現金価値なし", systemImage: "shield", tint: .orange)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "無料ガチャあり", systemImage: "gift.fill", tint: .green)
+                        InfoBadge(title: "確率を先に確認", systemImage: "info.circle", tint: .indigo)
+                        InfoBadge(title: "現金価値なし", systemImage: "shield", tint: .orange)
+                    }
+                }
+            }
+
             bannerCard
 
             if FeatureFlags.themePreviewEnabled {
@@ -515,34 +535,81 @@ struct GachaView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
-            HStack(spacing: 10) {
-                Button {
-                    requestDraw(count: 1) {
-                        vm.drawOnce()
+            AppSectionCard(
+                title: "今日のガチャ",
+                subtitle: "無料券や手持ちチケットで引けます。有料チケットはあとから必要なぶんだけ購入できます。"
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        InfoBadge(title: "所持 \(ticketCountText)", systemImage: "ticket.fill", tint: .blue)
+                        InfoBadge(title: "欠片 \(vm.shards)", systemImage: "seal.fill", tint: .orange)
+                        if iap.isCreatorPassActive {
+                            PremiumBadge(title: "Creator Pass ボーナス")
+                        }
                     }
-                } label: {
-                    Text("単発 (1)")
-                        .compactActionLabel()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+
+                    HStack(spacing: 10) {
+                        Button {
+                            requestDraw(count: 1) {
+                                vm.drawOnce()
+                            }
+                        } label: {
+                            Text("単発 (1)")
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!vm.canDraw(count: 1))
+                        .accessibilityIdentifier("gacha.draw.once")
+
+                        Button {
+                            requestDraw(count: 10) {
+                                vm.drawTen()
+                            }
+                        } label: {
+                            Text("10連 (10)")
+                                .compactActionLabel()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!vm.canDraw(count: 10))
+                        .accessibilityIdentifier("gacha.draw.ten")
+                    }
+
+                    Text("重複アイテムは欠片に変わり、未所持の見た目交換に使えます。購入前にも確率を確認できます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!vm.canDraw(count: 1))
-                .accessibilityIdentifier("gacha.draw.once")
+            }
+
+            AppSectionCard(
+                title: "コレクション",
+                subtitle: "手に入れたアイテムはあとからプレビュー・装備・共有できます。"
+            ) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        InfoBadge(title: "装備中を確認", systemImage: "person.crop.circle.badge.checkmark", tint: .blue)
+                        InfoBadge(title: "最近の獲得を見返す", systemImage: "clock.arrow.circlepath", tint: .purple)
+                        InfoBadge(title: "使い道を確認", systemImage: "rectangle.on.rectangle", tint: .green)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "装備中を確認", systemImage: "person.crop.circle.badge.checkmark", tint: .blue)
+                        InfoBadge(title: "最近の獲得を見返す", systemImage: "clock.arrow.circlepath", tint: .purple)
+                        InfoBadge(title: "使い道を確認", systemImage: "rectangle.on.rectangle", tint: .green)
+                    }
+                }
 
                 Button {
-                    requestDraw(count: 10) {
-                        vm.drawTen()
-                    }
+                    tab = .book
                 } label: {
-                    Text("10連 (10)")
-                        .compactActionLabel()
+                    Label("コレクションを見る", systemImage: "square.grid.2x2")
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!vm.canDraw(count: 10))
-                .accessibilityIdentifier("gacha.draw.ten")
             }
 
             if vm.tickets < 10 {
@@ -585,21 +652,6 @@ struct GachaView: View {
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-
-                            if FeatureFlags.paidGachaEnabled,
-                               iap.isTicketShopAvailable,
-                               let bestId = iap.bestValueTicketProductID,
-                               let best = iap.ticketProducts.first(where: { $0.id == bestId }) {
-                                Button {
-                                    Task { await iap.purchase(best) }
-                                } label: {
-                                    Label("おすすめ \(best.displayPrice)", systemImage: "sparkles")
-                                        .compactActionLabel()
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
                         }
                     } else {
                         Button {
@@ -620,7 +672,7 @@ struct GachaView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("提供割合（通常時）")
+                    Text("排出確率と安全性")
                     Spacer()
                     Button {
                         isPresentingOddsSheet = true
@@ -961,7 +1013,7 @@ struct GachaView: View {
 
     private var shopPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ショップ")
+            Text("チケット購入 / Creator Pass")
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -985,11 +1037,18 @@ struct GachaView: View {
 
             switch iap.state {
             case .idle, .loading:
-                HStack { ProgressView(); Text("読み込み中…") }
-                    .foregroundStyle(.secondary)
+                EmptyStateCard(
+                    title: "商品を読み込んでいます",
+                    message: "安全に読み込めた商品だけ表示します。しばらくしても出ない場合は App Store と再同期してください。",
+                    systemImage: "cart"
+                )
 
             case .failed(let msg):
-                Text(msg).foregroundStyle(.secondary)
+                EmptyStateCard(
+                    title: "購入を準備できませんでした",
+                    message: msg,
+                    systemImage: "exclamationmark.triangle"
+                )
 
             case .ready:
                 VStack(spacing: 10) {
@@ -1077,7 +1136,7 @@ struct GachaView: View {
                                             HStack(spacing: 6) {
                                                 Text(p.displayName).fontWeight(.semibold)
                                                 if isBestValue {
-                                                    Text("BEST VALUE")
+                                                    Text("まとめて楽しむ方向け")
                                                         .font(.caption2.weight(.bold))
                                                         .padding(.horizontal, 6)
                                                         .padding(.vertical, 2)

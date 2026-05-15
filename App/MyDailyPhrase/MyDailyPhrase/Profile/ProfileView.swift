@@ -9,6 +9,7 @@ struct ProfileView: View {
     @ObservedObject var communityLiteVM: CommunityLiteViewModel
 
     @Environment(\.currentDecorationId) private var decorationId
+    @EnvironmentObject private var iap: IAPStore
 
     init(vm: ProfileViewModel, gachaVM: GachaViewModel, communityLiteVM: CommunityLiteViewModel) {
         self.vm = vm
@@ -34,9 +35,18 @@ struct ProfileView: View {
         return String((trimmed.isEmpty ? "M" : trimmed).prefix(1)).uppercased()
     }
 
+    private var joinedCommunitySummary: String {
+        let names = communityLiteVM.joinedCommunities.prefix(3).map(\.name)
+        guard !names.isEmpty else {
+            return "まだ参加中の部屋はありません"
+        }
+        let suffix = communityLiteVM.joinedCommunities.count > 3 ? " ほか" : ""
+        return names.joined(separator: " / ") + suffix
+    }
+
     var body: some View {
         Form {
-            Section("デコ / ガチャ") {
+            Section("プロフィールカード") {
                 Card("現在選択中：\(equippedName)", decorationId: decorationId) {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 12) {
@@ -72,7 +82,56 @@ struct ProfileView: View {
                         Text("この見た目がプロフィールカード、ガチャ結果プレビュー、共有カードに反映されます。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) {
+                                if let equippedTitle {
+                                    InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
+                                }
+                                InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
+                                if iap.isCreatorPassActive {
+                                    PremiumBadge(title: "Creator Pass")
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let equippedTitle {
+                                    InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
+                                }
+                                InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
+                                if iap.isCreatorPassActive {
+                                    PremiumBadge(title: "Creator Pass")
+                                }
+                            }
+                        }
                     }
+                }
+
+                Text(joinedCommunitySummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 10) {
+                    ShareLink(item: vm.shareProfileText) {
+                        Label("プロフィールカードを共有", systemImage: "square.and.arrow.up")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    NavigationLink {
+                        GachaView(vm: gachaVM)
+                    } label: {
+                        Label("コレクションを見る", systemImage: "square.grid.2x2")
+                            .compactActionLabel()
+                    }
+                }
+            }
+
+            Section("ガチャ / 装備") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("集めたアイテムはプロフィール、共有カード、コミュニティカードの見た目に使えます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -110,20 +169,18 @@ struct ProfileView: View {
                 }
             }
 
-            if FeatureFlags.communityLiteEnabled {
-                Section("みんなとつながる") {
-                    NavigationLink {
-                        CommunityLiteView(vm: communityLiteVM)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("みんなのチャレンジ", systemImage: "person.2.wave.2")
-                                .compactActionLabel()
-                            Text("公開フィードなしで、ゲーム系コミュニティへの無料参加、週間チャレンジ、プロフィールカード共有を安全に楽しめます。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+            Section("Creator Pass") {
+                if iap.isCreatorPassActive {
+                    Label("コミュニティ作成が有効です", systemImage: "crown.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.orange)
+                    Text("参加者は無料のまま、ゲーム部屋の作成、お題カスタマイズ、部屋の見た目設定が使えます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("コミュニティへの参加は無料です。Creator Pass はコミュニティ作成とカスタマイズだけを解放します。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -213,6 +270,7 @@ struct ProfileView: View {
         .onAppear {
             vm.load()
             gachaVM.load()
+            communityLiteVM.load()
         }
     }
 

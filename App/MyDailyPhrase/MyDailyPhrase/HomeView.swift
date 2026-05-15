@@ -4,9 +4,13 @@ import Presentation
 
 struct HomeView: View {
     @StateObject private var vm: HomeViewModel
+    private let historyViewModel: HistoryViewModel
+    @AppStorage("home.didDismissFirstUseGuide.v1") private var didDismissFirstUseGuide = false
+    @State private var isShowingGuide = false
 
-    init(viewModel: HomeViewModel) {
+    init(viewModel: HomeViewModel, historyViewModel: HistoryViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
+        self.historyViewModel = historyViewModel
     }
 
     var body: some View {
@@ -14,12 +18,17 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
 
+                if !didDismissFirstUseGuide {
+                    firstUseGuideCard
+                }
+
                 if vm.isLoading && vm.promptText.isEmpty {
                     loadingCard
                 } else {
                     promptCard
                     answerCard
                     answerStateCard
+                    historyCard
                     progressSection
                 }
             }
@@ -27,14 +36,28 @@ struct HomeView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 24)
         }
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .background(AppScreenBackground())
         .navigationTitle("今日")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isShowingGuide = true
+                } label: {
+                    Label("使い方", systemImage: "questionmark.circle")
+                }
+            }
+        }
         .task {
             vm.load()
         }
         .onReceive(NotificationCenter.default.publisher(for: .entryDidUpdate)) { _ in
             vm.load()
+        }
+        .sheet(isPresented: $isShowingGuide) {
+            NavigationStack {
+                QuickStartGuideSheet()
+            }
         }
     }
 
@@ -51,6 +74,20 @@ struct HomeView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
 
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
+                    InfoBadge(title: "みんなの部屋は参加無料", systemImage: "person.2.wave.2", tint: .green)
+                    PremiumBadge(title: "作成はCreator Pass")
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
+                    InfoBadge(title: "みんなの部屋は参加無料", systemImage: "person.2.wave.2", tint: .green)
+                    PremiumBadge(title: "作成はCreator Pass")
+                }
+            }
+
             if let feedback = vm.feedbackMessage {
                 Label(feedback, systemImage: vm.feedbackIsError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                     .font(.subheadline.weight(.medium))
@@ -62,6 +99,68 @@ struct HomeView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var firstUseGuideCard: some View {
+        AppSectionCard(
+            title: "はじめての方へ",
+            subtitle: "まずは今日のお題にひとこと答えるだけで大丈夫です。"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                guideRow(
+                    title: "今日できること",
+                    detail: "1日1つのお題に答えると、その日の記録がこの端末に残ります。",
+                    systemImage: "square.and.pencil"
+                )
+                guideRow(
+                    title: "ガチャの役割",
+                    detail: "テーマや装飾を集めると、プロフィールや共有カードの見た目を変えられます。",
+                    systemImage: "sparkles"
+                )
+                guideRow(
+                    title: "みんな機能",
+                    detail: "部屋への参加は無料です。コミュニティ作成だけ Creator Pass が必要です。",
+                    systemImage: "person.2.wave.2"
+                )
+                guideRow(
+                    title: "プライバシー",
+                    detail: "日記の回答は自動で公開されません。共有前には内容を確認できます。",
+                    systemImage: "hand.raised.fill"
+                )
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Button {
+                            isShowingGuide = true
+                        } label: {
+                            Label("使い方を見る", systemImage: "book")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("閉じる") {
+                            didDismissFirstUseGuide = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            isShowingGuide = true
+                        } label: {
+                            Label("使い方を見る", systemImage: "book")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("閉じる") {
+                            didDismissFirstUseGuide = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        }
     }
 
     private var promptCard: some View {
@@ -78,6 +177,10 @@ struct HomeView: View {
 
                 Text("気負わず、短い言葉から始めて大丈夫です。")
                     .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Label("保存するまで外には出ません", systemImage: "lock.shield")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
         }
@@ -117,33 +220,76 @@ struct HomeView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .accessibilityHint("今日の回答を保存または更新します")
+
+                Text("回答はこのデバイス内に保存され、共有は明示的な操作をしたときだけ行われます。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     private var answerStateCard: some View {
         JournalCard {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: vm.isAnsweredToday ? "checkmark.seal.fill" : "moon.zzz.fill")
-                    .font(.title2)
-                    .foregroundStyle(vm.isAnsweredToday ? .green : .blue)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: vm.isAnsweredToday ? "checkmark.seal.fill" : "moon.zzz.fill")
+                        .font(.title2)
+                        .foregroundStyle(vm.isAnsweredToday ? .green : .blue)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(vm.isAnsweredToday ? "今日は回答済みです" : "まだ未回答です")
-                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(vm.isAnsweredToday ? "今日は回答済みです" : "まだ未回答です")
+                            .font(.headline)
 
-                    Text(vm.isAnsweredToday
-                         ? "あとで読み返したくなったら、今日の回答をそのまま更新できます。"
-                         : "1分だけでも残しておくと、あとから見返したときに一日の輪郭が残ります。")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(vm.isAnsweredToday
+                             ? "あとで読み返したくなったら、今日の回答をそのまま更新できます。"
+                             : "1分だけでも残しておくと、あとから見返したときに一日の輪郭が残ります。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
                 }
 
-                Spacer(minLength: 0)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "回答は自動公開されません", systemImage: "lock.fill", tint: .blue)
+                        InfoBadge(title: "共有前に確認できます", systemImage: "square.and.arrow.up", tint: .indigo)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "回答は自動公開されません", systemImage: "lock.fill", tint: .blue)
+                        InfoBadge(title: "共有前に確認できます", systemImage: "square.and.arrow.up", tint: .indigo)
+                    }
+                }
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var historyCard: some View {
+        AppSectionCard(
+            title: "履歴を見る",
+            subtitle: "過去のひとことを見返したり、必要なら削除できます。"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    InfoBadge(title: "今月 \(vm.answeredThisMonthCount) 件", systemImage: "calendar", tint: .blue)
+                    if vm.streak > 0 {
+                        InfoBadge(title: "連続 \(vm.streak) 日", systemImage: "flame.fill", tint: .orange)
+                    }
+                }
+
+                NavigationLink {
+                    HistoryView(viewModel: historyViewModel)
+                } label: {
+                    Label("履歴を見る", systemImage: "clock.arrow.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
     }
 
     private var progressSection: some View {
@@ -211,6 +357,76 @@ struct HomeView: View {
         formatter.calendar = calendar
         formatter.dateStyle = .full
         return formatter.string(from: date)
+    }
+
+    private func guideRow(title: String, detail: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct QuickStartGuideSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionCard(
+                    title: "今日やること",
+                    subtitle: "1日1つのお題に答えると、記録がこの端末に残ります。"
+                ) {
+                    guideLine("回答は自動で公開されません", systemImage: "lock.fill")
+                    guideLine("保存後もあとから更新できます", systemImage: "square.and.pencil")
+                }
+
+                AppSectionCard(
+                    title: "ガチャで増える楽しみ",
+                    subtitle: "テーマや称号、共有カード用の見た目を集められます。"
+                ) {
+                    guideLine("無料ガチャから始められます", systemImage: "gift")
+                    guideLine("有料チケットは任意で、確率は購入前に確認できます", systemImage: "ticket")
+                }
+
+                AppSectionCard(
+                    title: "みんなの部屋",
+                    subtitle: "ゲーム系の部屋には無料で参加できます。"
+                ) {
+                    guideLine("コミュニティ作成だけ Creator Pass が必要です", systemImage: "crown.fill")
+                    guideLine("公開コメントやランキングは今は無効です", systemImage: "shield")
+                }
+            }
+            .padding(16)
+        }
+        .background(AppScreenBackground())
+        .navigationTitle("使い方")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("閉じる") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func guideLine(_ text: String, systemImage: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

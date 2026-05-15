@@ -606,8 +606,8 @@ struct CommunityLiteView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
                 heroCard
-                weeklyChallengeSection
                 communitySection
+                weeklyChallengeSection
                 creatorSection
                 profileExchangeSection
                 streakSection
@@ -616,8 +616,8 @@ struct CommunityLiteView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
         }
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("みんなとつながる")
+        .background(AppScreenBackground())
+        .navigationTitle("みんな")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             vm.load()
@@ -634,16 +634,26 @@ struct CommunityLiteView: View {
     }
 
     private var heroCard: some View {
-        Card("Community Lite", decorationId: vm.selectedDecorationId) {
+        Card("みんなの部屋", decorationId: vm.selectedDecorationId) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(vm.socialHeaderText)
+                Text("ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードなしで、安心して使える共有だけを先に楽しめます。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Label("参加は無料、公開コメント・ランキングは非公開のままです", systemImage: "shield")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                        PremiumBadge(title: "作成はCreator Pass")
+                        InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                        PremiumBadge(title: "作成はCreator Pass")
+                        InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
+                    }
+                }
 
                 if !vm.communityCreationStatusText.isEmpty {
                     Text(vm.communityCreationStatusText)
@@ -659,7 +669,7 @@ struct CommunityLiteView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "みんなのチャレンジ",
-                subtitle: "公開フィードなしで、今週のお題を外部共有できます。"
+                subtitle: "部屋に入っていなくても、今週のお題をローカルで書いて共有できます。"
             )
 
             CommunityLiteSharePreviewCard(
@@ -723,11 +733,17 @@ struct CommunityLiteView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "コミュニティ",
-                subtitle: "参加は無料です。ゲーム系の公式プリセットに入り、部屋ごとのお題を楽しめます。"
+                subtitle: "参加は無料です。ゲーム系の公式プリセットから、自分に合う部屋を見つけられます。"
             )
 
             if !vm.joinedCommunities.isEmpty {
                 joinedCommunitiesStrip
+            } else {
+                EmptyStateCard(
+                    title: "まだ参加している部屋はありません",
+                    message: "気になる部屋を1つ選ぶと、その部屋専用のお題を無料で楽しめます。",
+                    systemImage: "person.2"
+                )
             }
 
             communityCatalogGrid
@@ -944,7 +960,7 @@ struct CommunityLiteView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "コミュニティを作る",
-                subtitle: "作成はCreator Pass向け機能です。参加は無料のまま、ゲーム部屋の設計だけ先にプレビューできます。"
+                subtitle: "参加者は無料のまま、Creator Pass で自分の部屋づくりを解放できます。"
             )
 
             Card("作成プレビュー", decorationId: vm.draftThemeDecorationId ?? vm.selectedDecorationId) {

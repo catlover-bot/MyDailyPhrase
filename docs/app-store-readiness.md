@@ -15,7 +15,9 @@
 - App Icon validation:
   PNG, `1024x1024`, square, RGB, `hasAlpha: no`
 - Main navigation for the TestFlight candidate:
-  `今日`, `履歴`, `ガチャ`, `プロフィール`, `設定`
+  `今日`, `ガチャ`, `みんな`, `プロフィール`, `設定`
+- History location:
+  history is now reachable from the `今日` screen via a visible `履歴を見る` action instead of a primary tab.
 - First-release feature gating:
   free/local gacha remains available, while paid gacha / Creator Pass UI is shown only when StoreKit products load successfully.
 - Build 1.0 (3) theme-preview additions:
@@ -32,14 +34,17 @@
   Free users can join and participate in preset communities without payment.
 - Paid gacha status:
   Build `1.0 (5)` adds StoreKit-backed ticket pack support, centralized product IDs, odds disclosure UI, and duplicate-to-shard handling.
+- Build `1.0 (6)` usability focus:
+  the app now prioritizes real user comprehension over screenshot polish.
+  Home explains the private-by-default diary loop, Gacha leads with free/reward usage before purchase, Community is discoverable from the tab bar, and Creator Pass messaging more clearly distinguishes free participation from paid creation.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Current TestFlight build number:
-  `1.0 (5)`
+  `1.0 (6)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload that build to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (6)` to TestFlight.
 - TestFlight readiness:
   Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:
@@ -52,11 +57,15 @@
 
 2. Updated App Store screenshots must be captured for the current tab-based experience.
    Any older screenshots from the previous product shape should not be reused.
+   Screenshot readiness is a byproduct of the usability work, not the primary goal of this build.
 
    New screenshot-worthy candidates now include:
+   - the `今日` screen with private-by-default guidance and `履歴を見る`
+   - the gacha overview screen with free draw, collection, odds, and optional purchase sections
    - the gacha result preview screen
    - the collection screen with owned / locked / equipped states
    - the equipped profile card after applying a new theme
+   - the `みんな` tab with preset game communities and free participation labels
    - the weekly challenge / Community Lite share preview flow
 
 3. Local reminder behavior must be verified on a real device.
@@ -114,6 +123,7 @@
 
 - Home screen with today's prompt visible
 - Home screen after answering today's prompt
+- Home screen showing `履歴を見る`
 - History screen with saved entries
 - Gacha tab with the free/local collection flow visible
 - Gacha shop with odds disclosure and ticket purchase UI
@@ -132,10 +142,12 @@
 ## Manual test checklist
 
 - Fresh install launches into the journal flow without crashes
+- Confirm the first-use guidance clearly explains private diary, free participation, and Creator Pass scope
 - Save today's answer
 - Update today's answer
 - Kill and relaunch the app and confirm persistence
 - Open each main tab and confirm titles/state restore correctly
+- Confirm `履歴を見る` is easy to find from the `今日` screen
 - Search History
 - Delete one entry from History
 - Confirm streak recalculates after deleting an entry
@@ -143,8 +155,10 @@
 - Confirm Home resets after delete-all
 - Confirm History resets after delete-all
 - Confirm free gacha works without exposing any paid purchase UI
+- Confirm the gacha screen explains what items are for before showing purchase options
 - Confirm paid gacha purchase buttons only appear when StoreKit products load
 - Confirm odds disclosure is visible before spending paid tickets
+- Confirm ticket purchase copy feels optional and non-predatory
 - Confirm duplicate items convert to local shards as disclosed
 - Confirm cancelled / pending / failed purchases do not grant tickets
 - Confirm verified ticket purchases increase ticket balance exactly once
@@ -161,6 +175,7 @@
 - Confirm weekly challenge prompt and preview card render correctly
 - Confirm weekly challenge share does not include the private answer by default
 - Confirm preset game communities are browsable and joinable for free
+- Confirm the `みんな` tab clearly explains that participation is free
 - Confirm joining and leaving a preset community updates local state correctly
 - Confirm community prompt generation stays stable for the same day / week
 - Confirm different game community presets produce appropriately different prompts
@@ -217,6 +232,8 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The current implementation does not add analytics, tracking, login, or third-party SDKs to the journal flow.
 - The App Icon asset catalog now references `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/AppIcon.appiconset/AppIcon.png` for the standard, dark, and tinted slots.
 - The TestFlight candidate now exposes existing local engagement surfaces through the main tab bar.
+- Build 6 improves real usability first:
+  first-use guidance, clearer tab intent, stronger privacy copy, and better monetization explanations were added so users can understand what is free, what is paid, and where gacha items are useful without relying on marketing screenshots.
 - Build 3 adds a stronger local-only gacha loop:
 - Build 4 extends that loop into reusable community styling and safe social participation:
   preset communities can reuse owned themes, share templates, titles, badges, and prompt-pack style items without requiring a backend or payment for participation.

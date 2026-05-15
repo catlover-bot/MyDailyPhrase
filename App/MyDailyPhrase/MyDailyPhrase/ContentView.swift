@@ -12,17 +12,10 @@ struct ContentView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                HomeView(viewModel: homeVM)
+                HomeView(viewModel: homeVM, historyViewModel: historyVM)
             }
             .tabItem {
                 Label("今日", systemImage: "sun.max")
-            }
-
-            NavigationStack {
-                HistoryView(viewModel: historyVM)
-            }
-            .tabItem {
-                Label("履歴", systemImage: "clock.arrow.circlepath")
             }
 
             NavigationStack {
@@ -30,6 +23,13 @@ struct ContentView: View {
             }
             .tabItem {
                 Label("ガチャ", systemImage: "sparkles")
+            }
+
+            NavigationStack {
+                CommunityLiteView(vm: communityLiteVM)
+            }
+            .tabItem {
+                Label("みんな", systemImage: "person.2.wave.2")
             }
 
             NavigationStack {
