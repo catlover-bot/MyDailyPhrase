@@ -15,7 +15,7 @@ struct MonetizationShopSupportTests {
 
         #expect(states.count == 3)
         #expect(states.allSatisfy { !$0.isEnabled })
-        #expect(states.allSatisfy { $0.statusText.contains("反映待ち") })
+        #expect(states.allSatisfy { $0.statusText.contains("準備中") })
     }
 
     @Test("loaded product enables only matching purchase cards")

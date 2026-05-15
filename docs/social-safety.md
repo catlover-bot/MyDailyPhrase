@@ -1,6 +1,6 @@
 # Social Safety Scope
 
-## Current scope in Build `1.0 (7)`
+## Current scope in Build `1.0 (12)`
 
 `MyDailyPhrase` includes a lightweight social UX layer, but it is intentionally constrained to avoid unsafe public UGC.
 
@@ -55,7 +55,7 @@ The shipped flow must not expose any of the following until a real backend and m
 
 Current status:
 
-- no real social backend is required for the shipped Build `1.0 (7)` flow
+- no real social backend is required for the shipped Build `1.0 (12)` flow
 - no CloudKit-backed social graph is enabled in this release pass
 - no public account system is required for the core diary / gacha loop
 

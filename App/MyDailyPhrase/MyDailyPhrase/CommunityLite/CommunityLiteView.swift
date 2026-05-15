@@ -782,9 +782,10 @@ struct CommunityLiteView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: 820)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
+            .frame(maxWidth: AppChrome.standardPageMaxWidth)
+            .padding(.horizontal, AppChrome.screenHorizontalPadding)
+            .padding(.top, AppChrome.standardPageTopPadding)
+            .padding(.bottom, AppChrome.standardPageBottomPadding)
         }
         .background(AppScreenBackground())
         .navigationTitle("みんな")
@@ -807,7 +808,7 @@ struct CommunityLiteView: View {
         PageHeroCard(
             eyebrow: "参加してつながる",
             title: "みんなの部屋",
-            subtitle: "ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードやランキングを使わず、安心して楽しめる導線から先に整えています。",
+            subtitle: "ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードを使わず、安心して楽しめる導線から先に整えています。",
             accent: .green
         ) {
             ViewThatFits(in: .horizontal) {
@@ -1418,12 +1419,21 @@ struct CommunityLiteView: View {
                         }
                     }
 
-                    TextField("コミュニティ名", text: $vm.draftName)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("基本情報")
+                            .font(.subheadline.weight(.semibold))
+                        Text("まずは名前・説明・カテゴリを決めると、下のプレビューが更新されます。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    TextField("短い説明", text: $vm.draftDescription, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(2...4)
+                        TextField("コミュニティ名", text: $vm.draftName)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("短い説明", text: $vm.draftDescription, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(2...4)
+                    }
 
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 10) {
@@ -1532,17 +1542,27 @@ struct CommunityLiteView: View {
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(1...3)
 
-                    TextField("ブロックしたい語（任意・カンマ区切り）", text: $vm.draftBlockedWordsText, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...3)
+                    DisclosureGroup("詳細カスタマイズ") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("必要なときだけ、お題の種や共有方針を細かく調整できます。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                    TextField("カスタムお題の種（改行区切り）", text: $vm.draftCustomPromptSeedsText, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(2...5)
+                            TextField("ブロックしたい語（任意・カンマ区切り）", text: $vm.draftBlockedWordsText, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(1...3)
 
-                    TextField("次のお題を固定したいときの一文（任意）", text: $vm.draftPinnedPromptText, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...3)
+                            TextField("カスタムお題の種（改行区切り）", text: $vm.draftCustomPromptSeedsText, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(2...5)
+
+                            TextField("次のお題を固定したいときの一文（任意）", text: $vm.draftPinnedPromptText, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(1...3)
+                        }
+                        .padding(.top, 8)
+                    }
 
                     themePickerSection
                 }

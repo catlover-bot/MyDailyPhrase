@@ -50,7 +50,7 @@ struct ProfileView: View {
                 PageHeroCard(
                     eyebrow: "あなたの見た目と肩書き",
                     title: vm.displayName.isEmpty ? "Me" : vm.displayName,
-                    subtitle: "集めたテーマや称号は、プロフィールカード・共有カード・コミュニティカードの見た目に反映されます。",
+                    subtitle: "集めたテーマや称号は、プロフィールカード・共有カード・コミュニティカードの見た目に反映されます。共有する内容は自分で選べます。",
                     accent: .purple
                 ) {
                     Card("現在選択中：\(equippedName)", decorationId: decorationId) {
@@ -273,47 +273,50 @@ struct ProfileView: View {
                 }
 
                 AppSectionCard(
-                    title: "ユーザーIDと共有",
-                    subtitle: "プロフィール交換や問い合わせ時に使える、この端末の識別用 ID です。"
+                    title: "プロフィール共有",
+                    subtitle: "プロフィールカードは明示的な共有操作をしたときだけ外に出ます。識別用のプロフィールIDは必要なときだけ確認できます。"
                 ) {
-                    Text(vm.userId)
-                        .font(.footnote.monospaced())
-                        .textSelection(.enabled)
-
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 10) {
-                            Button {
-                                UIPasteboard.general.string = vm.userId
-                                vm.lastMessage = "User IDをコピーしました"
-                            } label: {
-                                Label("IDをコピー", systemImage: "doc.on.doc")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-
                             ShareLink(item: vm.shareProfileText) {
                                 Label("プロフィールを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button {
+                                UIPasteboard.general.string = vm.userId
+                                vm.lastMessage = "プロフィールIDをコピーしました"
+                            } label: {
+                                Label("IDをコピー", systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
                         }
 
                         VStack(spacing: 10) {
+                            ShareLink(item: vm.shareProfileText) {
+                                Label("プロフィールを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+
                             Button {
                                 UIPasteboard.general.string = vm.userId
-                                vm.lastMessage = "User IDをコピーしました"
+                                vm.lastMessage = "プロフィールIDをコピーしました"
                             } label: {
                                 Label("IDをコピー", systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
-
-                            ShareLink(item: vm.shareProfileText) {
-                                Label("プロフィールを共有", systemImage: "square.and.arrow.up")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
                         }
+                    }
+
+                    DisclosureGroup("プロフィールIDを表示") {
+                        Text(vm.userId)
+                            .font(.footnote.monospaced())
+                            .textSelection(.enabled)
+                            .padding(.top, 8)
                     }
                 }
 
@@ -348,8 +351,10 @@ struct ProfileView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
+            .frame(maxWidth: AppChrome.standardPageMaxWidth)
+            .padding(.horizontal, AppChrome.screenHorizontalPadding)
+            .padding(.top, AppChrome.standardPageTopPadding)
+            .padding(.bottom, AppChrome.standardPageBottomPadding)
         }
         .background(AppScreenBackground())
         .navigationTitle("プロフィール")

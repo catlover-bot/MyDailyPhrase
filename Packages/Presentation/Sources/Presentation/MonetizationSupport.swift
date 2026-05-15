@@ -69,6 +69,7 @@ public enum MonetizationDisclosure {
         "購入はApple IDに請求されます",
         "ガチャチケットはアプリ内装飾アイテムの獲得に使えます",
         "獲得アイテムに現金価値はありません",
+        "外部決済リンクはありません",
         "購入前に確率を確認できます",
         "参加は無料です。コミュニティ作成のみCreator Pass機能です。"
     ]
@@ -121,11 +122,11 @@ public enum MonetizationShopSupport {
             case .loading:
                 statusText = "価格情報を確認中です"
             case .loaded:
-                statusText = isLoaded ? "購入できます" : "現在購入を準備中です"
+                statusText = isLoaded ? "購入できます" : "価格情報を準備中です"
             case .unavailable:
-                statusText = "App Storeの商品情報の反映待ちです"
+                statusText = "価格情報を準備中です"
             case .failed:
-                statusText = "App Storeの商品情報の反映待ちです"
+                statusText = "価格情報を準備中です"
             }
 
             return TicketPackPurchaseCardState(
@@ -151,7 +152,7 @@ public enum MonetizationShopSupport {
         case .loading:
             statusText = "価格情報を確認中です"
         case .loaded:
-            statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "購入情報を準備中です"
+            statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "価格情報を準備中です"
         case .unavailable:
             statusText = "現在、価格情報を準備中です"
         case .failed:

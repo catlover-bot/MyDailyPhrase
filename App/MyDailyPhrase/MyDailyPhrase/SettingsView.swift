@@ -3,6 +3,7 @@ import Presentation
 
 struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
+    @EnvironmentObject private var iap: IAPStore
     @State private var showDeleteConfirmation = false
 
     init(viewModel: SettingsViewModel) {
@@ -87,6 +88,63 @@ struct SettingsView: View {
                     }
                 }
 
+                if FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled {
+                    AppSectionCard(
+                        title: "購入と復元",
+                        subtitle: "価格情報の再読み込みや購入情報の復元はここから行えます。外部決済リンクは使っていません。"
+                    ) {
+                        if let message = iap.lastMessage {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                Button {
+                                    Task { await iap.reloadProducts() }
+                                } label: {
+                                    Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button {
+                                    Task { await iap.sync() }
+                                } label: {
+                                    Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            VStack(spacing: 10) {
+                                Button {
+                                    Task { await iap.reloadProducts() }
+                                } label: {
+                                    Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button {
+                                    Task { await iap.sync() }
+                                } label: {
+                                    Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+
+                        Text("ガチャは装飾アイテム専用で、現金価値はありません。購入前に確率を確認できます。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 AppSectionCard(
                     title: "データ管理",
                     subtitle: "保存済みの回答と連続記録はこのデバイスにあります。削除すると元に戻せません。"
@@ -95,10 +153,17 @@ struct SettingsView: View {
                         showDeleteConfirmation = true
                     }
                     .buttonStyle(.bordered)
+
+                    Text("日記、コミュニティ下書き、ローカルDMの保存内容がこの端末から削除されます。購入そのものには影響しません。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 20)
+            .frame(maxWidth: AppChrome.standardPageMaxWidth)
+            .padding(.horizontal, AppChrome.screenHorizontalPadding)
+            .padding(.top, AppChrome.standardPageTopPadding)
+            .padding(.bottom, AppChrome.standardPageBottomPadding)
         }
         .background(AppScreenBackground())
         .navigationTitle("設定")

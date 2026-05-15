@@ -655,7 +655,7 @@ struct GachaResultDetailScreen: View {
 
                         AppSectionCard(
                             title: "今回の獲得アイテム",
-                            subtitle: "タップしてプレビューを切り替えられます。"
+                            subtitle: "気になるアイテムを選ぶと、上のプレビューが切り替わります。"
                         ) {
                             LazyVGrid(columns: [.init(.adaptive(minimum: 132), spacing: 10)], spacing: 10) {
                                 ForEach(Array(summary.drawn.enumerated()), id: \.offset) { _, item in
@@ -706,7 +706,7 @@ struct GachaResultDetailScreen: View {
                 Text("獲得アイテム")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("見た目を確認して、その場で使えます")
+                Text("見た目を確認して、使う場所を選べます")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)

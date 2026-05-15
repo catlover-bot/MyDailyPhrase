@@ -15,7 +15,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: AppChrome.pageSectionSpacing) {
                 headerSection
 
                 if !didDismissFirstUseGuide {
@@ -29,12 +29,14 @@ struct HomeView: View {
                     answerCard
                     answerStateCard
                     historyCard
+                    rewardLoopCard
                     progressSection
                 }
             }
-            .frame(maxWidth: 760)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 24)
+            .frame(maxWidth: AppChrome.standardPageMaxWidth)
+            .padding(.horizontal, AppChrome.screenHorizontalPadding)
+            .padding(.top, AppChrome.standardPageTopPadding)
+            .padding(.bottom, AppChrome.standardPageBottomPadding)
         }
         .background(AppScreenBackground())
         .navigationTitle("今日")
@@ -65,17 +67,19 @@ struct HomeView: View {
         PageHeroCard(
             eyebrow: formattedDateText,
             title: "今日のひとこと",
-            subtitle: "一日の終わりに、ひとことだけ。保存するまで外には出ず、あとから静かに読み返せます。",
+            subtitle: "まずは今日のお題にひとこと答えるだけで大丈夫です。保存するまで外には出ず、あとから静かに読み返せます。",
             accent: .blue
         ) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
+                    InfoBadge(title: "1日1つ", systemImage: "sun.max.fill", tint: .orange)
                     InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
                     InfoBadge(title: "参加は無料", systemImage: "person.2.wave.2", tint: .green)
                     PremiumBadge(title: "作成はCreator Pass")
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
+                    InfoBadge(title: "1日1つ", systemImage: "sun.max.fill", tint: .orange)
                     InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
                     InfoBadge(title: "参加は無料", systemImage: "person.2.wave.2", tint: .green)
                     PremiumBadge(title: "作成はCreator Pass")
@@ -136,7 +140,7 @@ struct HomeView: View {
     private var firstUseGuideCard: some View {
         AppSectionCard(
             title: "はじめての方へ",
-            subtitle: "まずは今日のお題にひとこと答えるだけで大丈夫です。"
+            subtitle: "アプリの流れを30秒でつかめる短い案内です。"
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 guideRow(
@@ -146,12 +150,17 @@ struct HomeView: View {
                 )
                 guideRow(
                     title: "ガチャの役割",
-                    detail: "テーマや装飾を集めると、プロフィールや共有カードの見た目を変えられます。",
+                    detail: "テーマや装飾を集めると、プロフィールや共有カード、コミュニティカードの見た目を変えられます。",
                     systemImage: "sparkles"
                 )
                 guideRow(
-                    title: "みんな機能",
-                    detail: "部屋への参加は無料です。コミュニティ作成だけ Creator Pass が必要です。",
+                    title: "また明日開く理由",
+                    detail: "毎日の無料ガチャや連続記録があるので、短い記録でも続けやすくなっています。",
+                    systemImage: "calendar.badge.clock"
+                )
+                guideRow(
+                    title: "みんなの部屋",
+                    detail: "部屋への参加は無料です。コミュニティ作成とお題カスタマイズだけ Creator Pass が必要です。",
                     systemImage: "person.2.wave.2"
                 )
                 guideRow(
@@ -320,6 +329,34 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var rewardLoopCard: some View {
+        AppSectionCard(
+            title: "保存したあとの楽しみ",
+            subtitle: "今日の記録を残したあとは、下のタブから見た目集めや無料参加の部屋をゆっくり選べます。"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "ガチャでテーマを集める", systemImage: "sparkles", tint: .orange)
+                        InfoBadge(title: "部屋への参加は無料", systemImage: "person.2.wave.2", tint: .green)
+                        InfoBadge(title: "共有は明示操作のみ", systemImage: "square.and.arrow.up", tint: .indigo)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "ガチャでテーマを集める", systemImage: "sparkles", tint: .orange)
+                        InfoBadge(title: "部屋への参加は無料", systemImage: "person.2.wave.2", tint: .green)
+                        InfoBadge(title: "共有は明示操作のみ", systemImage: "square.and.arrow.up", tint: .indigo)
+                    }
+                }
+
+                Text("ガチャで手に入れたアイテムはプロフィールや共有カードに使えます。みんなの部屋では、公開コメントなしでお題に参加できます。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

@@ -165,6 +165,7 @@ struct CommunityLiteSupportTests {
     @Test("monetization copy contains no external payment link")
     func monetizationCopyHasNoExternalPaymentLink() {
         let allLines = MonetizationDisclosure.purchaseSafetyLines + MonetizationDisclosure.ownershipLines
+        #expect(MonetizationDisclosure.purchaseSafetyLines.contains { $0.contains("外部決済リンク") })
         #expect(allLines.allSatisfy { !$0.localizedCaseInsensitiveContains("http") })
         #expect(allLines.allSatisfy { !$0.localizedCaseInsensitiveContains("https") })
     }

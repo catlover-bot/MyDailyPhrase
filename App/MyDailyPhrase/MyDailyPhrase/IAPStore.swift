@@ -171,9 +171,9 @@ final class IAPStore: ObservableObject {
         case .loaded:
             return "価格情報を読み込みました"
         case .unavailable:
-            return "価格情報を確認中です"
+            return "価格情報を準備中です"
         case .failed:
-            return "価格情報を確認中です"
+            return "価格情報を準備中です"
         }
     }
 
@@ -182,11 +182,11 @@ final class IAPStore: ObservableObject {
         case .loading:
             return "安全に読み込めた商品だけ表示します。価格が確認できるまで購入ボタンは有効になりません。"
         case .loaded:
-            return "StoreKit から取得できた商品のみ価格と購入ボタンを表示しています。"
+            return "StoreKit から取得できた商品のみ、価格と購入ボタンを表示しています。"
         case .unavailable:
-            return "App Storeの商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
+            return "App Store に追加した商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
         case .failed:
-            return "App Storeの商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
+            return "App Store に追加した商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
         }
     }
 
@@ -277,7 +277,7 @@ final class IAPStore: ObservableObject {
                 state = .failed(message)
                 eventStatus = .unavailable
                 lastStoreKitError = message
-                lastMessage = "App Storeの商品情報を読み込めませんでした。しばらくしてから再読み込みしてください。"
+                lastMessage = "App Store の商品情報をまだ確認できませんでした。しばらくしてから再読み込みしてください。"
             } else {
                 state = .ready
                 eventStatus = .loaded
@@ -289,7 +289,7 @@ final class IAPStore: ObservableObject {
             state = .failed(message)
             eventStatus = .failed(message)
             lastStoreKitError = debugMessage
-            lastMessage = "App Storeの商品情報を読み込めませんでした。しばらくしてから再読み込みしてください。"
+            lastMessage = "App Store の商品情報をまだ確認できませんでした。しばらくしてから再読み込みしてください。"
         }
     }
 

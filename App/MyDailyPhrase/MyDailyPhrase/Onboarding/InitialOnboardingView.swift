@@ -91,14 +91,14 @@ struct InitialOnboardingView: View {
         switch step {
         case .welcome:
             VStack(alignment: .leading, spacing: 10) {
-                Text("記録を安全に続ける準備ができました。")
+                Text("今日のひとことから始めましょう。")
                     .font(.title3.weight(.semibold))
 
-                Text("\(profileVM.linkedAuthProviderName) で連携済みです。")
+                Text("1日1つのお題に答えるだけで、その日の記録がこの端末に残ります。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Text("このあと表示名と通知設定を整えると、共有・招待・ランキング機能をすぐ使えます。")
+                Text("回答は自動で公開されません。共有する内容も、送る前に自分で選べます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -121,10 +121,10 @@ struct InitialOnboardingView: View {
 
         case .growth:
             VStack(alignment: .leading, spacing: 12) {
-                Text("通知と招待の準備")
+                Text("続けやすい設定")
                     .font(.title3.weight(.semibold))
 
-                Text("通知をONにすると、報酬や連続記録の取りこぼしを防げます。")
+                Text("通知をONにすると、毎日の記録や無料ガチャの確認を忘れにくくなります。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -166,7 +166,7 @@ struct InitialOnboardingView: View {
                     Toggle("お題更新", isOn: $promptUpdateEnabled)
                     Toggle("ミッション達成", isOn: $missionEnabled)
                     Toggle("連続記録リマインド", isOn: $streakReminderEnabled)
-                    Toggle("今週急上昇（Creator Pass）", isOn: $weeklyTrendEnabled)
+                    Toggle("週のまとめ通知", isOn: $weeklyTrendEnabled)
                     Toggle("完了時に通知許可ダイアログを表示", isOn: $wantsPushPermission)
                         .font(.subheadline)
                     Button {
@@ -178,12 +178,12 @@ struct InitialOnboardingView: View {
                     }
                     .buttonStyle(.bordered)
                 } else {
-                    Text("通知をOFFにするとリマインドは届きません。後から Profile で変更できます。")
+                    Text("通知をOFFにするとリマインドは届きません。後からプロフィールで変更できます。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                Text("招待コード \(profileVM.referralCode) を共有すると、招待成立時に双方へ報酬があります。")
+                Text("ガチャで集めたテーマはプロフィールや共有カードに反映され、みんなの部屋には無料で参加できます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

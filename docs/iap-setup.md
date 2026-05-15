@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build `1.0 (9)` carries forward StoreKit2 support for:
+Build `1.0 (12)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
@@ -15,6 +15,15 @@ This build also reorganizes the in-app UX so:
 - purchase UI fails safely when products do not load
 - ticket packs remain visible as disabled cards when products are unavailable
 - Creator Pass keeps a locked creation preview visible even before entitlement
+
+Current App Store Connect status:
+
+- `Gacha Tickets 10`
+- `Gacha Tickets 50`
+- `Gacha Tickets 120`
+- `Creator Pass Lifetime`
+
+have been added to the app version. StoreKit product propagation may still take time, so the app continues to show a safe fallback state until price data is actually returned on device.
 
 Free users should still be able to:
 

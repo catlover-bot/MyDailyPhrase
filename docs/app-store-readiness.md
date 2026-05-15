@@ -44,17 +44,23 @@
   the paid gacha area now removes internal-looking status text, keeps disabled purchase cards readable when product loading fails, clarifies Creator Pass value before purchase, and adds more bottom-safe spacing so the purchase section is not hidden behind the tab bar.
 - Build `1.0 (9)` usability polish:
   the app now uses a clearer custom tab bar, stronger page-level summary cards, a cleaner Gacha dashboard, a calmer StoreKit unavailable state, and more readable Profile / Settings / Community layouts for real-device use.
+- Build `1.0 (10)` gacha result detail:
+  the gacha result preview now opens as a dedicated full-screen detail flow, so the obtained item can be read, previewed, equipped, and shared without the bottom tab bar overlapping it.
+- Build `1.0 (11)` gacha page scroll fix:
+  the main Gacha page now scrolls as one continuous page and keeps the purchase area above the custom tab bar.
+- Build `1.0 (12)` real-user usability pass:
+  Home, Gacha, みんな, Profile, and Settings now use clearer bottom-safe spacing, lighter copy, and stronger free/paid explanations so users can tell what is private, what is optional, and what each section is for.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Social backend status:
   follow recommendations and DM are currently local/mock only. There is no real public user discovery, no real backend inbox, and no fake live activity feed in this build.
   See `docs/social-safety.md` for the current safety scope and backend requirements before enabling real social data.
 - Current TestFlight build number:
-  `1.0 (9)`
+  `1.0 (12)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (9)` to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and final App Store Connect IAP status, then create a signed Archive and upload Build `1.0 (12)` to TestFlight.
 - TestFlight readiness:
   Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:
@@ -88,8 +94,8 @@
    The local archive dry-run reached the signing stage and failed because no provisioning profile for `jp.catloverbot.MyDailyPhrase` was available in the local Xcode environment.
    The App Group capability must also be confirmed in the Apple Developer portal and included in the final provisioning profile.
 
-5. App Store Connect IAP setup is still required.
-   The app code and local StoreKit file now support paid gacha tickets and Creator Pass, but App Store Connect products, screenshots, pricing, and sandbox/TestFlight validation are still required before release.
+5. App Store Connect IAP validation is still required.
+   The paid gacha tickets and Creator Pass products have been created for the app version, but StoreKit propagation, screenshots, pricing confirmation, and sandbox/TestFlight validation are still required before release.
 
 6. Sandbox / TestFlight purchase validation is still required.
    Cancelled, pending, failed, restored, and successful purchase flows must be verified on device before App Store submission.

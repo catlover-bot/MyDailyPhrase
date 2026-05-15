@@ -34,7 +34,7 @@ struct GachaView: View {
     enum Tab: String {
         case gacha = "ひく"
         case inventory = "所持"
-        case exchange = "欠片交換"
+        case exchange = "交換"
         case book = "コレクション"
         case history = "履歴"
         case shop = "購入"
@@ -352,7 +352,7 @@ struct GachaView: View {
         PageHeroCard(
             eyebrow: "今日のごほうび",
             title: "ガチャで集める",
-            subtitle: "無料ガチャやチケットで装飾アイテムを増やして、プロフィールや共有カードの見た目を育てられます。",
+            subtitle: "まずは無料ガチャから。集めたテーマや装飾は、プロフィールや共有カード、コミュニティカードの見た目に使えます。",
             accent: .orange
         ) {
             LazyVGrid(columns: [.init(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
@@ -373,7 +373,7 @@ struct GachaView: View {
                 SummaryMetricTile(
                     title: "無料ガチャ",
                     value: "今日 1回",
-                    detail: "毎日確認できます",
+                    detail: "毎日無料で確認できます",
                     systemImage: "gift.fill",
                     tint: .green
                 )
@@ -408,15 +408,17 @@ struct GachaView: View {
 
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
+                    InfoBadge(title: "まずは無料ガチャ", systemImage: "gift.fill", tint: .green)
                     InfoBadge(title: "プロフィールに反映", systemImage: "person.crop.circle", tint: .blue)
                     InfoBadge(title: "共有カードに反映", systemImage: "square.and.arrow.up", tint: .indigo)
-                    InfoBadge(title: "価格情報を更新", systemImage: "arrow.clockwise", tint: .green)
+                    InfoBadge(title: "価格情報を更新", systemImage: "arrow.clockwise", tint: .orange)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
+                    InfoBadge(title: "まずは無料ガチャ", systemImage: "gift.fill", tint: .green)
                     InfoBadge(title: "プロフィールに反映", systemImage: "person.crop.circle", tint: .blue)
                     InfoBadge(title: "共有カードに反映", systemImage: "square.and.arrow.up", tint: .indigo)
-                    InfoBadge(title: "価格情報を更新", systemImage: "arrow.clockwise", tint: .green)
+                    InfoBadge(title: "価格情報を更新", systemImage: "arrow.clockwise", tint: .orange)
                 }
             }
 
@@ -556,6 +558,25 @@ struct GachaView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func dashboardSummaryChip(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(tint)
+            Text(value)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(tint.opacity(0.12), lineWidth: 1)
+        )
+    }
+
     // MARK: - Panels
 
     private var gachaPanel: some View {
@@ -602,6 +623,28 @@ struct GachaView: View {
                         }
                     }
                 }
+            }
+
+            AppSectionCard(
+                title: "無料と有料の違い",
+                subtitle: "先に無料で楽しめる範囲と、あとから追加できる要素を分けて確認できます。"
+            ) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        dashboardSummaryChip(title: "無料", value: "無料ガチャ / 参加 / 共有", tint: .green)
+                        dashboardSummaryChip(title: "有料", value: "チケット追加 / Creator Pass", tint: .orange)
+                    }
+
+                    VStack(spacing: 10) {
+                        dashboardSummaryChip(title: "無料", value: "無料ガチャ / 参加 / 共有", tint: .green)
+                        dashboardSummaryChip(title: "有料", value: "チケット追加 / Creator Pass", tint: .orange)
+                    }
+                }
+
+                Text("日記の記録と部屋への参加は無料のままです。購入は、もっと装飾を集めたいときやコミュニティを作りたいときだけ確認できます。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             AppSectionCard(
@@ -1047,11 +1090,31 @@ struct GachaView: View {
             Text("コレクション")
                 .font(.headline)
 
-            Text("所持・未所持・装備中をまとめて確認できます。未所持アイテムもプレビュー可能です。")
+            Text("所持・未所持・装備中をまとめて確認できます。未所持アイテムも見た目を確認できます。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             collectionControls
+
+            if !filteredCollectionOwnedItems.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("最近手に入れたもの")
+                        .font(.subheadline.weight(.semibold))
+
+                    LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                        ForEach(Array(filteredCollectionOwnedItems.prefix(4)), id: \.id) { d in
+                            GachaCollectionTile(
+                                item: d,
+                                ownedCount: vm.ownedCount(for: d.id),
+                                isOwned: true,
+                                isEquipped: vm.isSelected(d.id)
+                            ) {
+                                previewItem = d
+                            }
+                        }
+                    }
+                }
+            }
 
             if let equippedItem {
                 VStack(alignment: .leading, spacing: 8) {
@@ -1204,7 +1267,7 @@ struct GachaView: View {
         VStack(alignment: .leading, spacing: 10) {
             AppSectionCard(
                 title: "チケット購入とCreator Pass",
-                subtitle: "無料ガチャや手持ちチケットを先に楽しめます。購入は必要なときだけ、Appleの安全な決済で行えます。"
+                subtitle: "購入は任意です。まずは無料ガチャや交換所から始めて、必要なときだけ Apple の安全な決済を使えます。"
             ) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(MonetizationDisclosure.purchaseSafetyLines, id: \.self) { line in
@@ -1226,15 +1289,15 @@ struct GachaView: View {
 
             if !iap.hasLoadedAnyProducts {
                 AppSectionCard(
-                    title: "価格情報を確認中です",
-                    subtitle: "App Storeの商品情報の反映待ちです。しばらくしてから再読み込みしてください。"
+                    title: "価格情報を準備中です",
+                    subtitle: "App Store に追加した商品情報の反映待ちです。使い道は先に確認でき、価格が届きしだい購入できます。"
                 ) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("購入できるのは、価格が確認できた商品だけです。", systemImage: "info.circle.fill")
+                        Label("価格を確認できた商品だけ購入できます。", systemImage: "info.circle.fill")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        Text("表示が準備中でも、チケットの使い道や Creator Pass の内容は先に確認できます。価格が確認できるまでは、安全のため購入操作を止めています。")
+                        Text("表示が準備中でも、チケットの使い道や Creator Pass の内容は先に確認できます。価格情報が届くまでは、安全のため購入操作を止めています。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1264,7 +1327,7 @@ struct GachaView: View {
 
             AppSectionCard(
                 title: "Creator Pass",
-                subtitle: "コミュニティ作成とお題カスタマイズを解放します。参加者は無料のままです。"
+                subtitle: "コミュニティ作成、お題カスタマイズ、所持テーマの反映を解放します。参加者は無料のままです。"
             ) {
                 VStack(alignment: .leading, spacing: 10) {
                     ViewThatFits(in: .horizontal) {
@@ -1338,7 +1401,7 @@ struct GachaView: View {
                         ticketPackCard(state)
                     }
 
-                    Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 確率を確認できます")
+                    Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 購入前に確率を確認できます")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

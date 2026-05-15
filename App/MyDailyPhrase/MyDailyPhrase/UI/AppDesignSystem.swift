@@ -6,6 +6,9 @@ enum AppChrome {
     static let bottomTabBarReservedSpace: CGFloat = 110
     static let bottomFloatingBannerReservedSpace: CGFloat = 72
     static let bottomTabBarItemMinHeight: CGFloat = 52
+    static let standardPageBottomPadding: CGFloat = bottomTabBarReservedSpace + 26
+    static let standardPageTopPadding: CGFloat = 20
+    static let standardPageMaxWidth: CGFloat = 840
 }
 
 struct AppScreenBackground: View {
@@ -240,7 +243,7 @@ struct AppBottomTabBar<ID: Hashable>: View {
                 } label: {
                     VStack(spacing: 5) {
                         Image(systemName: isSelected ? item.selectedSystemImage : item.systemImage)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: isSelected ? 18 : 17, weight: .semibold))
                             .symbolVariant(isSelected ? .fill : .none)
 
                         Text(item.title)
@@ -250,7 +253,7 @@ struct AppBottomTabBar<ID: Hashable>: View {
                     }
                     .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: AppChrome.bottomTabBarItemMinHeight)
+                    .frame(minHeight: AppChrome.bottomTabBarItemMinHeight + 4)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 8)
                     .background {
@@ -258,6 +261,7 @@ struct AppBottomTabBar<ID: Hashable>: View {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(Color.accentColor.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabBackground", in: selectionNamespace)
+                                .shadow(color: Color.accentColor.opacity(0.12), radius: 10, x: 0, y: 4)
                         }
                     }
                     .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
