@@ -74,6 +74,10 @@ final class IAPStore: ObservableObject {
         state == .ready && !ticketProducts.isEmpty
     }
 
+    var hasLoadedAnyProducts: Bool {
+        !products.isEmpty
+    }
+
     var bestValueTicketProductID: String? {
         let withUnitPrice: [(String, NSDecimalNumber)] = ticketProducts.compactMap { product in
             guard let unit = unitPrice(for: product) else { return nil }
@@ -132,11 +136,11 @@ final class IAPStore: ObservableObject {
     }
 
     var paidGachaUnavailableMessage: String {
-        "価格情報を取得できないため、現在購入はできません。"
+        "価格情報を確認できるまでは、安全のため購入できません。"
     }
 
     var creatorPassUnavailableMessage: String {
-        "参加は無料です。価格情報を取得できるまで、Creator Pass の購入はできません。"
+        "参加は無料です。価格情報を確認できるまでは、Creator Pass の購入はできません。"
     }
 
     var productLoadState: StoreProductLoadState {
@@ -163,26 +167,26 @@ final class IAPStore: ObservableObject {
     var productStatusTitle: String {
         switch productLoadState {
         case .loading:
-            return "商品情報を読み込んでいます"
+            return "価格情報を確認しています"
         case .loaded:
-            return "商品情報を読み込みました"
+            return "価格情報を読み込みました"
         case .unavailable:
-            return "App Storeの商品情報を読み込めませんでした"
+            return "価格情報を確認中です"
         case .failed:
-            return "App Storeの商品情報を読み込めませんでした"
+            return "価格情報を確認中です"
         }
     }
 
     var productStatusMessage: String {
         switch productLoadState {
         case .loading:
-            return "安全に読み込めた商品だけ表示します。読み込みが終わるまで購入ボタンは有効になりません。"
+            return "安全に読み込めた商品だけ表示します。価格が確認できるまで購入ボタンは有効になりません。"
         case .loaded:
             return "StoreKit から取得できた商品のみ価格と購入ボタンを表示しています。"
         case .unavailable:
-            return "価格情報を取得できないため、現在購入はできません。商品情報を再読み込みするか、購入情報を復元してください。"
+            return "App Storeの商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
         case .failed:
-            return "価格情報を取得できないため、現在購入はできません。商品情報を再読み込みするか、購入情報を復元してください。"
+            return "App Storeの商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
         }
     }
 

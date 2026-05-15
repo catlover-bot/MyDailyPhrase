@@ -119,13 +119,13 @@ public enum MonetizationShopSupport {
             let statusText: String
             switch availability {
             case .loading:
-                statusText = "商品情報を読み込み中です"
+                statusText = "価格情報を確認中です"
             case .loaded:
                 statusText = isLoaded ? "購入できます" : "現在購入を準備中です"
             case .unavailable:
-                statusText = "価格情報を取得できないため、現在購入はできません"
+                statusText = "App Storeの商品情報の反映待ちです"
             case .failed:
-                statusText = "App Storeの商品情報を読み込めませんでした"
+                statusText = "App Storeの商品情報の反映待ちです"
             }
 
             return TicketPackPurchaseCardState(
@@ -149,13 +149,13 @@ public enum MonetizationShopSupport {
         let statusText: String
         switch availability {
         case .loading:
-            statusText = "購入情報を読み込み中です"
+            statusText = "価格情報を確認中です"
         case .loaded:
             statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "購入情報を準備中です"
         case .unavailable:
-            statusText = "現在、購入情報を準備中です"
+            statusText = "現在、価格情報を準備中です"
         case .failed:
-            statusText = "現在、購入情報を準備中です"
+            statusText = "現在、価格情報を準備中です"
         }
 
         return CreatorPassPreviewState(

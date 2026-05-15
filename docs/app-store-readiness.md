@@ -42,17 +42,19 @@
   the app now keeps purchase sections understandable even when StoreKit is unavailable, shows a locked-but-visible Creator Pass community creation preview, shortens the `みんな` tab with segmented navigation, and adds a local/mock-safe follow + mutual-follow DM layer with block/report/delete controls.
 - Build `1.0 (8)` gacha fallback polish:
   the paid gacha area now removes internal-looking status text, keeps disabled purchase cards readable when product loading fails, clarifies Creator Pass value before purchase, and adds more bottom-safe spacing so the purchase section is not hidden behind the tab bar.
+- Build `1.0 (9)` usability polish:
+  the app now uses a clearer custom tab bar, stronger page-level summary cards, a cleaner Gacha dashboard, a calmer StoreKit unavailable state, and more readable Profile / Settings / Community layouts for real-device use.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Social backend status:
   follow recommendations and DM are currently local/mock only. There is no real public user discovery, no real backend inbox, and no fake live activity feed in this build.
   See `docs/social-safety.md` for the current safety scope and backend requirements before enabling real social data.
 - Current TestFlight build number:
-  `1.0 (8)`
+  `1.0 (9)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (8)` to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (9)` to TestFlight.
 - TestFlight readiness:
   Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:

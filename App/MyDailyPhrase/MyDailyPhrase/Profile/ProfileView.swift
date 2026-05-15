@@ -45,227 +45,313 @@ struct ProfileView: View {
     }
 
     var body: some View {
-        Form {
-            Section("プロフィールカード") {
-                Card("現在選択中：\(equippedName)", decorationId: decorationId) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(Color.accentColor.opacity(0.16))
-                                .frame(width: 44, height: 44)
-                                .overlay {
-                                    Text(profileMonogram)
-                                        .font(.headline.weight(.bold))
-                                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                PageHeroCard(
+                    eyebrow: "あなたの見た目と肩書き",
+                    title: vm.displayName.isEmpty ? "Me" : vm.displayName,
+                    subtitle: "集めたテーマや称号は、プロフィールカード・共有カード・コミュニティカードの見た目に反映されます。",
+                    accent: .purple
+                ) {
+                    Card("現在選択中：\(equippedName)", decorationId: decorationId) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(Color.accentColor.opacity(0.16))
+                                    .frame(width: 48, height: 48)
+                                    .overlay {
+                                        Text(profileMonogram)
+                                            .font(.headline.weight(.bold))
+                                    }
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(vm.displayName.isEmpty ? "Me" : vm.displayName)
-                                    .font(.headline)
-                                if let equippedTitle {
-                                    Text(equippedTitle)
-                                        .font(.caption.weight(.semibold))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(.thinMaterial)
-                                        .clipShape(Capsule())
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(vm.displayName.isEmpty ? "Me" : vm.displayName)
+                                        .font(.headline)
+                                    if let equippedTitle {
+                                        Text(equippedTitle)
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(.thinMaterial)
+                                            .clipShape(Capsule())
+                                    }
+                                    Text(GachaThemePresentation.sampleProfileLine(
+                                        for: equippedItem,
+                                        isEquipped: true
+                                    ))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 }
-                                Text(GachaThemePresentation.sampleProfileLine(
-                                    for: equippedItem,
-                                    isEquipped: true
-                                ))
+                            }
+
+                            Text("この見た目がプロフィールカード、ガチャ結果プレビュー、共有カードに反映されます。")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            if let equippedTitle {
+                                InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
+                            }
+                            InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
+                            InfoBadge(title: "装備中 \(equippedName)", systemImage: "paintbrush.pointed", tint: .blue)
+                            if iap.isCreatorPassActive {
+                                PremiumBadge(title: "Creator Pass")
                             }
                         }
 
-                        Text("この見た目がプロフィールカード、ガチャ結果プレビュー、共有カードに反映されます。")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 8) {
-                                if let equippedTitle {
-                                    InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
-                                }
-                                InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
-                                if iap.isCreatorPassActive {
-                                    PremiumBadge(title: "Creator Pass")
-                                }
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let equippedTitle {
+                                InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
                             }
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                if let equippedTitle {
-                                    InfoBadge(title: equippedTitle, systemImage: "sparkles", tint: .purple)
-                                }
-                                InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
-                                if iap.isCreatorPassActive {
-                                    PremiumBadge(title: "Creator Pass")
-                                }
+                            InfoBadge(title: "参加中 \(communityLiteVM.joinedCommunities.count) 部屋", systemImage: "person.2", tint: .green)
+                            InfoBadge(title: "装備中 \(equippedName)", systemImage: "paintbrush.pointed", tint: .blue)
+                            if iap.isCreatorPassActive {
+                                PremiumBadge(title: "Creator Pass")
                             }
+                        }
+                    }
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            ShareLink(item: vm.shareProfileText) {
+                                Label("プロフィールカードを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            NavigationLink {
+                                GachaView(vm: gachaVM)
+                            } label: {
+                                Label("コレクションを見る", systemImage: "square.grid.2x2")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        VStack(spacing: 10) {
+                            ShareLink(item: vm.shareProfileText) {
+                                Label("プロフィールカードを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            NavigationLink {
+                                GachaView(vm: gachaVM)
+                            } label: {
+                                Label("コレクションを見る", systemImage: "square.grid.2x2")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
                 }
 
-                Text(joinedCommunitySummary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 10) {
-                    ShareLink(item: vm.shareProfileText) {
-                        Label("プロフィールカードを共有", systemImage: "square.and.arrow.up")
-                            .compactActionLabel()
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    NavigationLink {
-                        GachaView(vm: gachaVM)
-                    } label: {
-                        Label("コレクションを見る", systemImage: "square.grid.2x2")
-                            .compactActionLabel()
-                    }
-                }
-            }
-
-            Section("ガチャ / 装備") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("集めたアイテムはプロフィール、共有カード、コミュニティカードの見た目に使えます。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Label("チケット \(gachaVM.tickets)", systemImage: "ticket")
-                        Spacer()
-                        Label("欠片 \(gachaVM.shards)", systemImage: "seal")
-                    }
-                    .font(.subheadline)
-
-                    HStack {
-                        Text("天井 \(gachaVM.pity)/\(gachaVM.pityMax)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("バナー：\(gachaVM.currentBanner.title)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                AppSectionCard(
+                    title: "ガチャと装備",
+                    subtitle: "集めたアイテムはプロフィール、共有カード、コミュニティカードの見た目に使えます。"
+                ) {
+                    LazyVGrid(columns: [.init(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
+                        SummaryMetricTile(
+                            title: "チケット",
+                            value: "\(gachaVM.tickets)",
+                            detail: "単発や10連に使えます",
+                            systemImage: "ticket.fill",
+                            tint: .blue
+                        )
+                        SummaryMetricTile(
+                            title: "欠片",
+                            value: "\(gachaVM.shards)",
+                            detail: "重複アイテムで増えます",
+                            systemImage: "seal.fill",
+                            tint: .orange
+                        )
+                        SummaryMetricTile(
+                            title: "レア保証",
+                            value: "\(gachaVM.pity)/\(gachaVM.pityMax)",
+                            detail: "天井までの進み具合",
+                            systemImage: "sparkles",
+                            tint: .purple
+                        )
+                        SummaryMetricTile(
+                            title: "参加中の部屋",
+                            value: "\(communityLiteVM.joinedCommunities.count)部屋",
+                            detail: joinedCommunitySummary,
+                            systemImage: "person.2.fill",
+                            tint: .green
+                        )
                     }
 
-                    Button {
-                        gachaVM.grantDailyTicketIfNeeded()
-                    } label: {
-                        Label("無料券を受け取る", systemImage: "calendar.badge.plus")
-                            .compactActionLabel()
-                    }
-                        .buttonStyle(.bordered)
-                }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            Button {
+                                gachaVM.grantDailyTicketIfNeeded()
+                            } label: {
+                                Label("無料券を受け取る", systemImage: "calendar.badge.plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
 
-                NavigationLink {
-                    GachaView(vm: gachaVM)
-                } label: {
-                    Label("ガチャを開く", systemImage: "sparkles")
-                        .compactActionLabel()
-                }
-            }
+                            NavigationLink {
+                                GachaView(vm: gachaVM)
+                            } label: {
+                                Label("ガチャを開く", systemImage: "sparkles")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
 
-            Section("Creator Pass") {
-                if iap.isCreatorPassActive {
-                    Label("コミュニティ作成が有効です", systemImage: "crown.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.orange)
-                    Text("参加者は無料のまま、ゲーム部屋の作成、お題カスタマイズ、部屋の見た目設定が使えます。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("コミュニティへの参加は無料です。Creator Pass はコミュニティ作成とカスタマイズだけを解放します。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+                        VStack(spacing: 10) {
+                            Button {
+                                gachaVM.grantDailyTicketIfNeeded()
+                            } label: {
+                                Label("無料券を受け取る", systemImage: "calendar.badge.plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
 
-            Section("ユーザーID") {
-                Text(vm.userId)
-                    .font(.footnote)
-                    .textSelection(.enabled)
-
-                HStack(spacing: 10) {
-                    Button {
-                        UIPasteboard.general.string = vm.userId
-                        vm.lastMessage = "User IDをコピーしました"
-                    } label: {
-                        Label("IDをコピー", systemImage: "doc.on.doc")
-                            .compactActionLabel()
-                    }
-                    .buttonStyle(.bordered)
-
-                    ShareLink(item: vm.shareProfileText) {
-                        Label("プロフィールを共有", systemImage: "square.and.arrow.up")
-                            .compactActionLabel()
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-
-            Section("利用規約 / プライバシー") {
-                if let termsURL = vm.termsOfServiceURL {
-                    Link(destination: termsURL) {
-                        Label("利用規約", systemImage: "doc.text")
+                            NavigationLink {
+                                GachaView(vm: gachaVM)
+                            } label: {
+                                Label("ガチャを開く", systemImage: "sparkles")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
                     }
                 }
 
-                if let privacyURL = vm.privacyPolicyURL {
-                    Link(destination: privacyURL) {
-                        Label("プライバシーポリシー", systemImage: "hand.raised")
-                    }
-                }
-
-                ForEach(vm.legalReadinessNotes, id: \.self) { note in
-                    Text(note)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("表示名") {
-                TextField("表示名", text: $vm.displayName)
-                    .textInputAutocapitalization(.words)
-
-                Text(vm.displayNameHelpText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if vm.normalizedDisplayNamePreview != vm.displayName.trimmingCharacters(in: .whitespacesAndNewlines) {
-                    HStack {
-                        Text("保存後")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(vm.normalizedDisplayNamePreview)
+                AppSectionCard(
+                    title: "コミュニティとCreator Pass",
+                    subtitle: "参加者は無料のまま、Creator Pass でコミュニティ作成とお題カスタマイズを解放できます。"
+                ) {
+                    if iap.isCreatorPassActive {
+                        Label("コミュニティ作成が有効です", systemImage: "crown.fill")
                             .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("コミュニティへの参加は無料です。Creator Pass はコミュニティ作成とカスタマイズだけを解放します。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Text(joinedCommunitySummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                AppSectionCard(
+                    title: "表示名",
+                    subtitle: "プロフィールカードや共有カードに表示される名前です。"
+                ) {
+                    TextField("表示名", text: $vm.displayName)
+                        .textInputAutocapitalization(.words)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text(vm.displayNameHelpText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if vm.normalizedDisplayNamePreview != vm.displayName.trimmingCharacters(in: .whitespacesAndNewlines) {
+                        HStack {
+                            Text("保存後")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(vm.normalizedDisplayNamePreview)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+
+                    Button("保存") { vm.save() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!vm.isDisplayNameChanged)
+                }
+
+                AppSectionCard(
+                    title: "ユーザーIDと共有",
+                    subtitle: "プロフィール交換や問い合わせ時に使える、この端末の識別用 ID です。"
+                ) {
+                    Text(vm.userId)
+                        .font(.footnote.monospaced())
+                        .textSelection(.enabled)
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            Button {
+                                UIPasteboard.general.string = vm.userId
+                                vm.lastMessage = "User IDをコピーしました"
+                            } label: {
+                                Label("IDをコピー", systemImage: "doc.on.doc")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            ShareLink(item: vm.shareProfileText) {
+                                Label("プロフィールを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        VStack(spacing: 10) {
+                            Button {
+                                UIPasteboard.general.string = vm.userId
+                                vm.lastMessage = "User IDをコピーしました"
+                            } label: {
+                                Label("IDをコピー", systemImage: "doc.on.doc")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            ShareLink(item: vm.shareProfileText) {
+                                Label("プロフィールを共有", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
                 }
 
-                Button("保存") { vm.save() }
-                    .disabled(!vm.isDisplayNameChanged)
-            }
+                AppSectionCard(
+                    title: "利用規約 / プライバシー",
+                    subtitle: "公開前に確認しておきたいルールとサポート情報です。"
+                ) {
+                    if let termsURL = vm.termsOfServiceURL {
+                        Link(destination: termsURL) {
+                            Label("利用規約", systemImage: "doc.text")
+                        }
+                    }
 
-            Section("アカウント") {
-                Card("アカウント情報") {
-                    Text(vm.profileSummaryText)
-                        .font(.subheadline.weight(.semibold))
-                    Text("表示名や装飾は、このデバイス内のプロフィール表示に反映されます。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let privacyURL = vm.privacyPolicyURL {
+                        Link(destination: privacyURL) {
+                            Label("プライバシーポリシー", systemImage: "hand.raised")
+                        }
+                    }
+
+                    ForEach(vm.legalReadinessNotes, id: \.self) { note in
+                        Text(note)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if let msg = vm.lastMessage {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    AppSectionCard(title: "お知らせ") {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
         }
+        .background(AppScreenBackground())
         .navigationTitle("プロフィール")
         .onAppear {
             vm.load()

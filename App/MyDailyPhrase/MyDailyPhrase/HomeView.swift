@@ -62,29 +62,61 @@ struct HomeView: View {
     }
 
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(formattedDateText)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Text("MyDailyPhrase")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-
-            Text("一日の終わりに、ひとことだけ。短くても、ちゃんと残ります。")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
+        PageHeroCard(
+            eyebrow: formattedDateText,
+            title: "今日のひとこと",
+            subtitle: "一日の終わりに、ひとことだけ。保存するまで外には出ず、あとから静かに読み返せます。",
+            accent: .blue
+        ) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
                     InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
-                    InfoBadge(title: "みんなの部屋は参加無料", systemImage: "person.2.wave.2", tint: .green)
+                    InfoBadge(title: "参加は無料", systemImage: "person.2.wave.2", tint: .green)
                     PremiumBadge(title: "作成はCreator Pass")
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
                     InfoBadge(title: "回答は非公開", systemImage: "lock.fill", tint: .blue)
-                    InfoBadge(title: "みんなの部屋は参加無料", systemImage: "person.2.wave.2", tint: .green)
+                    InfoBadge(title: "参加は無料", systemImage: "person.2.wave.2", tint: .green)
                     PremiumBadge(title: "作成はCreator Pass")
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    NavigationLink {
+                        HistoryView(viewModel: historyViewModel)
+                    } label: {
+                        Label("履歴を見る", systemImage: "clock.arrow.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        isShowingGuide = true
+                    } label: {
+                        Label("使い方を見る", systemImage: "questionmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                VStack(spacing: 10) {
+                    NavigationLink {
+                        HistoryView(viewModel: historyViewModel)
+                    } label: {
+                        Label("履歴を見る", systemImage: "clock.arrow.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        isShowingGuide = true
+                    } label: {
+                        Label("使い方を見る", systemImage: "questionmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
 

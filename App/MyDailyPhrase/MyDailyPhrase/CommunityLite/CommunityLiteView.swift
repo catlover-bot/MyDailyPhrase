@@ -804,32 +804,61 @@ struct CommunityLiteView: View {
     }
 
     private var heroCard: some View {
-        Card("みんなの部屋", decorationId: vm.selectedDecorationId) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードやランキングを使わず、安心してつながる導線から先に楽しめます。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
-                        PremiumBadge(title: "作成はCreator Pass")
-                        InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
-                        PremiumBadge(title: "作成はCreator Pass")
-                        InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
-                    }
+        PageHeroCard(
+            eyebrow: "参加してつながる",
+            title: "みんなの部屋",
+            subtitle: "ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードやランキングを使わず、安心して楽しめる導線から先に整えています。",
+            accent: .green
+        ) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                    PremiumBadge(title: "作成はCreator Pass")
+                    InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
                 }
 
-                Text("日記の回答は自動で公開されません。DMは相互フォローの相手とのみ使えます。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                    PremiumBadge(title: "作成はCreator Pass")
+                    InfoBadge(title: "公開コメントなし", systemImage: "shield", tint: .indigo)
+                }
             }
+
+            LazyVGrid(columns: [.init(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
+                SummaryMetricTile(
+                    title: "参加中",
+                    value: "\(vm.joinedCommunities.count)部屋",
+                    detail: vm.joinedCommunities.isEmpty ? "まだ参加していません" : "部屋ごとのお題を確認できます",
+                    systemImage: "person.2.fill",
+                    tint: .green
+                )
+                SummaryMetricTile(
+                    title: "ゲーム部屋",
+                    value: "\(vm.availableCommunities.count)部屋",
+                    detail: "気になるテーマを探せます",
+                    systemImage: "gamecontroller.fill",
+                    tint: .blue
+                )
+                SummaryMetricTile(
+                    title: "フォロー",
+                    value: "\(vm.followingProfiles.count)人",
+                    detail: "相互フォローでDMできます",
+                    systemImage: "person.crop.circle.badge.plus",
+                    tint: .purple
+                )
+                SummaryMetricTile(
+                    title: "Creator Pass",
+                    value: vm.creatorEntitlement.hasCreatorPass ? "有効" : "未加入",
+                    detail: "コミュニティ作成を解放",
+                    systemImage: "crown.fill",
+                    tint: .orange
+                )
+            }
+
+            Text("日記の回答は自動で公開されません。DMは相互フォローの相手とのみ使えます。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -878,6 +907,15 @@ struct CommunityLiteView: View {
                                 ? Color.accentColor.opacity(0.18)
                                 : Color(uiColor: .secondarySystemBackground),
                                 in: Capsule()
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        selectedSection == section
+                                        ? Color.accentColor.opacity(0.22)
+                                        : Color.primary.opacity(0.05),
+                                        lineWidth: 1
+                                    )
                             )
                     }
                     .buttonStyle(.plain)
@@ -1599,16 +1637,21 @@ struct CommunityLiteView: View {
                     }
                 }
 
-                Text(vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                ForEach(iap.creatorPassBenefitLines, id: \.self) { line in
-                    Label(line, systemImage: "checkmark.circle.fill")
-                        .font(.caption)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ForEach(iap.creatorPassBenefitLines, id: \.self) { line in
+                        Label(line, systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                 if vm.creatorEntitlement.hasCreatorPass {
                     Label("Creator Pass 有効", systemImage: "checkmark.seal.fill")
@@ -1636,13 +1679,12 @@ struct CommunityLiteView: View {
                         .disabled(!previewState.isPurchaseEnabled)
                     }
                 } else {
-                    Button {
-                    } label: {
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Creator Pass を確認")
                                     .font(.subheadline.weight(.semibold))
-                                Text("購入情報を準備中です")
+                                Text("価格情報を準備中です")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -1651,9 +1693,29 @@ struct CommunityLiteView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
+
+                        Text("価格が確認できるまでは購入ボタンを表示せず、機能の内容だけを先に確認できるようにしています。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .buttonStyle(.bordered)
-                    .disabled(true)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color.orange.opacity(0.10),
+                                Color(uiColor: .secondarySystemBackground)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.orange.opacity(0.14), lineWidth: 1)
+                    )
                 }
 
                 ViewThatFits(in: .horizontal) {
@@ -2118,9 +2180,15 @@ struct CommunityLiteView: View {
             selectedSection = section
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                Label(title, systemImage: section.systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(accent)
+                HStack(alignment: .top, spacing: 10) {
+                    Label(title, systemImage: section.systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(accent)
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(selectedSection == section ? accent : Color.secondary.opacity(0.7))
+                }
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
