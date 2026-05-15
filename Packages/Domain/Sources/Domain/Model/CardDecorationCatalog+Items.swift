@@ -35,6 +35,9 @@ public extension CardDecorationCatalog {
         if containsAny(normalized, ["retro", "arcade", "matrix"]) {
             return .promptPack
         }
+        if containsAny(normalized, ["sunset", "cloud", "marine", "moonlit", "fog", "ocean"]) {
+            return .background
+        }
         if containsAny(normalized, ["paper", "linen", "cotton", "denim", "retro", "plaid", "fog", "classic"]) {
             return .journalPaper
         }
@@ -62,27 +65,27 @@ public extension CardDecorationCatalog {
     ) -> [DecorationSurface] {
         switch type {
         case .fullTheme:
-            return [.journalCard, .promptCard, .profileCard, .shareCard, .gachaResultCard, .collectionCard]
+            return [.journalCard, .promptCard, .profileCard, .shareCard, .communityCard, .gachaResultCard, .collectionCard]
         case .background:
-            return [.appBackground, .profileCard, .shareCard, .collectionCard]
+            return [.appBackground, .profileCard, .shareCard, .communityCard, .collectionCard]
         case .cardFrame:
-            return [.journalCard, .profileCard, .shareCard, .gachaResultCard, .collectionCard]
+            return [.journalCard, .profileCard, .shareCard, .communityCard, .gachaResultCard, .collectionCard]
         case .sticker:
-            return [.sticker, .profileCard, .shareCard, .collectionCard]
+            return [.sticker, .profileCard, .shareCard, .communityCard, .collectionCard]
         case .badge:
-            return [.badge, .profileCard, .shareCard, .collectionCard, .gachaResultCard]
+            return [.badge, .profileCard, .shareCard, .communityCard, .collectionCard, .gachaResultCard]
         case .profileTitle:
             return [.profileCard, .shareCard, .titlePlate, .badge, .collectionCard, .gachaResultCard]
         case .shareTemplate:
-            return [.shareCard, .profileCard, .collectionCard, .gachaResultCard]
+            return [.shareCard, .profileCard, .communityCard, .collectionCard, .gachaResultCard]
         case .gachaRevealEffect:
             return [.gachaCapsule, .gachaResultCard, .shareCard, .collectionCard]
         case .promptPack:
-            return [.promptCard, .journalCard, .shareCard, .collectionCard, .gachaResultCard]
+            return [.promptCard, .journalCard, .shareCard, .communityCard, .collectionCard, .gachaResultCard]
         case .journalPaper:
             return [.journalCard, .promptCard, .collectionCard, .gachaResultCard]
         case .auraStyle:
-            return [.profileCard, .shareCard, .gachaResultCard, .collectionCard, .auraFrame, .appBackground]
+            return [.profileCard, .shareCard, .communityCard, .gachaResultCard, .collectionCard, .auraFrame, .appBackground]
         }
     }
 
@@ -94,6 +97,9 @@ public extension CardDecorationCatalog {
         }
         if containsAny(normalized, ["sakura", "ruby", "amber"]) {
             return DecorationPalette(primaryHex: "#E65A96", secondaryHex: "#7A3458", accentHex: "#FFD7E8")
+        }
+        if containsAny(normalized, ["sunset", "amber", "gold", "auric", "phoenix"]) {
+            return DecorationPalette(primaryHex: "#F59B28", secondaryHex: "#7A4217", accentHex: "#FFE5BD")
         }
         if containsAny(normalized, ["neon", "hologram", "matrix", "arcade", "volt", "glitch"]) {
             return DecorationPalette(primaryHex: "#3CE7FF", secondaryHex: "#4F35FF", accentHex: "#E2FBFF")
@@ -159,13 +165,13 @@ public extension CardDecorationCatalog {
 
         let normalized = decoration.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if containsAny(normalized, ["gold", "crown", "royal"]) {
-            return "ことばの旅人"
+            return "王冠の記録者"
         }
         if containsAny(normalized, ["phoenix", "ember", "auric"]) {
             return "静かな挑戦者"
         }
         if containsAny(normalized, ["moonlit", "eclipse", "zenith", "halo", "eternal"]) {
-            return "夜の記録者"
+            return "夜更かし記録者"
         }
         return "余韻コレクター"
     }
@@ -180,13 +186,13 @@ public extension CardDecorationCatalog {
 
         let normalized = decoration.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if containsAny(normalized, ["stardust", "starlight", "comet"]) {
-            return "星屑レター"
+            return "星屑シェアカード"
         }
         if containsAny(normalized, ["moonlit", "eclipse", "galaxy", "singularity"]) {
-            return "ナイトグロー"
+            return "月夜の共有カード"
         }
         if containsAny(normalized, ["neon", "hologram", "glitch", "arcade"]) {
-            return "フラッシュカード"
+            return "ネオン共有カード"
         }
         return "テーマプレビュー"
     }
@@ -202,6 +208,8 @@ public extension CardDecorationCatalog {
             return "シェアカードの見え方まで変わる共有向けテーマ"
         case .gachaRevealEffect:
             return "開封演出とプレビューの空気感まで変える演出テーマ"
+        case .background:
+            return "カード背景とコミュニティカードの空気感を整える背景テーマ"
         case .journalPaper:
             return "ひとことを丁寧に見せてくれる紙面テーマ"
         default:
@@ -217,6 +225,9 @@ public extension CardDecorationCatalog {
 
         if containsAny(normalized, ["sakura", "paper", "linen", "cotton", "plaid"]) {
             return "やわらかな余白と落ち着きで、言葉をやさしく包みます。"
+        }
+        if containsAny(normalized, ["sunset", "cloud", "moonlit", "fog"]) {
+            return "背景の空気感がやさしく変わり、日記カードもプロフィールも印象深く見せてくれます。"
         }
         if containsAny(normalized, ["ocean", "marine", "teal", "ripple", "tidal", "sonar"]) {
             return "静かな波のような透明感で、気持ちを澄ませてくれるテーマです。"

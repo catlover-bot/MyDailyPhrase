@@ -1704,7 +1704,7 @@ struct CommunityLiteView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Creator Pass を確認")
                                     .font(.subheadline.weight(.semibold))
-                                Text("価格情報を準備中です")
+                                Text("App Storeの商品情報を確認中です")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -1714,7 +1714,7 @@ struct CommunityLiteView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        Text("価格が確認できるまでは購入ボタンを表示せず、機能の内容だけを先に確認できるようにしています。")
+                        Text("反映に時間がかかる場合があります。価格が確認できるまでは購入ボタンを表示せず、機能の内容だけを先に確認できるようにしています。")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

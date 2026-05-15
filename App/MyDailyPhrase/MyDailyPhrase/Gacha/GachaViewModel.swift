@@ -132,9 +132,9 @@ final class GachaViewModel: ObservableObject {
     }
 
     @Published var currentBanner: GachaBanner = .init(
-        title: "ピックアップ（重み付き）",
-        subtitle: "天井 + 欠片 + シーズン報酬",
-        note: "今週は Hologram / Stardust / Royal をピックアップ。週次ミッションで限定デコも獲得できます。",
+        title: "今週のピックアップ",
+        subtitle: "無料ガチャ + 欠片交換 + シーズン報酬",
+        note: "今週は光や星空モチーフのテーマが少し出やすくなっています。週次ミッションでは限定のしるし系デコも獲得できます。",
         featuredIds: ["hologram", "stardust", "royal"]
     )
 
@@ -297,21 +297,21 @@ final class GachaViewModel: ObservableObject {
         switch seasonTheme {
         case .space:
             return [
-                .init(id: 1, title: "Cosmic Bronze", targetOwnedCount: 3, ticketReward: 3, shardReward: 60),
-                .init(id: 2, title: "Cosmic Silver", targetOwnedCount: 6, ticketReward: 6, shardReward: 130),
-                .init(id: 3, title: "Cosmic Gold", targetOwnedCount: 9, ticketReward: 10, shardReward: 240)
+                .init(id: 1, title: "宇宙コレクター I", targetOwnedCount: 3, ticketReward: 3, shardReward: 60),
+                .init(id: 2, title: "宇宙コレクター II", targetOwnedCount: 6, ticketReward: 6, shardReward: 130),
+                .init(id: 3, title: "宇宙コレクター III", targetOwnedCount: 9, ticketReward: 10, shardReward: 240)
             ]
         case .japanese:
             return [
-                .init(id: 1, title: "Wa Bronze", targetOwnedCount: 3, ticketReward: 3, shardReward: 70),
-                .init(id: 2, title: "Wa Silver", targetOwnedCount: 6, ticketReward: 6, shardReward: 140),
-                .init(id: 3, title: "Wa Gold", targetOwnedCount: 9, ticketReward: 10, shardReward: 250)
+                .init(id: 1, title: "和の記録 I", targetOwnedCount: 3, ticketReward: 3, shardReward: 70),
+                .init(id: 2, title: "和の記録 II", targetOwnedCount: 6, ticketReward: 6, shardReward: 140),
+                .init(id: 3, title: "和の記録 III", targetOwnedCount: 9, ticketReward: 10, shardReward: 250)
             ]
         case .neon:
             return [
-                .init(id: 1, title: "Neon Bronze", targetOwnedCount: 3, ticketReward: 4, shardReward: 80),
-                .init(id: 2, title: "Neon Silver", targetOwnedCount: 6, ticketReward: 7, shardReward: 150),
-                .init(id: 3, title: "Neon Gold", targetOwnedCount: 9, ticketReward: 11, shardReward: 260)
+                .init(id: 1, title: "ネオン収集 I", targetOwnedCount: 3, ticketReward: 4, shardReward: 80),
+                .init(id: 2, title: "ネオン収集 II", targetOwnedCount: 6, ticketReward: 7, shardReward: 150),
+                .init(id: 3, title: "ネオン収集 III", targetOwnedCount: 9, ticketReward: 11, shardReward: 260)
             ]
         }
     }

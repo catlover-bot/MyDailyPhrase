@@ -485,7 +485,7 @@ struct GachaCinematicOverlay: View {
             Haptics.notify(.success)
         } label: {
             Label(
-                item.map { equippedDecorationId == $0.id ? "現在装備中" : "今すぐ使う" } ?? "今すぐ使う",
+                item.map { GachaThemePresentation.primaryEquipLabel(for: $0, isEquipped: equippedDecorationId == $0.id) } ?? "まとめて装備",
                 systemImage: item.map { equippedDecorationId == $0.id ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark" } ?? "person.crop.circle.badge.checkmark"
             )
             .frame(maxWidth: .infinity)
@@ -905,7 +905,7 @@ struct GachaResultDetailScreen: View {
             Haptics.notify(.success)
         } label: {
             Label(
-                selectedItem.map { equippedDecorationId == $0.id ? "現在装備中" : "今すぐ使う" } ?? "今すぐ使う",
+                selectedItem.map { GachaThemePresentation.primaryEquipLabel(for: $0, isEquipped: equippedDecorationId == $0.id) } ?? "まとめて装備",
                 systemImage: selectedItem.map { equippedDecorationId == $0.id ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark" } ?? "person.crop.circle.badge.checkmark"
             )
             .frame(maxWidth: .infinity)

@@ -44,6 +44,8 @@ final class IAPStore: ObservableObject {
     @Published private(set) var creatorPassExpiresAt: Date? = nil
     @Published private(set) var lastStoreKitError: String? = nil
     @Published private(set) var eventStatus: StoreEventStatus = .idle
+    @Published private(set) var lastProductRefreshAt: Date? = nil
+    @Published private(set) var lastSyncAt: Date? = nil
 
     // ===== Injected =====
     private let updateMyProfile: UpdateMyProfileUseCase
@@ -150,7 +152,10 @@ final class IAPStore: ObservableObject {
         case .loading:
             return .loading
         case .ready:
-            return products.isEmpty ? .unavailable : .loaded
+            if products.isEmpty {
+                return .unavailable
+            }
+            return missingProductIDs.isEmpty ? .loaded : .partiallyLoaded
         case .failed(let message):
             return .failed(message)
         }
@@ -164,12 +169,63 @@ final class IAPStore: ObservableObject {
         productIDs
     }
 
+    var missingProductIDs: [String] {
+        let loaded = Set(loadedProductIDs)
+        return requestedProductIDs.filter { !loaded.contains($0) }.sorted()
+    }
+
+    var storeDiagnosticsSnapshot: StoreProductDiagnosticsSnapshot {
+        MonetizationDiagnosticsSupport.makeSnapshot(
+            availability: productLoadState,
+            requestedProductIDs: requestedProductIDs,
+            loadedProductIDs: loadedProductIDs,
+            lastStoreKitError: lastStoreKitError,
+            lastRefreshText: lastProductRefreshText,
+            lastSyncText: lastSyncText,
+            creatorPassStatusText: creatorPassStatusText,
+            isCreatorPassActive: isCreatorPassActive
+        )
+    }
+
+    var lastProductRefreshText: String? {
+        lastProductRefreshAt.map { Self.diagnosticDateFormatter.string(from: $0) }
+    }
+
+    var lastSyncText: String? {
+        lastSyncAt.map { Self.diagnosticDateFormatter.string(from: $0) }
+    }
+
+    var eventStatusText: String {
+        switch eventStatus {
+        case .idle:
+            return "待機中"
+        case .loading:
+            return "商品情報を確認中"
+        case .loaded:
+            return productLoadState == .partiallyLoaded ? "一部の商品を読み込み済み" : "商品情報を読み込み済み"
+        case .unavailable:
+            return "商品情報を未取得"
+        case .pending:
+            return "購入保留中"
+        case .restored:
+            return "購入情報を同期済み"
+        case .purchased:
+            return "購入処理が完了しました"
+        case .cancelled:
+            return "購入はキャンセルされました"
+        case .failed:
+            return "確認に時間がかかっています"
+        }
+    }
+
     var productStatusTitle: String {
         switch productLoadState {
         case .loading:
             return "価格情報を確認しています"
         case .loaded:
             return "価格情報を読み込みました"
+        case .partiallyLoaded:
+            return "一部の価格情報を読み込みました"
         case .unavailable:
             return "価格情報を準備中です"
         case .failed:
@@ -183,10 +239,12 @@ final class IAPStore: ObservableObject {
             return "安全に読み込めた商品だけ表示します。価格が確認できるまで購入ボタンは有効になりません。"
         case .loaded:
             return "StoreKit から取得できた商品のみ、価格と購入ボタンを表示しています。"
+        case .partiallyLoaded:
+            return "読み込めた商品から先に表示しています。表示されていない商品は App Store 側の反映待ちの可能性があります。"
         case .unavailable:
-            return "App Store に追加した商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
+            return "App Storeの商品情報を確認中です。反映に時間がかかる場合があります。しばらくしてから再読み込みしてください。"
         case .failed:
-            return "App Store に追加した商品情報の反映待ちです。しばらくしてから再読み込みするか、購入情報を復元してください。"
+            return "App Storeの商品情報を確認中です。反映に時間がかかる場合があります。しばらくしてから再読み込みしてください。"
         }
     }
 
@@ -197,8 +255,12 @@ final class IAPStore: ObservableObject {
             "event: \(String(describing: eventStatus))",
             "requestedIDs: \(requestedProductIDs.joined(separator: ", "))",
             "loadedIDs: \(loadedProductIDs.joined(separator: ", "))",
+            "missingIDs: \(missingProductIDs.joined(separator: ", "))",
             "productCount: \(products.count)",
             "lastError: \(lastStoreKitError ?? "-")",
+            "lastRefresh: \(lastProductRefreshText ?? "-")",
+            "lastSync: \(lastSyncText ?? "-")",
+            "creatorPass: \(creatorPassStatusText)",
             "storekitConfigDetection: unavailable"
         ]
     }
@@ -248,8 +310,14 @@ final class IAPStore: ObservableObject {
     // MARK: - Bootstrap
 
     func configure() async {
+        if state == .loading {
+            return
+        }
+
         // 1) 商品取得
-        await loadProducts()
+        if products.isEmpty {
+            await loadProducts()
+        }
 
         // 2) Entitlement同期
         await refreshCreatorPassEntitlement()
@@ -269,6 +337,7 @@ final class IAPStore: ObservableObject {
         state = .loading
         eventStatus = .loading
         lastStoreKitError = nil
+        lastProductRefreshAt = Date()
         do {
             let ps = try await Product.products(for: productIDs)
             self.products = ps.sorted { $0.id < $1.id }
@@ -277,11 +346,15 @@ final class IAPStore: ObservableObject {
                 state = .failed(message)
                 eventStatus = .unavailable
                 lastStoreKitError = message
-                lastMessage = "App Store の商品情報をまだ確認できませんでした。しばらくしてから再読み込みしてください。"
+                lastMessage = "App Storeの商品情報を確認中です。反映に時間がかかる場合があります。しばらくしてから再読み込みしてください。"
             } else {
                 state = .ready
                 eventStatus = .loaded
-                lastMessage = "商品情報を更新しました"
+                if missingProductIDs.isEmpty {
+                    lastMessage = "商品情報を更新しました"
+                } else {
+                    lastMessage = "一部の商品情報を更新しました。残りは反映待ちの可能性があります。"
+                }
             }
         } catch {
             let debugMessage = error.localizedDescription
@@ -289,7 +362,7 @@ final class IAPStore: ObservableObject {
             state = .failed(message)
             eventStatus = .failed(message)
             lastStoreKitError = debugMessage
-            lastMessage = "App Store の商品情報をまだ確認できませんでした。しばらくしてから再読み込みしてください。"
+            lastMessage = "App Storeの商品情報を確認中です。反映に時間がかかる場合があります。しばらくしてから再読み込みしてください。"
         }
     }
 
@@ -299,6 +372,7 @@ final class IAPStore: ObservableObject {
 
     /// Consumable中心なので「復元」は限定的だが、環境不整合時の同期として用意
     func sync() async {
+        lastSyncAt = Date()
         do {
             try await AppStore.sync()
             await refreshCreatorPassEntitlement()
@@ -528,6 +602,14 @@ final class IAPStore: ObservableObject {
         f.locale = .current
         f.dateStyle = .medium
         f.timeStyle = .short
+        return f
+    }()
+
+    private static let diagnosticDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .current
+        f.dateStyle = .medium
+        f.timeStyle = .medium
         return f
     }()
 

@@ -159,6 +159,8 @@ struct CommunityLiteSupportTests {
         #expect(MonetizationProducts.creatorPassLifetime == "jp.catloverbot.MyDailyPhrase.creatorpass.lifetime")
         #expect(MonetizationProducts.ticketPacks.count == 3)
         #expect(MonetizationProducts.creatorPassProductIDs.count == 3)
+        #expect(MonetizationProducts.activeCreatorPassProductIDs == [MonetizationProducts.creatorPassLifetime])
+        #expect(MonetizationProducts.allProductIDs.count == 4)
         #expect(MonetizationProducts.ticketPack(for: MonetizationProducts.gachaTicket120)?.ticketCount == 120)
     }
 

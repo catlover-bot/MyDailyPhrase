@@ -68,6 +68,8 @@ struct GachaView: View {
     enum ItemTypeFilter: String, CaseIterable, Identifiable {
         case all = "すべて"
         case theme = "テーマ"
+        case background = "背景"
+        case frame = "カード枠"
         case promptPack = "お題"
         case profileTitle = "称号"
         case shareTemplate = "共有"
@@ -84,6 +86,10 @@ struct GachaView: View {
                 return nil
             case .theme:
                 return .fullTheme
+            case .background:
+                return .background
+            case .frame:
+                return .cardFrame
             case .promptPack:
                 return .promptPack
             case .profileTitle:
@@ -1090,7 +1096,7 @@ struct GachaView: View {
             Text("コレクション")
                 .font(.headline)
 
-            Text("所持・未所持・装備中をまとめて確認できます。未所持アイテムも見た目を確認できます。")
+            Text("所持・未所持・装備中をまとめて確認できます。未所持アイテムも見た目と使える場所を確認できます。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -1290,14 +1296,14 @@ struct GachaView: View {
             if !iap.hasLoadedAnyProducts {
                 AppSectionCard(
                     title: "価格情報を準備中です",
-                    subtitle: "App Store に追加した商品情報の反映待ちです。使い道は先に確認でき、価格が届きしだい購入できます。"
+                    subtitle: "App Storeの商品情報を確認中です。反映に時間がかかる場合がありますが、使い道は先に確認できます。"
                 ) {
                     VStack(alignment: .leading, spacing: 10) {
                         Label("価格を確認できた商品だけ購入できます。", systemImage: "info.circle.fill")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        Text("表示が準備中でも、チケットの使い道や Creator Pass の内容は先に確認できます。価格情報が届くまでは、安全のため購入操作を止めています。")
+                        Text("表示が準備中でも、チケットの使い道や Creator Pass の内容は先に確認できます。反映に時間がかかる場合があるため、しばらくしてから再読み込みしてください。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1401,7 +1407,7 @@ struct GachaView: View {
                         ticketPackCard(state)
                     }
 
-                    Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 購入前に確率を確認できます")
+                    Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 外部決済リンクなし / 購入前に確率を確認できます")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1511,10 +1517,10 @@ struct GachaView: View {
                 PremiumBadge(title: "価格情報を確認中")
             }
 
-            Text("現在、価格情報を準備中です")
+            Text("App Storeの商品情報を確認中です")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("App Storeの商品情報の反映待ちです。価格が確認できるまでは、安全のため購入ボタンを表示していません。")
+            Text("反映に時間がかかる場合があります。価格が確認できるまでは、安全のため購入ボタンを表示していません。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1575,7 +1581,7 @@ struct GachaView: View {
                     Text(state.displayPrice ?? "準備中")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text(state.isEnabled ? "購入できます" : "価格を確認中")
+                    Text(state.isEnabled ? "購入できます" : "価格情報を確認中")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -1593,7 +1599,7 @@ struct GachaView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "hourglass")
                         .foregroundStyle(.secondary)
-                    Text("App Storeの商品情報の反映待ちです。価格が確認できるまで、このパックは購入できません。")
+                    Text("App Storeの商品情報を確認中です。反映に時間がかかる場合があります。価格が届くまでは、このパックを購入できません。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

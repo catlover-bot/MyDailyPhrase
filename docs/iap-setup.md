@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build `1.0 (12)` carries forward StoreKit2 support for:
+Build `1.0 (13)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
@@ -15,6 +15,8 @@ This build also reorganizes the in-app UX so:
 - purchase UI fails safely when products do not load
 - ticket packs remain visible as disabled cards when products are unavailable
 - Creator Pass keeps a locked creation preview visible even before entitlement
+- Settings now includes a hidden purchase diagnostics section for TestFlight troubleshooting
+- partial StoreKit product loading is surfaced safely instead of treating the whole shop as broken
 
 Current App Store Connect status:
 
@@ -24,6 +26,7 @@ Current App Store Connect status:
 - `Creator Pass Lifetime`
 
 have been added to the app version. StoreKit product propagation may still take time, so the app continues to show a safe fallback state until price data is actually returned on device.
+Build `1.0 (13)` also requests only the currently launched Creator Pass SKU (`creatorpass.lifetime`) while keeping future monthly/yearly IDs reserved in code.
 
 Free users should still be able to:
 
@@ -129,18 +132,21 @@ Recommended notes:
 9. Add review screenshots for each IAP if required by App Store Connect.
 10. Save and submit the IAPs for review together with the app version if needed.
 11. In Xcode, confirm the same product IDs are used in code and in the `.storekit` file.
-12. Upload Build `1.0 (9)` to TestFlight.
+12. Upload Build `1.0 (13)` to TestFlight.
 13. Wait for processing, then test purchases on device.
 
 ## Sandbox / TestFlight monetization QA checklist
 
 - [ ] Products load successfully on device
+- [ ] If only some products load, the loaded products show prices and the missing ones remain disabled
 - [ ] Ticket pack prices display from StoreKit
 - [ ] Creator Pass price displays from StoreKit
 - [ ] When products fail to load, purchase buttons are not tappable
 - [ ] Unavailable state shows `準備中` or `購入できません`-style fallback, not a broken button
 - [ ] Ticket pack cards stay visible even in unavailable state
 - [ ] `商品情報を再読み込み` and `購入情報を復元` are reachable when products fail to load
+- [ ] Hidden purchase diagnostics in Settings can show requested IDs / loaded IDs / missing IDs when troubleshooting
+  Open it by tapping the app version badge 5 times.
 - [ ] Gacha screen leads with free draw / collection value before purchase
 - [ ] Odds are reachable without entering an actual purchase flow
 - [ ] Buying `tickets10` grants `10`

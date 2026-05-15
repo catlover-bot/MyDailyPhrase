@@ -36,4 +36,23 @@ struct DecorationItemCatalogTests {
         #expect(profile.equippedDecorationSet.primaryDecorationId == "gold")
         #expect(profile.equippedDecorationSet.profileTitleDecorationId == "gold")
     }
+
+    @Test("item pool keeps enough variety across rarities")
+    func itemPoolVarietyByRarity() {
+        let pool = CardDecorationCatalog.pool
+        #expect(pool.filter { $0.rarity == .common }.count >= 8)
+        #expect(pool.filter { $0.rarity == .rare }.count >= 8)
+        #expect(pool.filter { $0.rarity == .epic }.count >= 6)
+        #expect(pool.filter { $0.rarity == .legendary }.count >= 3)
+    }
+
+    @Test("catalog items have user-facing names and surfaces")
+    func userFacingItemMetadataExists() {
+        let items = CardDecorationCatalog.items.filter { $0.id != CardDecorationCatalog.classicId }
+
+        #expect(!items.isEmpty)
+        #expect(items.allSatisfy { !$0.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        #expect(items.allSatisfy { !$0.applicableSurfaces.isEmpty })
+        #expect(items.contains { $0.applicableSurfaces.contains(.communityCard) })
+    }
 }

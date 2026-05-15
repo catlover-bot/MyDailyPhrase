@@ -147,7 +147,7 @@ public enum GachaThemePresentation {
                 rarity: item.rarity,
                 flavorText: fallbackFlavorText(for: item),
                 itemType: .fullTheme,
-                applicableSurfaces: [.profileCard, .shareCard, .journalCard],
+                applicableSurfaces: [.profileCard, .shareCard, .journalCard, .communityCard],
                 palette: DecorationPalette(primaryHex: "#93A1B0", secondaryHex: "#485362", accentHex: "#F2F5F8"),
                 previewStyle: .softCard
             )
@@ -174,7 +174,7 @@ public enum GachaThemePresentation {
         case .fullTheme:
             return "テーマ"
         case .background:
-            return "背景"
+            return "背景テーマ"
         case .cardFrame:
             return "カード枠"
         case .sticker:
@@ -209,13 +209,15 @@ public enum GachaThemePresentation {
     public static func surfaceLabel(for surface: DecorationSurface) -> String {
         switch surface {
         case .journalCard:
-            return "ひとことカード"
+            return "日記カード"
         case .promptCard:
             return "お題カード"
         case .profileCard:
-            return "プロフィール"
+            return "プロフィールカード"
         case .shareCard:
             return "共有カード"
+        case .communityCard:
+            return "コミュニティカード"
         case .gachaResultCard:
             return "ガチャ結果"
         case .gachaCapsule:
@@ -232,6 +234,23 @@ public enum GachaThemePresentation {
             return "称号プレート"
         case .collectionCard:
             return "コレクション"
+        }
+    }
+
+    public static func primaryEquipLabel(for item: CardDecoration, isEquipped: Bool) -> String {
+        guard !isEquipped else { return "現在装備中" }
+
+        switch decorationItem(for: item).itemType {
+        case .profileTitle, .badge:
+            return "プロフィールに使う"
+        case .shareTemplate:
+            return "共有カードに使う"
+        case .journalPaper:
+            return "日記カードに使う"
+        case .promptPack:
+            return "コミュニティに使う"
+        default:
+            return "まとめて装備"
         }
     }
 

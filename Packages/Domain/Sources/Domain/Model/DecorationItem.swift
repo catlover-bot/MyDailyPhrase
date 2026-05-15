@@ -5,6 +5,7 @@ public enum DecorationSurface: String, Codable, CaseIterable, Sendable {
     case promptCard
     case profileCard
     case shareCard
+    case communityCard
     case gachaResultCard
     case gachaCapsule
     case appBackground

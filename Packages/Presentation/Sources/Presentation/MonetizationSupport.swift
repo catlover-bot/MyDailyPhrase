@@ -37,8 +37,12 @@ public enum MonetizationProducts {
         creatorPassYearly
     ]
 
+    public static let activeCreatorPassProductIDs: [String] = [
+        creatorPassLifetime
+    ]
+
     public static let allProductIDs: [String] =
-        (ticketPacks.map(\.productID) + creatorPassProductIDs).sorted()
+        (ticketPacks.map(\.productID) + activeCreatorPassProductIDs).sorted()
 
     public static let oddsDisclosureVersion = "2026.05"
 
@@ -78,6 +82,7 @@ public enum MonetizationDisclosure {
         "アイテムはアプリ内装飾用です",
         "現金価値はありません",
         "譲渡・売買はできません",
+        "マーケットプレイスはありません",
         "重複する場合があります"
     ]
 }
@@ -85,8 +90,26 @@ public enum MonetizationDisclosure {
 public enum StoreProductLoadState: Equatable, Sendable {
     case loading
     case loaded
+    case partiallyLoaded
     case unavailable
     case failed(String)
+}
+
+public struct StoreProductDiagnosticsSnapshot: Equatable, Sendable {
+    public let availability: StoreProductLoadState
+    public let requestedProductIDs: [String]
+    public let loadedProductIDs: [String]
+    public let missingProductIDs: [String]
+    public let productCount: Int
+    public let lastStoreKitError: String?
+    public let lastRefreshText: String?
+    public let lastSyncText: String?
+    public let creatorPassStatusText: String
+    public let isCreatorPassActive: Bool
+
+    public var loadedProductCount: Int { loadedProductIDs.count }
+    public var hasZeroProducts: Bool { loadedProductIDs.isEmpty }
+    public var hasPartialLoad: Bool { !loadedProductIDs.isEmpty && !missingProductIDs.isEmpty }
 }
 
 public struct TicketPackPurchaseCardState: Equatable, Sendable, Identifiable {
@@ -116,12 +139,14 @@ public enum MonetizationShopSupport {
     ) -> [TicketPackPurchaseCardState] {
         MonetizationProducts.ticketPacks.map { pack in
             let isLoaded = loadedProductIDs.contains(pack.productID)
-            let isEnabled = availability == .loaded && isLoaded
+            let isEnabled = (availability == .loaded || availability == .partiallyLoaded) && isLoaded
             let statusText: String
             switch availability {
             case .loading:
                 statusText = "価格情報を確認中です"
             case .loaded:
+                statusText = isLoaded ? "購入できます" : "価格情報を準備中です"
+            case .partiallyLoaded:
                 statusText = isLoaded ? "購入できます" : "価格情報を準備中です"
             case .unavailable:
                 statusText = "価格情報を準備中です"
@@ -146,12 +171,14 @@ public enum MonetizationShopSupport {
         creatorPassLoaded: Bool,
         displayPrice: String?
     ) -> CreatorPassPreviewState {
-        let enabled = availability == .loaded && creatorPassLoaded
+        let enabled = (availability == .loaded || availability == .partiallyLoaded) && creatorPassLoaded
         let statusText: String
         switch availability {
         case .loading:
             statusText = "価格情報を確認中です"
         case .loaded:
+            statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "価格情報を準備中です"
+        case .partiallyLoaded:
             statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "価格情報を準備中です"
         case .unavailable:
             statusText = "現在、価格情報を準備中です"
@@ -163,6 +190,37 @@ public enum MonetizationShopSupport {
             displayPrice: displayPrice,
             isPurchaseEnabled: enabled,
             statusText: statusText
+        )
+    }
+}
+
+public enum MonetizationDiagnosticsSupport {
+    public static func makeSnapshot(
+        availability: StoreProductLoadState,
+        requestedProductIDs: [String],
+        loadedProductIDs: [String],
+        lastStoreKitError: String?,
+        lastRefreshText: String?,
+        lastSyncText: String?,
+        creatorPassStatusText: String,
+        isCreatorPassActive: Bool
+    ) -> StoreProductDiagnosticsSnapshot {
+        let requested = requestedProductIDs.sorted()
+        let loaded = loadedProductIDs.sorted()
+        let loadedSet = Set(loaded)
+        let missing = requested.filter { !loadedSet.contains($0) }
+
+        return StoreProductDiagnosticsSnapshot(
+            availability: availability,
+            requestedProductIDs: requested,
+            loadedProductIDs: loaded,
+            missingProductIDs: missing,
+            productCount: loaded.count,
+            lastStoreKitError: lastStoreKitError,
+            lastRefreshText: lastRefreshText,
+            lastSyncText: lastSyncText,
+            creatorPassStatusText: creatorPassStatusText,
+            isCreatorPassActive: isCreatorPassActive
         )
     }
 }

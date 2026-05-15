@@ -91,7 +91,7 @@ struct GachaThemePreviewContent: View {
     }
 
     private var journalPreviewCard: some View {
-        Card("ひとことカード", decorationId: item.id) {
+        Card(journalPreviewTitle, decorationId: item.id) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("サンプルお題", systemImage: "text.quote")
                     .font(.caption.weight(.semibold))
@@ -109,7 +109,7 @@ struct GachaThemePreviewContent: View {
     }
 
     private var profilePreviewCard: some View {
-        Card("プロフィールカード", decorationId: item.id) {
+        Card(profilePreviewTitle, decorationId: item.id) {
             HStack(alignment: .center, spacing: 12) {
                 Circle()
                     .fill(item.rarity.previewAccent.opacity(0.22))
@@ -180,7 +180,7 @@ struct GachaThemePreviewContent: View {
     }
 
     private var sharePreviewCard: some View {
-        Card("共有カード", decorationId: item.id) {
+        Card(sharePreviewTitle, decorationId: item.id) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("ひとこと日記")
@@ -217,7 +217,7 @@ struct GachaThemePreviewContent: View {
 
     private var usageCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("どこで使われる？", systemImage: "rectangle.on.rectangle.angled")
+            Label("装備できる場所", systemImage: "rectangle.on.rectangle.angled")
                 .font(.subheadline.weight(.semibold))
 
             Text(GachaThemePresentation.usageText(for: item))
@@ -238,6 +238,45 @@ struct GachaThemePreviewContent: View {
     private var profileInitial: String {
         let trimmed = profileDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
         return String((trimmed.isEmpty ? "M" : trimmed).prefix(1)).uppercased()
+    }
+
+    private var journalPreviewTitle: String {
+        switch GachaThemePresentation.decorationItem(for: item).itemType {
+        case .journalPaper:
+            return "日記カード（紙面）"
+        case .cardFrame:
+            return "日記カード（フレーム）"
+        case .promptPack:
+            return "お題カード"
+        default:
+            return "日記カード"
+        }
+    }
+
+    private var profilePreviewTitle: String {
+        switch GachaThemePresentation.decorationItem(for: item).itemType {
+        case .profileTitle:
+            return "プロフィールカード（称号）"
+        case .background:
+            return "プロフィールカード（背景）"
+        case .badge:
+            return "プロフィールカード（バッジ）"
+        default:
+            return "プロフィールカード"
+        }
+    }
+
+    private var sharePreviewTitle: String {
+        switch GachaThemePresentation.decorationItem(for: item).itemType {
+        case .shareTemplate:
+            return "共有カード（テンプレート）"
+        case .gachaRevealEffect:
+            return "共有カード（演出）"
+        case .badge:
+            return "共有カード（バッジ）"
+        default:
+            return "共有カード"
+        }
     }
 
     private func detailChip(systemImage: String, text: String) -> some View {
@@ -297,15 +336,17 @@ struct GachaCollectionTile: View {
 
                         Text(item.name)
                             .font(.headline.weight(.semibold))
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
 
                         Text(GachaThemePresentation.itemTypeLabel(for: item))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
                 }
-                .frame(height: 146)
+                .frame(height: 158)
                 .opacity(isOwned ? 1.0 : 0.72)
 
                 HStack(alignment: .center, spacing: 8) {
@@ -399,7 +440,10 @@ struct GachaThemePreviewSheet: View {
         Button {
             onEquip()
         } label: {
-            Label(isEquipped ? "現在装備中" : "今すぐ使う", systemImage: isEquipped ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark")
+            Label(
+                GachaThemePresentation.primaryEquipLabel(for: item, isEquipped: isEquipped),
+                systemImage: isEquipped ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark"
+            )
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
@@ -410,7 +454,7 @@ struct GachaThemePreviewSheet: View {
         Button {
             dismiss()
         } label: {
-            Label(isOwned ? "あとで使う" : "閉じる", systemImage: "xmark")
+            Label(isOwned ? "あとで見る" : "閉じる", systemImage: "xmark")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
@@ -449,7 +493,7 @@ struct GachaShareCardView: View {
                         Text(model.appName)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        Text("ガチャで新しいテーマを獲得")
+                        Text("ガチャで新しい装飾を獲得")
                             .font(.title2.weight(.bold))
                     }
 

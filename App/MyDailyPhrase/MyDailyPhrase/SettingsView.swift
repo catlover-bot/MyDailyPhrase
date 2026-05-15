@@ -5,6 +5,8 @@ struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
     @EnvironmentObject private var iap: IAPStore
     @State private var showDeleteConfirmation = false
+    @State private var showsIAPDiagnostics = false
+    @State private var versionTapCount = 0
 
     init(viewModel: SettingsViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
@@ -23,13 +25,13 @@ struct SettingsView: View {
                         HStack(spacing: 8) {
                             InfoBadge(title: "ローカル保存", systemImage: "lock.fill", tint: .blue)
                             InfoBadge(title: "共有は明示操作のみ", systemImage: "square.and.arrow.up", tint: .indigo)
-                            InfoBadge(title: vm.appVersionText, systemImage: "number", tint: .green)
+                            versionBadge
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
                             InfoBadge(title: "ローカル保存", systemImage: "lock.fill", tint: .blue)
                             InfoBadge(title: "共有は明示操作のみ", systemImage: "square.and.arrow.up", tint: .indigo)
-                            InfoBadge(title: vm.appVersionText, systemImage: "number", tint: .green)
+                            versionBadge
                         }
                     }
 
@@ -93,6 +95,14 @@ struct SettingsView: View {
                         title: "購入と復元",
                         subtitle: "価格情報の再読み込みや購入情報の復元はここから行えます。外部決済リンクは使っていません。"
                     ) {
+                        Text(iap.productStatusTitle)
+                            .font(.subheadline.weight(.semibold))
+
+                        Text(iap.productStatusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
                         if let message = iap.lastMessage {
                             Text(message)
                                 .font(.caption)
@@ -142,6 +152,26 @@ struct SettingsView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if showsIAPDiagnostics {
+                        AppSectionCard(
+                            title: "購入診断情報",
+                            subtitle: "TestFlight で価格が出ないときに、どの商品 ID が読み込めていないかを確認できます。"
+                        ) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                diagnosticRow(title: "状態", value: iap.productStatusTitle)
+                                diagnosticRow(title: "同期状況", value: iap.eventStatusText)
+                                diagnosticRow(title: "要求した商品 ID", value: joinedDiagnosticText(iap.storeDiagnosticsSnapshot.requestedProductIDs))
+                                diagnosticRow(title: "読み込めた商品 ID", value: joinedDiagnosticText(iap.storeDiagnosticsSnapshot.loadedProductIDs))
+                                diagnosticRow(title: "未取得の商品 ID", value: joinedDiagnosticText(iap.storeDiagnosticsSnapshot.missingProductIDs))
+                                diagnosticRow(title: "商品数", value: "\(iap.storeDiagnosticsSnapshot.productCount)")
+                                diagnosticRow(title: "最終更新", value: iap.storeDiagnosticsSnapshot.lastRefreshText ?? "まだありません")
+                                diagnosticRow(title: "最終復元", value: iap.storeDiagnosticsSnapshot.lastSyncText ?? "まだありません")
+                                diagnosticRow(title: "Creator Pass", value: iap.storeDiagnosticsSnapshot.creatorPassStatusText)
+                                diagnosticRow(title: "最後のエラー", value: iap.storeDiagnosticsSnapshot.lastStoreKitError ?? "なし")
+                            }
+                        }
                     }
                 }
 
@@ -204,5 +234,35 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+
+    private var versionBadge: some View {
+        Button {
+            versionTapCount += 1
+            if versionTapCount >= 5 {
+                showsIAPDiagnostics.toggle()
+                versionTapCount = 0
+            }
+        } label: {
+            InfoBadge(title: vm.appVersionText, systemImage: "number", tint: .green)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func diagnosticRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.monospaced())
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func joinedDiagnosticText(_ items: [String]) -> String {
+        items.isEmpty ? "なし" : items.joined(separator: "\n")
     }
 }
