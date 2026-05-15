@@ -612,6 +612,348 @@ private struct FlipRevealCard: View {
     }
 }
 
+struct GachaResultDetailScreen: View {
+    let summary: GachaDrawSummary
+    let pityMax: Int
+    let profileDisplayName: String
+    let equippedDecorationId: String
+    let onEquip: (String) -> Void
+    let onShare: (CardDecoration) -> Void
+    let onDrawAgain: (() -> Void)?
+    let onClose: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var selectedResultItemID: String?
+
+    var body: some View {
+        ZStack {
+            AppScreenBackground()
+
+            VStack(spacing: 0) {
+                topBar
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let selectedItem {
+                            heroSection(for: selectedItem)
+
+                            GachaThemePreviewContent(
+                                item: selectedItem,
+                                ownedCount: max(1, summary.drawn.filter { $0.id == selectedItem.id }.count),
+                                isOwned: true,
+                                isEquipped: equippedDecorationId == selectedItem.id,
+                                profileDisplayName: profileDisplayName,
+                                showsHeroCard: false
+                            )
+                            .id("result_preview_\(selectedItem.id)_\(equippedDecorationId)")
+                            .transition(
+                                reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 0.99))
+                            )
+                        }
+
+                        AppSectionCard(
+                            title: "今回の獲得アイテム",
+                            subtitle: "タップしてプレビューを切り替えられます。"
+                        ) {
+                            LazyVGrid(columns: [.init(.adaptive(minimum: 132), spacing: 10)], spacing: 10) {
+                                ForEach(Array(summary.drawn.enumerated()), id: \.offset) { _, item in
+                                    MiniResultCard(
+                                        item: item,
+                                        isNew: summary.newIds.contains(item.id),
+                                        isSelected: selectedItem?.id == item.id,
+                                        accent: item.rarity.previewAccent
+                                    ) {
+                                        selectedResultItemID = item.id
+                                        Haptics.impact(.soft)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 180)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            actionBar
+        }
+        .onAppear {
+            if selectedResultItemID == nil {
+                selectedResultItemID = defaultResultItem(in: summary)?.id
+            }
+        }
+    }
+
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                onClose()
+                Haptics.impact(.light)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline.weight(.bold))
+                    .frame(width: 40, height: 40)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("獲得アイテム")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("見た目を確認して、その場で使えます")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            if let selectedItem {
+                GachaRarityBadge(rarity: selectedItem.rarity)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background(.ultraThinMaterial)
+    }
+
+    private func heroSection(for item: CardDecoration) -> some View {
+        PageHeroCard(
+            eyebrow: "ガチャ結果",
+            title: item.name,
+            subtitle: GachaThemePresentation.flavorText(for: item),
+            accent: item.rarity.previewAccent
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                Card(nil, decorationId: item.id) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(GachaThemePresentation.revealPhrase(for: item))
+                                    .font(.headline.weight(.bold))
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                Text(GachaThemePresentation.revealPhrase(for: item.rarity))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            VStack(alignment: .trailing, spacing: 8) {
+                                stateBadge(for: item)
+                                typeBadge(for: item)
+                            }
+                        }
+
+                        surfaceChipGrid(labels: GachaThemePresentation.applicableSurfaceLabels(for: item))
+                    }
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        summaryChip(
+                            title: "NEW",
+                            value: summary.newIds.contains(item.id) ? "はい" : "既所持",
+                            tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
+                        )
+                        summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
+                        summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                    }
+
+                    VStack(spacing: 10) {
+                        summaryChip(
+                            title: "NEW",
+                            value: summary.newIds.contains(item.id) ? "はい" : "既所持",
+                            tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
+                        )
+                        summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
+                        summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                    }
+                }
+            }
+        }
+    }
+
+    private var actionBar: some View {
+        VStack(spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    equipButton
+                    shareButton
+                }
+
+                VStack(spacing: 10) {
+                    equipButton
+                    shareButton
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    closeButton
+                    if let onDrawAgain {
+                        drawAgainButton(onDrawAgain)
+                    }
+                }
+
+                VStack(spacing: 10) {
+                    closeButton
+                    if let onDrawAgain {
+                        drawAgainButton(onDrawAgain)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+        }
+    }
+
+    private var selectedItem: CardDecoration? {
+        if let selectedResultItemID,
+           let selected = summary.drawn.last(where: { $0.id == selectedResultItemID }) {
+            return selected
+        }
+        return defaultResultItem(in: summary)
+    }
+
+    private func defaultResultItem(in summary: GachaDrawSummary) -> CardDecoration? {
+        let newItems = summary.drawn.filter { summary.newIds.contains($0.id) }
+        let source = newItems.isEmpty ? summary.drawn : newItems
+        guard let maxRank = source.map({ rank($0.rarity) }).max() else { return nil }
+        return source.last(where: { rank($0.rarity) == maxRank })
+    }
+
+    private func rank(_ rarity: CardDecorationRarity) -> Int {
+        switch rarity {
+        case .common: return 1
+        case .rare: return 2
+        case .epic: return 3
+        case .legendary: return 4
+        }
+    }
+
+    private func stateBadge(for item: CardDecoration) -> some View {
+        let isEquipped = equippedDecorationId == item.id
+        let label = isEquipped ? "現在装備中" : (summary.newIds.contains(item.id) ? "NEW" : "所持済み")
+        let tint = isEquipped ? item.rarity.previewAccent : (summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary)
+
+        return Text(label)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(tint.opacity(0.14), in: Capsule())
+            .foregroundStyle(tint)
+    }
+
+    private func typeBadge(for item: CardDecoration) -> some View {
+        Text(GachaThemePresentation.itemTypeLabel(for: item))
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.ultraThinMaterial, in: Capsule())
+    }
+
+    private func summaryChip(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(tint)
+            Text(value)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.primary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(tint.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private func surfaceChipGrid(labels: [String]) -> some View {
+        LazyVGrid(columns: [.init(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+            ForEach(labels, id: \.self) { label in
+                Text(label)
+                    .font(.caption.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private var equipButton: some View {
+        Button {
+            guard let selectedItem else { return }
+            onEquip(selectedItem.id)
+            Haptics.notify(.success)
+        } label: {
+            Label(
+                selectedItem.map { equippedDecorationId == $0.id ? "現在装備中" : "今すぐ使う" } ?? "今すぐ使う",
+                systemImage: selectedItem.map { equippedDecorationId == $0.id ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark" } ?? "person.crop.circle.badge.checkmark"
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(selectedItem == nil || selectedItem.map { equippedDecorationId == $0.id } == true)
+    }
+
+    private var shareButton: some View {
+        Button {
+            guard let selectedItem else { return }
+            onShare(selectedItem)
+            Haptics.impact(.light)
+        } label: {
+            Label("結果を共有", systemImage: "square.and.arrow.up")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+        .disabled(selectedItem == nil || !FeatureFlags.nativeSharingEnabled)
+    }
+
+    private var closeButton: some View {
+        Button {
+            onClose()
+            Haptics.impact(.light)
+        } label: {
+            Label("閉じる", systemImage: "xmark")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private func drawAgainButton(_ action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            Haptics.impact(.medium)
+        } label: {
+            Label("もう一回ひく", systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+    }
+}
+
 private struct LegendaryHalo: View {
     let accent: Color
 

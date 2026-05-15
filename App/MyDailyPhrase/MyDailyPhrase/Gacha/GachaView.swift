@@ -22,6 +22,7 @@ struct GachaView: View {
     @State private var showsErrorAlert = false
     @State private var showsDiagnostics = false
     @State private var drawTapLockedUntil: Date? = nil
+    @State private var presentedResultSummary: GachaDrawSummary? = nil
     @State private var previewItem: CardDecoration? = nil
     @State private var shareSheetItems: [Any] = []
     @State private var isPresentingShareSheet = false
@@ -168,7 +169,7 @@ struct GachaView: View {
             }
         }
         .overlay {
-            if let mode = cinematicMode {
+            if let mode = overlayCinematicMode {
                 GachaCinematicOverlay(
                     mode: mode,
                     pityMax: vm.pityMax,
@@ -183,6 +184,29 @@ struct GachaView: View {
                 .transition(.opacity)
             }
         }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { presentedResultSummary != nil },
+                set: { isPresented in
+                    if !isPresented, presentedResultSummary != nil {
+                        closeCinematic()
+                    }
+                }
+            )
+        ) {
+            if let summary = presentedResultSummary {
+                GachaResultDetailScreen(
+                    summary: summary,
+                    pityMax: vm.pityMax,
+                    profileDisplayName: vm.profileDisplayName,
+                    equippedDecorationId: vm.selectedDecorationId,
+                    onEquip: { vm.selectDecoration(id: $0) },
+                    onShare: { presentThemeShare(for: $0) },
+                    onDrawAgain: canRepeatLastDraw ? { repeatLastDraw() } : nil,
+                    onClose: { closeCinematic() }
+                )
+            }
+        }
         .overlay(alignment: .bottom) {
             if let msg = statusBannerMessage {
                 actionBanner(msg)
@@ -191,7 +215,7 @@ struct GachaView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.15), value: cinematicMode != nil)
+        .animation(.easeInOut(duration: 0.15), value: overlayCinematicMode != nil)
         .animation(.easeInOut(duration: 0.15), value: statusBannerMessage != nil)
         .alert("ガチャエラー", isPresented: $showsErrorAlert) {
             Button("再同期") {
@@ -1579,16 +1603,13 @@ struct GachaView: View {
         .disabled(isLocked)
     }
 
-    private var cinematicMode: GachaCinematicOverlay.Mode? {
+    private var overlayCinematicMode: GachaCinematicOverlay.Mode? {
         if case .spinning = vm.state {
             if hidesSpinningCinematic { return nil }
             return .spinning(count: lastDrawCount, bannerTitle: vm.currentBanner.title)
         }
         if let revealSummary {
             return .revealing(summary: revealSummary, index: revealIndex)
-        }
-        if case .result(let summary) = vm.state {
-            return .result(summary: summary)
         }
         return nil
     }
@@ -1602,6 +1623,7 @@ struct GachaView: View {
 
     private func startReveal(_ summary: GachaDrawSummary) {
         revealTask?.cancel()
+        presentedResultSummary = nil
         revealSummary = summary
         revealIndex = 0
 
@@ -1623,6 +1645,7 @@ struct GachaView: View {
             }
             if !Task.isCancelled {
                 revealSummary = nil
+                presentedResultSummary = summary
             }
         }
     }
@@ -1635,6 +1658,9 @@ struct GachaView: View {
         case .closeReveal:
             revealTask?.cancel()
             revealSummary = nil
+            if let summary = vm.currentResult {
+                presentedResultSummary = summary
+            }
         case .hideSpinAndAwaitResult:
             // 抽選自体は継続し、演出だけスキップする
             skipToResultAfterSpin = true
@@ -1658,6 +1684,7 @@ struct GachaView: View {
         spinWatchdogTask?.cancel()
         spinStartedAt = nil
         revealSummary = nil
+        presentedResultSummary = nil
         vm.closeResult()
     }
 
@@ -1666,6 +1693,10 @@ struct GachaView: View {
     }
 
     private func repeatLastDraw() {
+        presentedResultSummary = nil
+        revealTask?.cancel()
+        revealSummary = nil
+        vm.closeResult()
         requestDraw(count: lastDrawCount) {
             if lastDrawCount >= 10 {
                 vm.drawTen()
@@ -1814,6 +1845,7 @@ struct GachaView: View {
             if skipToResultAfterSpin {
                 skipToResultAfterSpin = false
                 revealSummary = nil
+                presentedResultSummary = summary
             } else {
                 startReveal(summary)
             }
@@ -1825,6 +1857,7 @@ struct GachaView: View {
             drawTapLockedUntil = nil
             revealTask?.cancel()
             revealSummary = nil
+            presentedResultSummary = nil
             if case .error = st {
                 showsErrorAlert = true
             }
@@ -1843,6 +1876,7 @@ struct GachaView: View {
                     if skipToResultAfterSpin {
                         skipToResultAfterSpin = false
                         revealSummary = nil
+                        presentedResultSummary = summary
                     } else {
                         startReveal(summary)
                     }

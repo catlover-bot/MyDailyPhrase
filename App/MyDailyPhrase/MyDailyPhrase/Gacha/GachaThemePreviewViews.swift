@@ -9,6 +9,7 @@ struct GachaThemePreviewContent: View {
     let isOwned: Bool
     let isEquipped: Bool
     let profileDisplayName: String
+    var showsHeroCard: Bool = true
 
     private var ownershipState: GachaThemeOwnershipState {
         GachaThemePresentation.ownershipState(isOwned: isOwned, isEquipped: isEquipped)
@@ -16,33 +17,55 @@ struct GachaThemePreviewContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            heroCard
+            if showsHeroCard {
+                heroCard
+            }
             journalPreviewCard
             profilePreviewCard
             sharePreviewCard
             usageCard
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var heroCard: some View {
         Card(nil, decorationId: item.id) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(item.name)
-                            .font(.system(.title2, design: .rounded, weight: .bold))
-                            .fixedSize(horizontal: false, vertical: true)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(item.name)
+                                .font(.system(.title2, design: .rounded, weight: .bold))
+                                .fixedSize(horizontal: false, vertical: true)
 
-                        Text(GachaThemePresentation.revealPhrase(for: item))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            Text(GachaThemePresentation.revealPhrase(for: item))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        VStack(alignment: .trailing, spacing: 8) {
+                            GachaRarityBadge(rarity: item.rarity)
+                            GachaOwnershipBadge(state: ownershipState)
+                        }
                     }
 
-                    Spacer(minLength: 0)
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(item.name)
+                                .font(.system(.title2, design: .rounded, weight: .bold))
+                                .fixedSize(horizontal: false, vertical: true)
 
-                    VStack(alignment: .trailing, spacing: 8) {
-                        GachaRarityBadge(rarity: item.rarity)
-                        GachaOwnershipBadge(state: ownershipState)
+                            Text(GachaThemePresentation.revealPhrase(for: item))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack(spacing: 8) {
+                            GachaRarityBadge(rarity: item.rarity)
+                            GachaOwnershipBadge(state: ownershipState)
+                        }
                     }
                 }
 
@@ -98,24 +121,50 @@ struct GachaThemePreviewContent: View {
                     }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(profileDisplayName)
-                            .font(.headline)
-                        if let title = GachaThemePresentation.profileTitle(for: item) {
-                            Text(title)
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.thinMaterial)
-                                .clipShape(Capsule())
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            Text(profileDisplayName)
+                                .font(.headline)
+                            if let title = GachaThemePresentation.profileTitle(for: item) {
+                                Text(title)
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.thinMaterial)
+                                    .clipShape(Capsule())
+                            }
+                            if isEquipped {
+                                Text("装備中")
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(item.rarity.previewAccent.opacity(0.18))
+                                    .clipShape(Capsule())
+                            }
                         }
-                        if isEquipped {
-                            Text("装備中")
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(item.rarity.previewAccent.opacity(0.18))
-                                .clipShape(Capsule())
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(profileDisplayName)
+                                .font(.headline)
+
+                            HStack(spacing: 8) {
+                                if let title = GachaThemePresentation.profileTitle(for: item) {
+                                    Text(title)
+                                        .font(.caption2.weight(.bold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(.thinMaterial)
+                                        .clipShape(Capsule())
+                                }
+                                if isEquipped {
+                                    Text("装備中")
+                                        .font(.caption2.weight(.bold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(item.rarity.previewAccent.opacity(0.18))
+                                        .clipShape(Capsule())
+                                }
+                            }
                         }
                     }
 
@@ -532,7 +581,7 @@ struct GachaOwnershipBadge: View {
     }
 }
 
-private extension CardDecorationRarity {
+extension CardDecorationRarity {
     var previewAccent: Color {
         switch self {
         case .common:
