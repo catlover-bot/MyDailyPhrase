@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build `1.0 (6)` carries forward StoreKit2 support for:
+Build `1.0 (7)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
@@ -13,6 +13,8 @@ This build also reorganizes the in-app UX so:
 - Odds are easy to reach before paid spending
 - Creator Pass explains that participation is free and creation is premium
 - purchase UI fails safely when products do not load
+- ticket packs remain visible as disabled cards when products are unavailable
+- Creator Pass keeps a locked creation preview visible even before entitlement
 
 Free users should still be able to:
 
@@ -118,7 +120,7 @@ Recommended notes:
 9. Add review screenshots for each IAP if required by App Store Connect.
 10. Save and submit the IAPs for review together with the app version if needed.
 11. In Xcode, confirm the same product IDs are used in code and in the `.storekit` file.
-12. Upload Build `1.0 (6)` to TestFlight.
+12. Upload Build `1.0 (7)` to TestFlight.
 13. Wait for processing, then test purchases on device.
 
 ## Sandbox / TestFlight monetization QA checklist
@@ -128,6 +130,8 @@ Recommended notes:
 - [ ] Creator Pass price displays from StoreKit
 - [ ] When products fail to load, purchase buttons are not tappable
 - [ ] Unavailable state shows `準備中` or `購入できません`-style fallback, not a broken button
+- [ ] Ticket pack cards stay visible even in unavailable state
+- [ ] `商品情報を再読み込み` and `購入情報を復元` are reachable when products fail to load
 - [ ] Gacha screen leads with free draw / collection value before purchase
 - [ ] Odds are reachable without entering an actual purchase flow
 - [ ] Buying `tickets10` grants `10`
@@ -140,6 +144,7 @@ Recommended notes:
 - [ ] Failed purchase does not change ticket balance
 - [ ] Creator Pass purchase unlocks community creation after verification
 - [ ] Non-entitled user still sees creation locked
+- [ ] Non-entitled user still sees the community creation preview form in locked mode
 - [ ] Free user can still join preset communities
 
 ## Restore purchases checklist
@@ -179,7 +184,7 @@ Use this as a starting point in App Store Connect review notes:
 
 Additional reviewer-facing UX note:
 
-`Today` is the private diary tab, `Gacha` is for cosmetic rewards and odds disclosure, `みんな` is the free community-participation tab, and Creator Pass only affects community creation. The app is designed to make free participation and private-by-default writing clear without requiring purchase.
+`Today` is the private diary tab, `Gacha` is for cosmetic rewards and odds disclosure, `みんな` is the free community-participation tab, and Creator Pass only affects community creation. The app is designed to make free participation and private-by-default writing clear without requiring purchase. If App Store product loading fails, the app still shows disabled purchase cards and retry / restore actions instead of broken purchase buttons.
 
 ## App Review reminders
 

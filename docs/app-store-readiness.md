@@ -18,15 +18,16 @@
   `今日`, `ガチャ`, `みんな`, `プロフィール`, `設定`
 - History location:
   history is now reachable from the `今日` screen via a visible `履歴を見る` action instead of a primary tab.
-- First-release feature gating:
-  free/local gacha remains available, while paid gacha / Creator Pass UI is shown only when StoreKit products load successfully.
+- StoreKit fallback behavior:
+  free/local gacha remains available, and paid ticket / Creator Pass sections stay visible even when App Store products cannot be loaded.
+  Purchase actions only become tappable after StoreKit products load successfully; otherwise the app shows disabled cards plus retry / restore actions.
 - Build 1.0 (3) theme-preview additions:
   the gacha result flow now includes a visual theme preview, sample journal card, sample profile card, equip action, and native share action.
 - Build 1.0 (3) generalized gacha assets:
   owned items now behave as reusable local customization assets instead of one-off result labels.
   Depending on item type, they can affect profile identity, share card styling, preview cards, journal-card previews, and collection cards.
 - Community Lite status:
-  a safe local-first social layer is available from Profile, centered on weekly challenges, profile card sharing, achievement sharing, invite-style sharing, and preset community participation through the native share sheet.
+  a safe local-first social layer is available from the `みんな` tab, centered on weekly challenges, preset game communities, profile card sharing, achievement sharing, invite-style sharing, and local participation through the native share sheet.
 - Game Community Lite status:
   Build `1.0 (4)` adds preset game communities plus a local prompt engine that generates stable community prompts from category, tags, schedule, and prompt tone.
 - Creator community creation status:
@@ -37,14 +38,19 @@
 - Build `1.0 (6)` usability focus:
   the app now prioritizes real user comprehension over screenshot polish.
   Home explains the private-by-default diary loop, Gacha leads with free/reward usage before purchase, Community is discoverable from the tab bar, and Creator Pass messaging more clearly distinguishes free participation from paid creation.
+- Build `1.0 (7)` social / store safety focus:
+  the app now keeps purchase sections understandable even when StoreKit is unavailable, shows a locked-but-visible Creator Pass community creation preview, shortens the `みんな` tab with segmented navigation, and adds a local/mock-safe follow + mutual-follow DM layer with block/report/delete controls.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
+- Social backend status:
+  follow recommendations and DM are currently local/mock only. There is no real public user discovery, no real backend inbox, and no fake live activity feed in this build.
+  See `docs/social-safety.md` for the current safety scope and backend requirements before enabling real social data.
 - Current TestFlight build number:
-  `1.0 (6)`
+  `1.0 (7)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (6)` to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and App Store Connect IAP product setup, then create a signed Archive and upload Build `1.0 (7)` to TestFlight.
 - TestFlight readiness:
   Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:
@@ -62,10 +68,13 @@
    New screenshot-worthy candidates now include:
    - the `今日` screen with private-by-default guidance and `履歴を見る`
    - the gacha overview screen with free draw, collection, odds, and optional purchase sections
+   - the gacha purchase fallback state with disabled ticket cards and retry / restore actions
    - the gacha result preview screen
    - the collection screen with owned / locked / equipped states
    - the equipped profile card after applying a new theme
-   - the `みんな` tab with preset game communities and free participation labels
+   - the `みんな` tab dashboard with preset game communities and free participation labels
+   - the locked Creator Pass creation preview
+   - the follow / DM safety screens if you decide they fit your marketing story
    - the weekly challenge / Community Lite share preview flow
 
 3. Local reminder behavior must be verified on a real device.
@@ -157,6 +166,8 @@
 - Confirm free gacha works without exposing any paid purchase UI
 - Confirm the gacha screen explains what items are for before showing purchase options
 - Confirm paid gacha purchase buttons only appear when StoreKit products load
+- Confirm StoreKit-unavailable fallback keeps ticket packs visible but disabled
+- Confirm `商品情報を再読み込み` and `購入情報を復元` are visible and calm when products fail to load
 - Confirm odds disclosure is visible before spending paid tickets
 - Confirm ticket purchase copy feels optional and non-predatory
 - Confirm duplicate items convert to local shards as disclosed
@@ -164,6 +175,7 @@
 - Confirm verified ticket purchases increase ticket balance exactly once
 - Confirm Creator Pass purchase UI does not appear broken when products are unavailable
 - Confirm Creator Pass restore flow works when applicable
+- Confirm locked users can still preview the community creation form and understand its value
 - Confirm the gacha result screen shows a real visual preview, not text only
 - Confirm “今すぐ使う” equips the drawn theme immediately
 - Confirm “あとで使う” leaves the current equipped theme unchanged
@@ -175,7 +187,8 @@
 - Confirm weekly challenge prompt and preview card render correctly
 - Confirm weekly challenge share does not include the private answer by default
 - Confirm preset game communities are browsable and joinable for free
-- Confirm the `みんな` tab clearly explains that participation is free
+- Confirm the `みんな` tab clearly explains that participation is free and no public feed exists
+- Confirm the segmented `みんな` layout is easy to scan and no longer feels like one giant scroll
 - Confirm joining and leaving a preset community updates local state correctly
 - Confirm community prompt generation stays stable for the same day / week
 - Confirm different game community presets produce appropriately different prompts
@@ -184,6 +197,11 @@
 - Confirm Creator Pass entitlement unlocks community creation only after verification
 - Confirm no broken Creator Pass purchase button or external payment link appears
 - Confirm profile / invite / achievement share actions all require explicit user action
+- Confirm follow recommendations are clearly local/demo and do not imply live public discovery
+- Confirm follow / unfollow works without exposing blocked users again
+- Confirm DM is available only for mutual follows
+- Confirm blocked users cannot become DM targets
+- Confirm DM delete removes only the local conversation draft
 - Confirm no public feed, comments, likes, or ranking UI appear in the shipped flow
 - Enable reminders from Settings
 - Disable reminders from Settings
@@ -207,6 +225,8 @@
 - Collection / preview sheet layout on iPhone SE
 - Community Lite layout on iPhone SE
 - Game community detail and creator preview layout on iPhone SE
+- Follow list / DM inbox layout on iPhone SE
+- StoreKit unavailable purchase state on iPhone SE
 - Weekly challenge share preview with large Dynamic Type
 - Notification permission denied path
 - Notification permission allowed path
@@ -234,6 +254,8 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - The TestFlight candidate now exposes existing local engagement surfaces through the main tab bar.
 - Build 6 improves real usability first:
   first-use guidance, clearer tab intent, stronger privacy copy, and better monetization explanations were added so users can understand what is free, what is paid, and where gacha items are useful without relying on marketing screenshots.
+- Build 7 improves fallback clarity and safe social UX:
+  StoreKit-unavailable purchase states stay visible and actionable without broken buttons, Creator Pass creation stays previewable even when locked, the `みんな` tab is segmented into smaller sections, and follow / DM are constrained to local/mock, mutual-follow, blockable flows.
 - Build 3 adds a stronger local-only gacha loop:
 - Build 4 extends that loop into reusable community styling and safe social participation:
   preset communities can reuse owned themes, share templates, titles, badges, and prompt-pack style items without requiring a backend or payment for participation.
@@ -251,6 +273,9 @@ Recommended only if the shipped build remains local-first with no reachable serv
 - Native sharing is explicit user action only.
 - Private answers are not shared by default in community, weekly challenge, or profile-related share cards.
 - Full public community still requires moderation, reporting, blocking, delete-own-content, privacy, abuse-contact, and terms work before it can be enabled.
+- Follow / DM are intentionally not public-network features in this build:
+  there is no backend inbox, no public user directory, and no message delivery outside the local device yet.
+- If real social storage is added later, privacy policy, data-retention notes, account deletion, abuse contact, and moderation workflows must be updated before public rollout.
 - Build 3 adds a stronger local-only gacha loop:
   users can draw, see a visual preview immediately, equip the theme from the result screen, find it later in コレクション, and share the result via the native iOS share sheet.
 - Gacha items are now generalized reusable local assets:

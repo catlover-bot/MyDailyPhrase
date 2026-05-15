@@ -6,6 +6,10 @@ public enum ReleaseFeatureAvailability {
     public static let publicCommunityEnabled = false
     public static let communityLiteEnabled = true
     public static let gameCommunityEnabled = true
+    public static let socialGraphEnabled = true
+    public static let publicUserDiscoveryEnabled = false
+    public static let dmEnabled = true
+    public static let publicDMEnabled = false
     public static let creatorPassEnabled = true
     public static let creatorCommunityCreationEnabled = true
     public static let creatorCommunityLocalDraftEnabled = true

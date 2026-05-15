@@ -123,6 +123,51 @@ struct AppGroupUserProfileRepositoryTests {
         #expect(recovered?.ownedDecorationRecords["gold"]?.source == .freeGacha)
     }
 
+    @Test("social follow and DM state round-trip through persistence")
+    func persistsSocialState() {
+        let suite = makeSuiteName()
+        defer { cleanupSuite(suite) }
+
+        let repo = AppGroupUserProfileRepository(appGroupID: suite, forceSynchronizeOnWrite: true)
+        let profile = UserProfile(
+            userId: "u-social",
+            displayName: "tester",
+            selectedDecorationId: "paper",
+            ownedDecorationCounts: [
+                CardDecorationCatalog.classicId: 1,
+                "paper": 1
+            ],
+            followingUserIDs: ["local.profile.minato"],
+            blockedUserIDs: ["local.profile.rin"],
+            reportedUserIDs: ["local.profile.sora"],
+            dmConversations: [
+                DirectMessageConversation(
+                    participantUserID: "local.profile.minato",
+                    participantDisplayName: "ミナト",
+                    participantProfileTitle: "RPGの旅人",
+                    participantDecorationID: "retro",
+                    messages: [
+                        DirectMessageMessage(
+                            sender: .me,
+                            body: "またおすすめを教えてください",
+                            sentAt: Date(timeIntervalSince1970: 3210)
+                        )
+                    ],
+                    updatedAt: Date(timeIntervalSince1970: 3210)
+                )
+            ]
+        )
+
+        repo.saveMyProfile(profile)
+        let recovered = repo.getMyProfile()
+
+        #expect(recovered?.followingUserIDs == ["local.profile.minato"])
+        #expect(recovered?.blockedUserIDs == ["local.profile.rin"])
+        #expect(recovered?.reportedUserIDs == ["local.profile.sora"])
+        #expect(recovered?.dmConversations.first?.participantUserID == "local.profile.minato")
+        #expect(recovered?.dmConversations.first?.messages.first?.body == "またおすすめを教えてください")
+    }
+
     private func makeSuiteName() -> String {
         "group.MyDailyPhrase.tests.\(UUID().uuidString)"
     }

@@ -7,6 +7,10 @@ enum FeatureFlags {
     static let publicCommunityEnabled = ReleaseFeatureAvailability.publicCommunityEnabled
     static let communityLiteEnabled = ReleaseFeatureAvailability.communityLiteEnabled
     static let gameCommunityEnabled = ReleaseFeatureAvailability.gameCommunityEnabled
+    static let socialGraphEnabled = ReleaseFeatureAvailability.socialGraphEnabled
+    static let publicUserDiscoveryEnabled = ReleaseFeatureAvailability.publicUserDiscoveryEnabled
+    static let dmEnabled = ReleaseFeatureAvailability.dmEnabled
+    static let publicDMEnabled = ReleaseFeatureAvailability.publicDMEnabled
     static let creatorPassEnabled = ReleaseFeatureAvailability.creatorPassEnabled
     static let creatorCommunityCreationEnabled = ReleaseFeatureAvailability.creatorCommunityCreationEnabled
     static let creatorCommunityLocalDraftEnabled = ReleaseFeatureAvailability.creatorCommunityLocalDraftEnabled

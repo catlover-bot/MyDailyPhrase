@@ -80,3 +80,88 @@ public enum MonetizationDisclosure {
         "重複する場合があります"
     ]
 }
+
+public enum StoreProductLoadState: Equatable, Sendable {
+    case loading
+    case loaded
+    case unavailable
+    case failed(String)
+}
+
+public struct TicketPackPurchaseCardState: Equatable, Sendable, Identifiable {
+    public let productID: String
+    public let title: String
+    public let ticketCount: Int
+    public let displayPrice: String?
+    public let isEnabled: Bool
+    public let statusText: String
+    public let isRecommended: Bool
+
+    public var id: String { productID }
+}
+
+public struct CreatorPassPreviewState: Equatable, Sendable {
+    public let displayPrice: String?
+    public let isPurchaseEnabled: Bool
+    public let statusText: String
+}
+
+public enum MonetizationShopSupport {
+    public static func ticketPackStates(
+        availability: StoreProductLoadState,
+        loadedProductIDs: Set<String>,
+        displayPrices: [String: String],
+        bestValueProductID: String?
+    ) -> [TicketPackPurchaseCardState] {
+        MonetizationProducts.ticketPacks.map { pack in
+            let isLoaded = loadedProductIDs.contains(pack.productID)
+            let isEnabled = availability == .loaded && isLoaded
+            let statusText: String
+            switch availability {
+            case .loading:
+                statusText = "商品情報を読み込み中です"
+            case .loaded:
+                statusText = isLoaded ? "購入できます" : "現在購入を準備中です"
+            case .unavailable:
+                statusText = "現在購入を準備中です"
+            case .failed:
+                statusText = "App Storeの商品情報を読み込めませんでした"
+            }
+
+            return TicketPackPurchaseCardState(
+                productID: pack.productID,
+                title: "ガチャチケット\(pack.ticketCount)枚",
+                ticketCount: pack.ticketCount,
+                displayPrice: displayPrices[pack.productID],
+                isEnabled: isEnabled,
+                statusText: statusText,
+                isRecommended: bestValueProductID == pack.productID
+            )
+        }
+    }
+
+    public static func creatorPassState(
+        availability: StoreProductLoadState,
+        creatorPassLoaded: Bool,
+        displayPrice: String?
+    ) -> CreatorPassPreviewState {
+        let enabled = availability == .loaded && creatorPassLoaded
+        let statusText: String
+        switch availability {
+        case .loading:
+            statusText = "購入情報を読み込み中です"
+        case .loaded:
+            statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "購入情報を準備中です"
+        case .unavailable:
+            statusText = "購入情報を準備中です"
+        case .failed:
+            statusText = "購入情報を準備中です"
+        }
+
+        return CreatorPassPreviewState(
+            displayPrice: displayPrice,
+            isPurchaseEnabled: enabled,
+            statusText: statusText
+        )
+    }
+}

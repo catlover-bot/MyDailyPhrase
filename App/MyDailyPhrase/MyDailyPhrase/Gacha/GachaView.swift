@@ -1013,176 +1013,271 @@ struct GachaView: View {
 
     private var shopPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("チケット購入 / Creator Pass")
-                .font(.headline)
+            AppSectionCard(
+                title: "チケット購入 / Creator Pass",
+                subtitle: "無料ガチャや手持ちチケットを先に楽しめます。購入は必要なときだけ、Appleの安全な決済で行えます。"
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(MonetizationDisclosure.purchaseSafetyLines, id: \.self) { line in
+                        Text(line)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(MonetizationDisclosure.purchaseSafetyLines, id: \.self) { line in
-                    Text(line)
+                    Button {
+                        isPresentingOddsSheet = true
+                    } label: {
+                        Label("提供割合と重複時の扱いを確認する", systemImage: "info.circle")
+                            .compactActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            AppSectionCard(
+                title: iap.productStatusTitle,
+                subtitle: iap.productStatusMessage
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    statusBadgeRow
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            Button {
+                                Task { await iap.reloadProducts() }
+                            } label: {
+                                Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                Task { await iap.sync() }
+                            } label: {
+                                Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        VStack(spacing: 10) {
+                            Button {
+                                Task { await iap.reloadProducts() }
+                            } label: {
+                                Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                Task { await iap.sync() }
+                            } label: {
+                                Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+
+                    if let msg = iap.lastMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            AppSectionCard(
+                title: "Creator Pass",
+                subtitle: "コミュニティ作成とお題カスタマイズを解放します。参加者は無料のままです。"
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text(iap.isCreatorPassActive ? "有効" : "未加入")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(iap.isCreatorPassActive ? .green : .secondary)
+                        Spacer()
+                        if let product = iap.creatorPassProducts.first {
+                            Text(product.displayPrice)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    ForEach(iap.creatorPassBenefitLines, id: \.self) { benefit in
+                        Label(benefit, systemImage: "checkmark.seal")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if !FeatureFlags.creatorPassEnabled {
+                        Text("Creator Pass は現在準備中です")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else if !iap.creatorPassProducts.isEmpty {
+                        ForEach(iap.creatorPassProducts, id: \.id) { product in
+                            Button {
+                                Task { await iap.purchase(product) }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(product.displayName)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(creatorPassCaption(for: product))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(product.displayPrice)
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!iap.isCreatorPassShopAvailable)
+                        }
+                    } else {
+                        disabledCreatorPassCard
+                    }
+                }
+            }
+
+            AppSectionCard(
+                title: "チケット購入",
+                subtitle: "有料チケットは任意です。無料ガチャや交換所でも少しずつコレクションを増やせます。"
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(iap.ticketValuePitchLines, id: \.self) { line in
+                        Text(line)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(ticketPackStates) { state in
+                        ticketPackCard(state)
+                    }
+
+                    Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 確率を確認できます")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Button {
-                    isPresentingOddsSheet = true
-                } label: {
-                    Label("提供割合と重複時の扱いを確認する", systemImage: "info.circle")
-                        .compactActionLabel()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
+
+            #if DEBUG
+            DisclosureGroup("StoreKit 状態（開発用）") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(iap.debugStatusLines, id: \.self) { line in
+                        Text(line)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .font(.caption2)
             .padding(12)
             .background(.thinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            #endif
+        }
+    }
 
-            switch iap.state {
-            case .idle, .loading:
-                EmptyStateCard(
-                    title: "商品を読み込んでいます",
-                    message: "安全に読み込めた商品だけ表示します。しばらくしても出ない場合は App Store と再同期してください。",
-                    systemImage: "cart"
-                )
+    private var ticketPackStates: [TicketPackPurchaseCardState] {
+        let displayPrices = Dictionary(uniqueKeysWithValues: iap.ticketProducts.map { ($0.id, $0.displayPrice) })
+        return MonetizationShopSupport.ticketPackStates(
+            availability: iap.productLoadState,
+            loadedProductIDs: Set(iap.loadedProductIDs),
+            displayPrices: displayPrices,
+            bestValueProductID: iap.bestValueTicketProductID
+        )
+    }
 
-            case .failed(let msg):
-                EmptyStateCard(
-                    title: "購入を準備できませんでした",
-                    message: msg,
-                    systemImage: "exclamationmark.triangle"
-                )
+    private var statusBadgeRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                InfoBadge(title: "装飾アイテム専用", systemImage: "paintpalette", tint: .blue)
+                InfoBadge(title: "外部決済リンクなし", systemImage: "checkmark.shield", tint: .green)
+                InfoBadge(title: "購入前に確率確認", systemImage: "info.circle", tint: .indigo)
+            }
 
-            case .ready:
-                VStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Creator Pass")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text(iap.isCreatorPassActive ? "有効" : "未加入")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(iap.isCreatorPassActive ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                InfoBadge(title: "装飾アイテム専用", systemImage: "paintpalette", tint: .blue)
+                InfoBadge(title: "外部決済リンクなし", systemImage: "checkmark.shield", tint: .green)
+                InfoBadge(title: "購入前に確率確認", systemImage: "info.circle", tint: .indigo)
+            }
+        }
+    }
+
+    private var disabledCreatorPassCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Creator Pass を確認")
+                        .font(.subheadline.weight(.semibold))
+                    Text("購入情報を準備中です")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("--")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .opacity(0.7)
+    }
+
+    private func ticketPackCard(_ state: TicketPackPurchaseCardState) -> some View {
+        let loadedProduct = iap.ticketProducts.first(where: { $0.id == state.productID })
+        return Button {
+            guard state.isEnabled, let loadedProduct else { return }
+            Task { await iap.purchase(loadedProduct) }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(state.title)
+                            .font(.subheadline.weight(.semibold))
+                        if state.isRecommended {
+                            Text("まとめて楽しみたい方に")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.thinMaterial)
+                                .clipShape(Capsule())
                         }
-                        Text(iap.creatorPassStatusText)
+                    }
+                    Text(state.statusText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("チケットはガチャ演出やテーマ収集に使えます")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    if let loadedProduct, let unitPriceText = iap.ticketUnitPriceText(for: loadedProduct) {
+                        Text(unitPriceText)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        ForEach(iap.creatorPassBenefitLines, id: \.self) { benefit in
-                            Label(benefit, systemImage: "checkmark.seal")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        if !FeatureFlags.creatorPassEnabled {
-                            Text("Creator Pass は現在準備中です")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        } else if !iap.isCreatorPassShopAvailable {
-                            Text(iap.creatorPassUnavailableMessage)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(iap.creatorPassProducts, id: \.id) { p in
-                                Button {
-                                    Task { await iap.purchase(p) }
-                                } label: {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(p.displayName).fontWeight(.semibold)
-                                            Text(creatorPassCaption(for: p))
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Text(p.displayPrice).fontWeight(.semibold)
-                                    }
-                                    .padding(14)
-                                    .background(.thinMaterial)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            Button("購入を復元") {
-                                Task { await iap.restoreCreatorPass() }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("チケット購入")
-                            .font(.subheadline.weight(.semibold))
-                        ForEach(iap.ticketValuePitchLines, id: \.self) { line in
-                            Text(line)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        if !FeatureFlags.paidGachaEnabled {
-                            Text("チケット商品の販売は現在準備中です")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        } else if !iap.isTicketShopAvailable {
-                            Text(iap.paidGachaUnavailableMessage)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(iap.ticketProducts, id: \.id) { p in
-                                let amount = iap.ticketAmount(for: p)
-                                let isBestValue = iap.isBestValueTicketProduct(p)
-                                Button {
-                                    Task { await iap.purchase(p) }
-                                } label: {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            HStack(spacing: 6) {
-                                                Text(p.displayName).fontWeight(.semibold)
-                                                if isBestValue {
-                                                    Text("まとめて楽しむ方向け")
-                                                        .font(.caption2.weight(.bold))
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 2)
-                                                        .background(.thinMaterial)
-                                                        .clipShape(Capsule())
-                                                }
-                                            }
-                                            Text("チケット \(amount)")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                            Text("消費前に提供割合を確認できます")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                            if let unitPriceText = iap.ticketUnitPriceText(for: p) {
-                                                Text(unitPriceText)
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        Spacer()
-                                        Text(p.displayPrice).fontWeight(.semibold)
-                                    }
-                                    .padding(14)
-                                    .background(.thinMaterial)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
                     }
                 }
+                Spacer()
+                Text(state.displayPrice ?? "--")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(state.isEnabled ? .primary : .secondary)
             }
-
-            if let msg = iap.lastMessage {
-                Text(msg)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 6)
-            }
-
-            Button("App Storeと同期") {
-                Task { await iap.sync() }
-            }
-            .padding(.top, 8)
-            .buttonStyle(.bordered)
+            .padding(14)
+            .background(.thinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .opacity(state.isEnabled ? 1.0 : 0.72)
         }
+        .buttonStyle(.plain)
+        .disabled(!state.isEnabled)
     }
 
     // MARK: - UI Parts

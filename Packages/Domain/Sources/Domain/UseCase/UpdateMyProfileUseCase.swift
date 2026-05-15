@@ -40,6 +40,10 @@ public struct UpdateMyProfileUseCase: Sendable {
 
         gachaTickets: Int? = nil,
         lastFreeTicketDateKey: String? = nil,
+        followingUserIDs: [String]? = nil,
+        blockedUserIDs: [String]? = nil,
+        reportedUserIDs: [String]? = nil,
+        dmConversations: [DirectMessageConversation]? = nil,
 
         // ✅ 追加：差分加算（IAP などで便利）
         addGachaTickets: Int? = nil,
@@ -125,6 +129,10 @@ public struct UpdateMyProfileUseCase: Sendable {
                 if let pityCount { p.pityCount = pityCount }
                 if let gachaTickets { p.gachaTickets = gachaTickets }
                 if let lastFreeTicketDateKey { p.lastFreeTicketDateKey = lastFreeTicketDateKey }
+                if let followingUserIDs { p.followingUserIDs = followingUserIDs }
+                if let blockedUserIDs { p.blockedUserIDs = blockedUserIDs }
+                if let reportedUserIDs { p.reportedUserIDs = reportedUserIDs }
+                if let dmConversations { p.dmConversations = dmConversations }
 
                 if let addGachaTickets {
                     p.gachaTickets = max(0, p.gachaTickets + addGachaTickets)

@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UIKit
 import Combine
 import Domain
@@ -23,6 +24,8 @@ final class CommunityLiteViewModel: ObservableObject {
     @Published private(set) var currentCommunityPromptBundle: CommunityPromptBundle? = nil
     @Published private(set) var currentCommunityResponse: CommunityResponse? = nil
     @Published private(set) var currentCommunityPreviewWindow: [CommunityPrompt] = []
+    @Published private(set) var socialProfiles: [SocialUserProfileSummary] = []
+    @Published private(set) var dmConversations: [DirectMessageConversation] = []
 
     @Published var weeklyResponse: String = "" {
         didSet { persistUIState() }
@@ -46,6 +49,8 @@ final class CommunityLiteViewModel: ObservableObject {
     @Published var includeCommunityAnswerInShare: Bool = false {
         didSet { persistUIState() }
     }
+    @Published var selectedConversationId: String? = nil
+    @Published var dmDraftText: String = ""
 
     @Published var draftName: String = ""
     @Published var draftDescription: String = ""
@@ -64,6 +69,7 @@ final class CommunityLiteViewModel: ObservableObject {
     @Published var lastMessage: String? = nil
 
     private let getMyProfile: GetMyProfileUseCase
+    private let updateMyProfile: UpdateMyProfileUseCase
     private let computeStreak: ComputeStreakUseCase
     private let listCommunities: ListCommunitiesUseCase
     private let saveCommunityTemplate: SaveCommunityTemplateUseCase
@@ -81,6 +87,7 @@ final class CommunityLiteViewModel: ObservableObject {
 
     init(
         getMyProfile: GetMyProfileUseCase,
+        updateMyProfile: UpdateMyProfileUseCase,
         computeStreak: ComputeStreakUseCase,
         listCommunities: ListCommunitiesUseCase,
         saveCommunityTemplate: SaveCommunityTemplateUseCase,
@@ -93,6 +100,7 @@ final class CommunityLiteViewModel: ObservableObject {
         creatorEntitlementService: CreatorEntitlementService
     ) {
         self.getMyProfile = getMyProfile
+        self.updateMyProfile = updateMyProfile
         self.computeStreak = computeStreak
         self.listCommunities = listCommunities
         self.saveCommunityTemplate = saveCommunityTemplate
@@ -122,7 +130,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var socialHeaderText: String {
-        "公開フィードはまだありません。参加は無料、作成は将来のCreator Pass前提で、安心な共有だけを先に育てる準備版です。"
+        "公開フィードはまだありません。参加は無料のまま、フォローやDMは安全なローカル導線から段階的に整えています。"
     }
 
     var joinedCommunities: [CommunityTemplate] {
@@ -131,6 +139,21 @@ final class CommunityLiteViewModel: ObservableObject {
 
     var availableCommunities: [CommunityTemplate] {
         communities.filter { $0.category == .games || !$0.isOfficialPreset || FeatureFlags.gameCommunityEnabled }
+    }
+
+    var followingProfiles: [SocialUserProfileSummary] {
+        let following = Set(getMyProfile().followingUserIDs)
+        return socialProfiles.filter { following.contains($0.id) }
+    }
+
+    var recommendedProfiles: [SocialUserProfileSummary] {
+        let following = Set(getMyProfile().followingUserIDs)
+        return socialProfiles.filter { !following.contains($0.id) }
+    }
+
+    var selectedConversation: DirectMessageConversation? {
+        guard let selectedConversationId else { return nil }
+        return dmConversations.first { $0.id == selectedConversationId }
     }
 
     var selectedCommunity: CommunityTemplate? {
@@ -228,6 +251,7 @@ final class CommunityLiteViewModel: ObservableObject {
         userId = profile.userId
         selectedDecorationId = profile.selectedDecorationId
         streak = computeStreak.execute()
+        dmConversations = profile.dmConversations
         ownedDecorationItems = profile.ownedDecorationIds
             .compactMap(CardDecorationCatalog.byId)
             .sorted { lhs, rhs in
@@ -257,6 +281,7 @@ final class CommunityLiteViewModel: ObservableObject {
         restoreUIState()
         bootstrapOfficialCommunities()
         reloadCommunities()
+        reloadSocialProfiles(profile: profile)
         ensureSelectedCommunity()
         refreshSelectedCommunityContext()
     }
@@ -337,6 +362,99 @@ final class CommunityLiteViewModel: ObservableObject {
         reloadCommunities()
         selectedCommunityId = saved.id
         lastMessage = "ローカルな招待制コミュニティを作成しました"
+    }
+
+    func isFollowing(_ profileID: String) -> Bool {
+        getMyProfile().followingUserIDs.contains(profileID)
+    }
+
+    func isBlocked(_ profileID: String) -> Bool {
+        getMyProfile().blockedUserIDs.contains(profileID)
+    }
+
+    func isReported(_ profileID: String) -> Bool {
+        getMyProfile().reportedUserIDs.contains(profileID)
+    }
+
+    func canSendDM(to profile: SocialUserProfileSummary) -> Bool {
+        SocialSupport.canUseDirectMessage(
+            with: profile,
+            followingUserIDs: Set(getMyProfile().followingUserIDs),
+            blockedUserIDs: Set(getMyProfile().blockedUserIDs)
+        )
+    }
+
+    func toggleFollow(_ profile: SocialUserProfileSummary) {
+        let me = getMyProfile()
+        let updated = SocialSupport.toggledFollowIDs(current: me.followingUserIDs, targetUserID: profile.id)
+        _ = updateMyProfile(followingUserIDs: updated)
+        reloadSocialProfiles(profile: getMyProfile())
+        lastMessage = updated.contains(profile.id) ? "フォローしました" : "フォローを解除しました"
+    }
+
+    func toggleBlock(_ profile: SocialUserProfileSummary) {
+        let me = getMyProfile()
+        let updatedBlocked = SocialSupport.blockedIDsAfterBlocking(current: me.blockedUserIDs, targetUserID: profile.id)
+        let updatedFollowing = me.followingUserIDs.filter { $0 != profile.id }
+        let updatedConversations = me.dmConversations.filter { $0.participantUserID != profile.id }
+        _ = updateMyProfile(
+            followingUserIDs: updatedFollowing,
+            blockedUserIDs: updatedBlocked,
+            dmConversations: updatedConversations
+        )
+        reloadSocialProfiles(profile: getMyProfile())
+        dmConversations = getMyProfile().dmConversations
+        lastMessage = updatedBlocked.contains(profile.id) ? "ブロックしました" : "ブロックを解除しました"
+    }
+
+    func report(_ profile: SocialUserProfileSummary) {
+        let me = getMyProfile()
+        let updated = SocialSupport.reportedIDsAfterReporting(current: me.reportedUserIDs, targetUserID: profile.id)
+        _ = updateMyProfile(reportedUserIDs: updated)
+        reloadSocialProfiles(profile: getMyProfile())
+        lastMessage = "通報メモをこの端末に保存しました"
+    }
+
+    func sendDraftMessage(to profile: SocialUserProfileSummary) {
+        guard canSendDM(to: profile) else {
+            lastMessage = "DMは相互フォローの相手とのみ利用できます"
+            return
+        }
+        let trimmed = SocialSupport.sanitizedMessageBody(dmDraftText)
+        guard !trimmed.isEmpty else {
+            lastMessage = "メッセージが空のため送信されませんでした"
+            return
+        }
+
+        let existing = getMyProfile().dmConversations.first { $0.participantUserID == profile.id }
+        let updatedConversation = SocialSupport.conversationAfterSending(
+            existing: existing,
+            to: profile,
+            body: trimmed,
+            sentAt: Date()
+        )
+        let others = getMyProfile().dmConversations.filter { $0.participantUserID != profile.id }
+        let merged = [updatedConversation] + others
+        _ = updateMyProfile(dmConversations: merged)
+        dmConversations = getMyProfile().dmConversations
+        selectedConversationId = updatedConversation.id
+        dmDraftText = ""
+        lastMessage = "この端末にDMの下書きを保存しました"
+    }
+
+    func deleteConversation(_ conversationID: String) {
+        let remaining = getMyProfile().dmConversations.filter { $0.id != conversationID }
+        _ = updateMyProfile(dmConversations: remaining)
+        dmConversations = getMyProfile().dmConversations
+        if selectedConversationId == conversationID {
+            selectedConversationId = dmConversations.first?.id
+        }
+        lastMessage = "会話を削除しました"
+    }
+
+    func profiles(for community: CommunityTemplate) -> [SocialUserProfileSummary] {
+        let all = socialProfiles.filter { !$0.isLocalOnly || community.category == .games }
+        return Array(all.prefix(3))
     }
 
     fileprivate func applyGamePreset(_ preset: GameCommunityPreset) {
@@ -490,6 +608,20 @@ final class CommunityLiteViewModel: ObservableObject {
             }
     }
 
+    private func reloadSocialProfiles(profile: UserProfile) {
+        socialProfiles = SocialSupport.applyRelationshipState(
+            profiles: SocialSupport.demoProfiles(),
+            followingUserIDs: Set(profile.followingUserIDs),
+            blockedUserIDs: Set(profile.blockedUserIDs),
+            reportedUserIDs: Set(profile.reportedUserIDs)
+        )
+        dmConversations = profile.dmConversations
+            .sorted { $0.updatedAt > $1.updatedAt }
+        if selectedConversationId == nil {
+            selectedConversationId = dmConversations.first?.id
+        }
+    }
+
     private func persistUIState() {
         defaults.set(weeklyResponse, forKey: weeklyDraftKey)
         defaults.set(includeWeeklyResponseInShare, forKey: includeWeeklyAnswerKey)
@@ -598,19 +730,57 @@ fileprivate extension CommunityLiteViewModel {
 
 struct CommunityLiteView: View {
     @ObservedObject var vm: CommunityLiteViewModel
+    @EnvironmentObject private var iap: IAPStore
 
     @State private var shareSheetItems: [Any] = []
     @State private var isPresentingShareSheet = false
+    @State private var selectedSection: HubSection = .joined
+
+    private enum HubSection: String, CaseIterable, Identifiable {
+        case joined = "参加中"
+        case rooms = "ゲーム部屋"
+        case challenge = "チャレンジ"
+        case follow = "フォロー"
+        case dm = "DM"
+        case creator = "作成"
+
+        var id: String { rawValue }
+
+        var systemImage: String {
+            switch self {
+            case .joined: return "person.2.fill"
+            case .rooms: return "gamecontroller.fill"
+            case .challenge: return "sparkles"
+            case .follow: return "person.crop.circle.badge.plus"
+            case .dm: return "message.fill"
+            case .creator: return "crown.fill"
+            }
+        }
+    }
+
+    private var selectedConversationProfile: SocialUserProfileSummary? {
+        if let selectedConversationId = vm.selectedConversationId,
+           let profile = vm.socialProfiles.first(where: { $0.id == selectedConversationId }) {
+            return profile
+        }
+        return vm.dmConversations.first.flatMap { conversation in
+            vm.socialProfiles.first(where: { $0.id == conversation.participantUserID })
+        }
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
                 heroCard
-                communitySection
-                weeklyChallengeSection
-                creatorSection
-                profileExchangeSection
-                streakSection
+                dashboardCards
+                sectionPicker
+                activeSectionContent
+
+                if let lastMessage = vm.lastMessage {
+                    Text(lastMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: 820)
             .padding(.horizontal, 16)
@@ -636,7 +806,7 @@ struct CommunityLiteView: View {
     private var heroCard: some View {
         Card("みんなの部屋", decorationId: vm.selectedDecorationId) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードなしで、安心して使える共有だけを先に楽しめます。")
+                Text("ゲームや好きなテーマの部屋に無料で参加して、お題にひとこと答えられます。公開フィードやランキングを使わず、安心してつながる導線から先に楽しめます。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -655,17 +825,137 @@ struct CommunityLiteView: View {
                     }
                 }
 
-                if !vm.communityCreationStatusText.isEmpty {
-                    Text(vm.communityCreationStatusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                Text("日記の回答は自動で公開されません。DMは相互フォローの相手とのみ使えます。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var dashboardCards: some View {
+        LazyVGrid(columns: [.init(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
+            dashboardCard(
+                section: .joined,
+                title: "参加中",
+                subtitle: vm.joinedCommunities.isEmpty ? "まだ0部屋" : "\(vm.joinedCommunities.count)部屋",
+                accent: .green
+            )
+            dashboardCard(
+                section: .rooms,
+                title: "ゲーム部屋",
+                subtitle: "\(vm.availableCommunities.count)部屋から探す",
+                accent: .blue
+            )
+            dashboardCard(
+                section: .follow,
+                title: "フォロー",
+                subtitle: vm.followingProfiles.isEmpty ? "つながりを作る" : "\(vm.followingProfiles.count)人をフォロー中",
+                accent: .purple
+            )
+            dashboardCard(
+                section: .creator,
+                title: "作成",
+                subtitle: vm.creatorEntitlement.hasCreatorPass ? "Creator Pass 有効" : "Creator Pass を確認",
+                accent: .orange
+            )
+        }
+    }
+
+    private var sectionPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(HubSection.allCases) { section in
+                    Button {
+                        selectedSection = section
+                    } label: {
+                        Label(section.rawValue, systemImage: section.systemImage)
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                selectedSection == section
+                                ? Color.accentColor.opacity(0.18)
+                                : Color(uiColor: .secondarySystemBackground),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    private var activeSectionContent: some View {
+        switch selectedSection {
+        case .joined:
+            joinedSection
+        case .rooms:
+            roomsSection
+        case .challenge:
+            challengeSection
+        case .follow:
+            followSection
+        case .dm:
+            dmSection
+        case .creator:
+            creatorSection
+        }
+    }
+
+    private var joinedSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "参加中の部屋",
+                subtitle: "いま参加している部屋だけをまとめて見られます。無料参加のまま、お題に答えたり共有したりできます。"
+            )
+
+            if vm.joinedCommunities.isEmpty {
+                EmptyStateCard(
+                    title: "まだ参加している部屋はありません",
+                    message: "気になるゲーム部屋を1つ選ぶと、部屋ごとのお題を無料で楽しめます。",
+                    systemImage: "person.2"
+                )
+            } else {
+                joinedCommunitiesStrip
+
+                if let community = vm.selectedCommunity, community.isJoined {
+                    communityDetailSection(community)
+                } else {
+                    EmptyStateCard(
+                        title: "参加中の部屋を選ぶと詳細が表示されます",
+                        message: "上のチップから見たい部屋を選ぶと、お題や回答欄、共有カードを確認できます。",
+                        systemImage: "hand.tap"
+                    )
                 }
             }
         }
     }
 
-    private var weeklyChallengeSection: some View {
+    private var roomsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "ゲーム部屋を探す",
+                subtitle: "参加は無料です。気になるテーマを選ぶと、その部屋向けのお題をすぐ確認できます。"
+            )
+
+            communityCatalogGrid
+
+            if let community = vm.selectedCommunity {
+                communityDetailSection(community)
+            } else {
+                EmptyStateCard(
+                    title: "部屋を選ぶと詳細が表示されます",
+                    message: "気になるゲーム部屋を1つ選ぶと、今日のお題プレビューや参加方法を確認できます。",
+                    systemImage: "rectangle.grid.1x2"
+                )
+            }
+        }
+    }
+
+    private var challengeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "みんなのチャレンジ",
@@ -726,30 +1016,110 @@ struct CommunityLiteView: View {
                 secondarySystemImage: "bookmark",
                 secondaryAction: { vm.lastMessage = "下書きを保存しました" }
             )
+
+            streakSection
         }
     }
 
-    private var communitySection: some View {
+    private var followSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                title: "コミュニティ",
-                subtitle: "参加は無料です。ゲーム系の公式プリセットから、自分に合う部屋を見つけられます。"
+                title: "フォロー",
+                subtitle: "フォローすると相手のプロフィールカードを見つけやすくなります。公開検索は使わず、ローカルなおすすめカードだけを表示しています。"
             )
 
-            if !vm.joinedCommunities.isEmpty {
-                joinedCommunitiesStrip
-            } else {
-                EmptyStateCard(
-                    title: "まだ参加している部屋はありません",
-                    message: "気になる部屋を1つ選ぶと、その部屋専用のお題を無料で楽しめます。",
-                    systemImage: "person.2"
-                )
+            Card("安全なつながり方", decorationId: vm.selectedDecorationId) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(vm.socialHeaderText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            InfoBadge(title: "公開検索なし", systemImage: "eye.slash", tint: .indigo)
+                            InfoBadge(title: "通報・ブロック可", systemImage: "hand.raised", tint: .orange)
+                            InfoBadge(title: "DMは相互フォローのみ", systemImage: "message.badge", tint: .blue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            InfoBadge(title: "公開検索なし", systemImage: "eye.slash", tint: .indigo)
+                            InfoBadge(title: "通報・ブロック可", systemImage: "hand.raised", tint: .orange)
+                            InfoBadge(title: "DMは相互フォローのみ", systemImage: "message.badge", tint: .blue)
+                        }
+                    }
+                }
             }
 
-            communityCatalogGrid
+            if vm.followingProfiles.isEmpty {
+                EmptyStateCard(
+                    title: "まだフォローしている相手はいません",
+                    message: "まずはおすすめのプロフィールカードを見て、気になる相手をフォローしてみましょう。",
+                    systemImage: "person.crop.circle.badge.plus"
+                )
+            } else {
+                socialProfileSection(title: "フォロー中", profiles: vm.followingProfiles)
+            }
 
-            if let community = vm.selectedCommunity {
-                communityDetailSection(community)
+            if !vm.recommendedProfiles.isEmpty {
+                socialProfileSection(title: "おすすめプロフィール", profiles: vm.recommendedProfiles)
+            }
+
+            profileExchangeSection
+        }
+    }
+
+    private var dmSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "DM",
+                subtitle: "DMは相互フォローの相手とのみ利用できます。現在はこの端末で流れを確認できる安全な下書きDMです。"
+            )
+
+            Card("DMの安全設定", decorationId: vm.selectedDecorationId) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("不快な相手はブロック・通報できます。画像やリンク共有はまだ無効で、日記の回答も自動では入りません。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            InfoBadge(title: "相互フォロー限定", systemImage: "person.2.badge.gearshape", tint: .blue)
+                            InfoBadge(title: "画像送信なし", systemImage: "photo.slash", tint: .purple)
+                            InfoBadge(title: "通報・ブロック可", systemImage: "hand.raised", tint: .orange)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            InfoBadge(title: "相互フォロー限定", systemImage: "person.2.badge.gearshape", tint: .blue)
+                            InfoBadge(title: "画像送信なし", systemImage: "photo.slash", tint: .purple)
+                            InfoBadge(title: "通報・ブロック可", systemImage: "hand.raised", tint: .orange)
+                        }
+                    }
+                }
+            }
+
+            if vm.dmConversations.isEmpty && selectedConversationProfile == nil {
+                EmptyStateCard(
+                    title: "まだDMはありません",
+                    message: "相互フォローの相手ができると、この画面から安全に下書きDMを試せます。",
+                    systemImage: "message"
+                )
+            } else {
+                if !vm.dmConversations.isEmpty {
+                    conversationPicker
+                }
+
+                if let profile = selectedConversationProfile {
+                    conversationDetailCard(
+                        profile: profile,
+                        conversation: vm.dmConversations.first(where: { $0.participantUserID == profile.id })
+                    )
+                }
+            }
+
+            if !vm.followingProfiles.isEmpty {
+                socialProfileSection(title: "DM候補", profiles: vm.followingProfiles)
             }
         }
     }
@@ -821,6 +1191,11 @@ struct CommunityLiteView: View {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(3)
                                 .multilineTextAlignment(.leading)
+
+                            Text("お題例: \(vm.selectedCommunityId == community.id ? (vm.currentCommunityPromptBundle?.primary.text ?? "参加すると専用お題を見られます") : "参加すると専用お題を見られます")")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
 
                             HStack {
                                 Text(categoryLabel(community.category))
@@ -939,6 +1314,10 @@ struct CommunityLiteView: View {
                 )
             }
 
+            if FeatureFlags.socialGraphEnabled {
+                participantProfilesSection(for: community)
+            }
+
             Card("お題プレビュー", decorationId: community.themeDecorationId ?? vm.selectedDecorationId) {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(vm.currentCommunityPreviewWindow.prefix(community.promptSchedule == .daily ? 7 : 4), id: \.id) { prompt in
@@ -963,9 +1342,11 @@ struct CommunityLiteView: View {
                 subtitle: "参加者は無料のまま、Creator Pass で自分の部屋づくりを解放できます。"
             )
 
+            creatorPassStatusCard
+
             Card("作成プレビュー", decorationId: vm.draftThemeDecorationId ?? vm.selectedDecorationId) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(vm.communityCreationStatusText)
+                    Text("参加は無料です。作成はCreator Pass機能です。Creator Passでコミュニティ作成とお題カスタマイズを解放します。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1171,7 +1552,7 @@ struct CommunityLiteView: View {
             Button {
                 vm.createCommunity()
             } label: {
-                Label(vm.canCreateCommunity ? "コミュニティを作る" : "コミュニティ作成は準備中", systemImage: vm.canCreateCommunity ? "plus.circle.fill" : "lock.fill")
+                Label(vm.canCreateCommunity ? "コミュニティを作る" : "Creator Passで作成を解放", systemImage: vm.canCreateCommunity ? "plus.circle.fill" : "lock.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -1189,6 +1570,130 @@ struct CommunityLiteView: View {
             }
             .buttonStyle(.bordered)
             #endif
+        }
+    }
+
+    private var creatorPassStatusCard: some View {
+        let previewState = MonetizationShopSupport.creatorPassState(
+            availability: iap.productLoadState,
+            creatorPassLoaded: !iap.creatorPassProducts.isEmpty,
+            displayPrice: iap.creatorPassProducts.first?.displayPrice
+        )
+
+        return AppSectionCard(
+            title: "Creator Pass",
+            subtitle: "コミュニティ作成・お題カスタマイズ・テーマ設定を解放します。参加者は無料のままです。"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        PremiumBadge(title: vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放")
+                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                        InfoBadge(title: "公開フィードなし", systemImage: "shield", tint: .indigo)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        PremiumBadge(title: vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放")
+                        InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
+                        InfoBadge(title: "公開フィードなし", systemImage: "shield", tint: .indigo)
+                    }
+                }
+
+                Text(vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ForEach(iap.creatorPassBenefitLines, id: \.self) { line in
+                    Label(line, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if vm.creatorEntitlement.hasCreatorPass {
+                    Label("Creator Pass 有効", systemImage: "checkmark.seal.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.green)
+                } else if !iap.creatorPassProducts.isEmpty {
+                    ForEach(iap.creatorPassProducts, id: \.id) { product in
+                        Button {
+                            Task { await iap.purchase(product) }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(product.displayName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("コミュニティ作成とお題カスタマイズを解放")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(product.displayPrice)
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!previewState.isPurchaseEnabled)
+                    }
+                } else {
+                    Button {
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Creator Pass を確認")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("購入情報を準備中です")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(previewState.displayPrice ?? "--")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(true)
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Button {
+                            Task { await iap.reloadProducts() }
+                        } label: {
+                            Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            Task { await iap.restoreCreatorPass() }
+                        } label: {
+                            Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            Task { await iap.reloadProducts() }
+                        } label: {
+                            Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            Task { await iap.restoreCreatorPass() }
+                        } label: {
+                            Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
         }
     }
 
@@ -1272,11 +1777,305 @@ struct CommunityLiteView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+        }
+    }
 
-            if let lastMessage = vm.lastMessage {
-                Text(lastMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var conversationPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(vm.dmConversations) { conversation in
+                    Button {
+                        vm.selectedConversationId = conversation.id
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(conversation.participantDisplayName)
+                                .font(.caption.weight(.semibold))
+                            Text(conversation.messages.last?.body ?? "新しいDM")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(vm.selectedConversationId == conversation.id ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func conversationDetailCard(
+        profile: SocialUserProfileSummary,
+        conversation: DirectMessageConversation?
+    ) -> some View {
+        Card("DM", decorationId: profile.equippedThemeId) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(profile.displayName)
+                            .font(.headline)
+                        if let title = profile.profileTitle {
+                            Text(title)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    if let conversation {
+                        Button("削除") {
+                            vm.deleteConversation(conversation.id)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+
+                if let conversation, !conversation.messages.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(conversation.messages.suffix(6)) { message in
+                            VStack(alignment: message.sender == .me ? .trailing : .leading, spacing: 4) {
+                                Text(message.sender == .me ? "自分" : profile.displayName)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Text(message.body)
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        message.sender == .me
+                                        ? Color.accentColor.opacity(0.14)
+                                        : Color(uiColor: .secondarySystemBackground),
+                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    )
+                            }
+                            .frame(maxWidth: .infinity, alignment: message.sender == .me ? .trailing : .leading)
+                        }
+                    }
+                } else {
+                    Text("まだDMは保存されていません。送信内容はこの端末にのみ下書き保存されます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                TextField("DMを入力", text: $vm.dmDraftText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Button {
+                            vm.sendDraftMessage(to: profile)
+                        } label: {
+                            Label("DMを保存", systemImage: "paperplane")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Menu {
+                            Button(vm.isBlocked(profile.id) ? "ブロック解除" : "ブロック") {
+                                vm.toggleBlock(profile)
+                            }
+                            Button(vm.isReported(profile.id) ? "通報メモ済み" : "通報メモを保存") {
+                                vm.report(profile)
+                            }
+                            .disabled(vm.isReported(profile.id))
+                        } label: {
+                            Label("安全", systemImage: "hand.raised")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            vm.sendDraftMessage(to: profile)
+                        } label: {
+                            Label("DMを保存", systemImage: "paperplane")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Menu {
+                            Button(vm.isBlocked(profile.id) ? "ブロック解除" : "ブロック") {
+                                vm.toggleBlock(profile)
+                            }
+                            Button(vm.isReported(profile.id) ? "通報メモ済み" : "通報メモを保存") {
+                                vm.report(profile)
+                            }
+                            .disabled(vm.isReported(profile.id))
+                        } label: {
+                            Label("安全", systemImage: "hand.raised")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        }
+    }
+
+    private func socialProfileSection(title: String, profiles: [SocialUserProfileSummary]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            LazyVStack(spacing: 10) {
+                ForEach(profiles) { profile in
+                    socialProfileCard(profile)
+                }
+            }
+        }
+    }
+
+    private func participantProfilesSection(for community: CommunityTemplate) -> some View {
+        let profiles = vm.profiles(for: community)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("参加者カード")
+                .font(.subheadline.weight(.semibold))
+            Text("公開コメントやランキングはまだありません。プロフィールカードを起点に、安全なつながり方だけを表示しています。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if profiles.isEmpty {
+                EmptyStateCard(
+                    title: "参加者カードはまだありません",
+                    message: "今後、フォローしている相手のカードをここから見つけやすくしていきます。",
+                    systemImage: "person.crop.rectangle.stack"
+                )
+            } else {
+                ForEach(profiles) { profile in
+                    socialProfileCard(profile)
+                }
+            }
+        }
+    }
+
+    private func socialProfileCard(_ profile: SocialUserProfileSummary) -> some View {
+        Card(nil, decorationId: profile.equippedThemeId) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(profile.displayName)
+                            .font(.headline)
+                        if let title = profile.profileTitle {
+                            Text(title)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    if vm.isBlocked(profile.id) {
+                        InfoBadge(title: "ブロック中", systemImage: "hand.raised.fill", tint: .orange)
+                    } else if vm.isFollowing(profile.id) {
+                        EquippedItemBadge(title: "フォロー中")
+                    } else {
+                        InfoBadge(title: "ローカルカード", systemImage: "person.crop.square", tint: .indigo)
+                    }
+                }
+
+                if let bio = profile.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "参加中 \(profile.joinedCommunityCount)部屋", systemImage: "person.2", tint: .green)
+                        if profile.supportsMutualDM {
+                            InfoBadge(title: "相互フォローでDM可", systemImage: "message", tint: .blue)
+                        } else {
+                            InfoBadge(title: "DM準備中", systemImage: "message.slash", tint: .secondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "参加中 \(profile.joinedCommunityCount)部屋", systemImage: "person.2", tint: .green)
+                        if profile.supportsMutualDM {
+                            InfoBadge(title: "相互フォローでDM可", systemImage: "message", tint: .blue)
+                        } else {
+                            InfoBadge(title: "DM準備中", systemImage: "message.slash", tint: .secondary)
+                        }
+                    }
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Button {
+                            vm.toggleFollow(profile)
+                        } label: {
+                            Label(vm.isFollowing(profile.id) ? "フォロー解除" : "フォローする", systemImage: vm.isFollowing(profile.id) ? "person.badge.minus" : "person.badge.plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            vm.selectedConversationId = profile.id
+                            selectedSection = .dm
+                        } label: {
+                            Label("DM", systemImage: "message")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!vm.canSendDM(to: profile))
+
+                        Menu {
+                            Button(vm.isBlocked(profile.id) ? "ブロック解除" : "ブロック") {
+                                vm.toggleBlock(profile)
+                            }
+                            Button(vm.isReported(profile.id) ? "通報メモ済み" : "通報メモを保存") {
+                                vm.report(profile)
+                            }
+                            .disabled(vm.isReported(profile.id))
+                        } label: {
+                            Label("安全", systemImage: "hand.raised")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            vm.toggleFollow(profile)
+                        } label: {
+                            Label(vm.isFollowing(profile.id) ? "フォロー解除" : "フォローする", systemImage: vm.isFollowing(profile.id) ? "person.badge.minus" : "person.badge.plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            vm.selectedConversationId = profile.id
+                            selectedSection = .dm
+                        } label: {
+                            Label("DM", systemImage: "message")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!vm.canSendDM(to: profile))
+
+                        Menu {
+                            Button(vm.isBlocked(profile.id) ? "ブロック解除" : "ブロック") {
+                                vm.toggleBlock(profile)
+                            }
+                            Button(vm.isReported(profile.id) ? "通報メモ済み" : "通報メモを保存") {
+                                vm.report(profile)
+                            }
+                            .disabled(vm.isReported(profile.id))
+                        } label: {
+                            Label("安全", systemImage: "hand.raised")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
             }
         }
     }
@@ -1307,6 +2106,35 @@ struct CommunityLiteView: View {
                 }
             }
         }
+    }
+
+    private func dashboardCard(
+        section: HubSection,
+        title: String,
+        subtitle: String,
+        accent: Color
+    ) -> some View {
+        Button {
+            selectedSection = section
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(title, systemImage: section.systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accent)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(selectedSection == section ? accent.opacity(0.35) : Color.primary.opacity(0.05), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func sectionHeader(title: String, subtitle: String) -> some View {
@@ -1503,7 +2331,7 @@ struct CommunityLiteView: View {
             body: vm.draftPromptBundle.primary.text,
             footer: vm.draftCommunityPreview.category == .games ? "#ひとこと日記 #ゲーム日記" : "#ひとこと日記",
             decorationId: vm.draftCommunityPreview.themeDecorationId ?? vm.selectedDecorationId,
-            badgeText: vm.canCreateCommunity ? "作成可能" : "準備中",
+            badgeText: vm.canCreateCommunity ? "作成可能" : "Creator Pass",
             titlePlate: vm.equippedTitle,
             reaction: vm.selectedReaction.rawValue
         )

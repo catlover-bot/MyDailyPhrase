@@ -123,6 +123,126 @@ public struct AuthAuditEvent: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct DirectMessageMessage: Codable, Equatable, Identifiable, Sendable {
+    public enum Sender: String, Codable, CaseIterable, Sendable {
+        case me
+        case peer
+    }
+
+    public var id: String
+    public var sender: Sender
+    public var body: String
+    public var sentAt: Date
+
+    public init(
+        id: String = UUID().uuidString,
+        sender: Sender,
+        body: String,
+        sentAt: Date = Date()
+    ) {
+        self.id = id
+        self.sender = sender
+        self.body = body
+        self.sentAt = sentAt
+    }
+
+    public mutating func normalize(maxLength: Int = 240) {
+        body = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        if body.count > maxLength {
+            body = String(body.prefix(maxLength))
+        }
+    }
+}
+
+public struct DirectMessageConversation: Codable, Equatable, Identifiable, Sendable {
+    public var id: String
+    public var participantUserID: String
+    public var participantDisplayName: String
+    public var participantProfileTitle: String?
+    public var participantDecorationID: String?
+    public var messages: [DirectMessageMessage]
+    public var updatedAt: Date
+
+    public init(
+        id: String? = nil,
+        participantUserID: String,
+        participantDisplayName: String,
+        participantProfileTitle: String? = nil,
+        participantDecorationID: String? = nil,
+        messages: [DirectMessageMessage] = [],
+        updatedAt: Date = Date()
+    ) {
+        self.participantUserID = participantUserID
+        self.id = id ?? participantUserID
+        self.participantDisplayName = participantDisplayName
+        self.participantProfileTitle = participantProfileTitle
+        self.participantDecorationID = participantDecorationID
+        self.messages = messages
+        self.updatedAt = updatedAt
+    }
+
+    public mutating func normalize(maxMessages: Int = 80) {
+        participantUserID = participantUserID.trimmingCharacters(in: .whitespacesAndNewlines)
+        id = participantUserID.isEmpty ? id.trimmingCharacters(in: .whitespacesAndNewlines) : participantUserID
+        participantDisplayName = participantDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if participantDisplayName.isEmpty {
+            participantDisplayName = "プロフィールカード"
+        }
+        participantProfileTitle = participantProfileTitle?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+        participantDecorationID = participantDecorationID?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+
+        messages = messages
+            .map {
+                var copy = $0
+                copy.normalize()
+                return copy
+            }
+            .filter { !$0.body.isEmpty }
+            .sorted { $0.sentAt < $1.sentAt }
+
+        if messages.count > maxMessages {
+            messages = Array(messages.suffix(maxMessages))
+        }
+
+        updatedAt = messages.last?.sentAt ?? updatedAt
+    }
+}
+
+public struct SocialUserProfileSummary: Codable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let displayName: String
+    public let profileTitle: String?
+    public let equippedThemeId: String
+    public let joinedCommunityCount: Int
+    public let bio: String?
+    public let supportsMutualDM: Bool
+    public let isLocalOnly: Bool
+
+    public init(
+        id: String,
+        displayName: String,
+        profileTitle: String? = nil,
+        equippedThemeId: String,
+        joinedCommunityCount: Int,
+        bio: String? = nil,
+        supportsMutualDM: Bool = true,
+        isLocalOnly: Bool = true
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.profileTitle = profileTitle
+        self.equippedThemeId = equippedThemeId
+        self.joinedCommunityCount = joinedCommunityCount
+        self.bio = bio
+        self.supportsMutualDM = supportsMutualDM
+        self.isLocalOnly = isLocalOnly
+    }
+}
+
 public struct UserProfile: Codable, Equatable, Sendable {
     public static let maxDisplayNameLength = 24
     public static let maxAuthAuditTrailCount = 50
@@ -131,6 +251,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
     public static let maxDecorationShards = 9_999_999
     public static let maxPityCount = 99_999
     public static let maxGachaTickets = 999_999
+    public static let maxFollowCount = 200
+    public static let maxBlockedCount = 200
+    public static let maxReportedCount = 200
+    public static let maxConversationCount = 40
 
     public let userId: String
     public var displayName: String
@@ -162,6 +286,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
     public var gachaTickets: Int
     public var lastFreeTicketDateKey: String?
+    public var followingUserIDs: [String]
+    public var blockedUserIDs: [String]
+    public var reportedUserIDs: [String]
+    public var dmConversations: [DirectMessageConversation]
 
     public var linkedAuthProviderKind: LinkedAuthProvider? {
         get { linkedAuthProvider.flatMap(LinkedAuthProvider.init(rawValue:)) }
@@ -195,7 +323,11 @@ public struct UserProfile: Codable, Equatable, Sendable {
         decorationShards: Int = 0,
         pityCount: Int = 0,
         gachaTickets: Int = 0,
-        lastFreeTicketDateKey: String? = nil
+        lastFreeTicketDateKey: String? = nil,
+        followingUserIDs: [String] = [],
+        blockedUserIDs: [String] = [],
+        reportedUserIDs: [String] = [],
+        dmConversations: [DirectMessageConversation] = []
     ) {
         self.userId = userId
         self.displayName = displayName
@@ -216,6 +348,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
         self.pityCount = pityCount
         self.gachaTickets = gachaTickets
         self.lastFreeTicketDateKey = lastFreeTicketDateKey
+        self.followingUserIDs = followingUserIDs
+        self.blockedUserIDs = blockedUserIDs
+        self.reportedUserIDs = reportedUserIDs
+        self.dmConversations = dmConversations
 
         self.normalize()
     }
@@ -240,6 +376,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
         case pityCount
         case gachaTickets
         case lastFreeTicketDateKey
+        case followingUserIDs
+        case blockedUserIDs
+        case reportedUserIDs
+        case dmConversations
     }
 
     public init(from decoder: Decoder) throws {
@@ -285,6 +425,10 @@ public struct UserProfile: Codable, Equatable, Sendable {
         self.pityCount = try c.decodeIfPresent(Int.self, forKey: .pityCount) ?? 0
         self.gachaTickets = try c.decodeIfPresent(Int.self, forKey: .gachaTickets) ?? 0
         self.lastFreeTicketDateKey = try c.decodeIfPresent(String.self, forKey: .lastFreeTicketDateKey)
+        self.followingUserIDs = try c.decodeIfPresent([String].self, forKey: .followingUserIDs) ?? []
+        self.blockedUserIDs = try c.decodeIfPresent([String].self, forKey: .blockedUserIDs) ?? []
+        self.reportedUserIDs = try c.decodeIfPresent([String].self, forKey: .reportedUserIDs) ?? []
+        self.dmConversations = try c.decodeIfPresent([DirectMessageConversation].self, forKey: .dmConversations) ?? []
 
         self.normalize()
     }
@@ -405,6 +549,40 @@ public struct UserProfile: Codable, Equatable, Sendable {
         pityCount = min(Self.maxPityCount, max(0, pityCount))
         gachaTickets = min(Self.maxGachaTickets, max(0, gachaTickets))
 
+        followingUserIDs = Self.normalizedIdentifierList(
+            followingUserIDs,
+            excluding: Set([userId]),
+            maxCount: Self.maxFollowCount
+        )
+        blockedUserIDs = Self.normalizedIdentifierList(
+            blockedUserIDs,
+            excluding: Set([userId]),
+            maxCount: Self.maxBlockedCount
+        )
+        reportedUserIDs = Self.normalizedIdentifierList(
+            reportedUserIDs,
+            excluding: Set([userId]),
+            maxCount: Self.maxReportedCount
+        )
+
+        if !blockedUserIDs.isEmpty {
+            let blocked = Set(blockedUserIDs)
+            followingUserIDs.removeAll { blocked.contains($0) }
+        }
+
+        dmConversations = dmConversations
+            .map {
+                var copy = $0
+                copy.normalize()
+                return copy
+            }
+            .filter { !$0.participantUserID.isEmpty }
+            .filter { !Set(blockedUserIDs).contains($0.participantUserID) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+        if dmConversations.count > Self.maxConversationCount {
+            dmConversations = Array(dmConversations.prefix(Self.maxConversationCount))
+        }
+
         if let key = lastFreeTicketDateKey?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !key.isEmpty,
@@ -442,6 +620,27 @@ public struct UserProfile: Codable, Equatable, Sendable {
     private static func isValidDateKey(_ raw: String) -> Bool {
         guard raw.count == 8 else { return false }
         return raw.unicodeScalars.allSatisfy(CharacterSet.decimalDigits.contains(_:))
+    }
+
+    private static func normalizedIdentifierList(
+        _ raw: [String],
+        excluding disallowed: Set<String>,
+        maxCount: Int
+    ) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in raw {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            guard !disallowed.contains(trimmed) else { continue }
+            guard !seen.contains(trimmed) else { continue }
+            seen.insert(trimmed)
+            result.append(trimmed)
+            if result.count >= maxCount {
+                break
+            }
+        }
+        return result
     }
 }
 
@@ -494,5 +693,11 @@ public extension SecurityAuditEvent {
             metadata: [:],
             occurredAt: event.occurredAt
         )
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

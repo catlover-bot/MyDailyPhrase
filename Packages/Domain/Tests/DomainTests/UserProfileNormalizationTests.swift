@@ -238,6 +238,42 @@ struct UserProfileNormalizationTests {
         #expect(appended.securityAuditTrail.first?.kind == .authLinked)
     }
 
+    @Test("social graph and DM state normalize safely")
+    func socialGraphNormalizesSafely() {
+        var profile = UserProfile(
+            userId: "me",
+            displayName: "Me",
+            followingUserIDs: ["friend-a", "friend-a", "me", "friend-b"],
+            blockedUserIDs: ["friend-b", "friend-b"],
+            reportedUserIDs: ["friend-c", "friend-c", "me"],
+            dmConversations: [
+                DirectMessageConversation(
+                    participantUserID: "friend-a",
+                    participantDisplayName: "Friend A",
+                    messages: [
+                        DirectMessageMessage(sender: .me, body: " hello ", sentAt: Date(timeIntervalSince1970: 2))
+                    ]
+                ),
+                DirectMessageConversation(
+                    participantUserID: "friend-b",
+                    participantDisplayName: "Friend B",
+                    messages: [
+                        DirectMessageMessage(sender: .me, body: "blocked", sentAt: Date(timeIntervalSince1970: 1))
+                    ]
+                )
+            ]
+        )
+
+        profile.normalize()
+
+        #expect(profile.followingUserIDs == ["friend-a"])
+        #expect(profile.blockedUserIDs == ["friend-b"])
+        #expect(profile.reportedUserIDs == ["friend-c"])
+        #expect(profile.dmConversations.count == 1)
+        #expect(profile.dmConversations.first?.participantUserID == "friend-a")
+        #expect(profile.dmConversations.first?.messages.first?.body == "hello")
+    }
+
     @Test("UpdateMyProfileUseCase appends and replaces security audit trail")
     func updateUseCaseAppendsAndReplacesSecurityAuditTrail() {
         let repo = InMemoryProfileRepo()

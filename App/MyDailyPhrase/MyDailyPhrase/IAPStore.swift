@@ -20,6 +20,18 @@ final class IAPStore: ObservableObject {
         case unknown
     }
 
+    enum StoreEventStatus: Equatable {
+        case idle
+        case loading
+        case loaded
+        case unavailable
+        case pending
+        case restored
+        case purchased
+        case cancelled
+        case failed(String)
+    }
+
     nonisolated static let creatorPassEntitlementKey = "MyDailyPhrase.creatorPass.active.v1"
     nonisolated static let creatorPassExpiryDateKey = "MyDailyPhrase.creatorPass.expiryDate.v1"
     nonisolated static let creatorPassDailyBonusTickets = 1
@@ -30,6 +42,8 @@ final class IAPStore: ObservableObject {
     @Published var lastMessage: String? = nil
     @Published private(set) var isCreatorPassActive: Bool = false
     @Published private(set) var creatorPassExpiresAt: Date? = nil
+    @Published private(set) var lastStoreKitError: String? = nil
+    @Published private(set) var eventStatus: StoreEventStatus = .idle
 
     // ===== Injected =====
     private let updateMyProfile: UpdateMyProfileUseCase
@@ -125,6 +139,67 @@ final class IAPStore: ObservableObject {
         "参加は無料です。コミュニティ作成のみCreator Pass機能です。商品設定完了後に購入できます。"
     }
 
+    var productLoadState: StoreProductLoadState {
+        switch state {
+        case .idle:
+            return .unavailable
+        case .loading:
+            return .loading
+        case .ready:
+            return products.isEmpty ? .unavailable : .loaded
+        case .failed(let message):
+            return .failed(message)
+        }
+    }
+
+    var loadedProductIDs: [String] {
+        products.map(\.id).sorted()
+    }
+
+    var requestedProductIDs: [String] {
+        productIDs
+    }
+
+    var productStatusTitle: String {
+        switch productLoadState {
+        case .loading:
+            return "商品情報を読み込んでいます"
+        case .loaded:
+            return "商品情報を読み込みました"
+        case .unavailable:
+            return "現在購入を準備中です"
+        case .failed:
+            return "App Storeの商品情報を読み込めませんでした"
+        }
+    }
+
+    var productStatusMessage: String {
+        switch productLoadState {
+        case .loading:
+            return "安全に読み込めた商品だけ表示します。読み込みが終わるまで購入ボタンは有効になりません。"
+        case .loaded:
+            return "StoreKit から取得できた商品のみ価格と購入ボタンを表示しています。"
+        case .unavailable:
+            return "現在購入を準備中です。あとで再読み込みするか、購入情報の復元をお試しください。"
+        case .failed(let message):
+            return message
+        }
+    }
+
+    #if DEBUG
+    var debugStatusLines: [String] {
+        [
+            "state: \(String(describing: state))",
+            "event: \(String(describing: eventStatus))",
+            "requestedIDs: \(requestedProductIDs.joined(separator: ", "))",
+            "loadedIDs: \(loadedProductIDs.joined(separator: ", "))",
+            "productCount: \(products.count)",
+            "lastError: \(lastStoreKitError ?? "-")",
+            "storekitConfigDetection: unavailable"
+        ]
+    }
+    #endif
+
     func ticketAmount(for product: Product) -> Int {
         MonetizationProducts.ticketPack(for: product.id)?.ticketCount ?? 0
     }
@@ -188,17 +263,30 @@ final class IAPStore: ObservableObject {
 
     func loadProducts() async {
         state = .loading
+        eventStatus = .loading
+        lastStoreKitError = nil
         do {
             let ps = try await Product.products(for: productIDs)
             self.products = ps.sorted { $0.id < $1.id }
             if ps.isEmpty {
-                state = .failed("商品を取得できませんでした。しばらくしてから再度お試しください。")
+                let message = "App Storeの商品情報を読み込めませんでした"
+                state = .failed(message)
+                eventStatus = .unavailable
+                lastStoreKitError = message
             } else {
                 state = .ready
+                eventStatus = .loaded
             }
         } catch {
-            state = .failed("Productsの取得に失敗: \(error.localizedDescription)")
+            let message = "Productsの取得に失敗: \(error.localizedDescription)"
+            state = .failed(message)
+            eventStatus = .failed(message)
+            lastStoreKitError = message
         }
+    }
+
+    func reloadProducts() async {
+        await loadProducts()
     }
 
     /// Consumable中心なので「復元」は限定的だが、環境不整合時の同期として用意
@@ -207,8 +295,12 @@ final class IAPStore: ObservableObject {
             try await AppStore.sync()
             await refreshCreatorPassEntitlement()
             lastMessage = "App Storeと同期しました"
+            eventStatus = .restored
         } catch {
-            lastMessage = "同期に失敗: \(error.localizedDescription)"
+            let message = "同期に失敗: \(error.localizedDescription)"
+            lastMessage = message
+            lastStoreKitError = message
+            eventStatus = .failed(message)
         }
     }
 
@@ -227,18 +319,25 @@ final class IAPStore: ObservableObject {
                 let tx = try verified(verification)
                 try await applyTransaction(tx)
                 await tx.finish()
+                eventStatus = .purchased
 
             case .userCancelled:
                 lastMessage = "購入をキャンセルしました"
+                eventStatus = .cancelled
 
             case .pending:
                 lastMessage = "購入が保留中です（承認後に反映されます）"
+                eventStatus = .pending
 
             @unknown default:
                 lastMessage = "不明な購入状態です"
+                eventStatus = .failed("不明な購入状態です")
             }
         } catch {
-            lastMessage = "購入に失敗: \(error.localizedDescription)"
+            let message = "購入に失敗: \(error.localizedDescription)"
+            lastMessage = message
+            lastStoreKitError = message
+            eventStatus = .failed(message)
         }
     }
 

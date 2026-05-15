@@ -381,6 +381,7 @@ final class AppContainer {
         let computeStreak = ComputeStreakUseCase(entryRepo: entryRepo, timeZone: timeZone)
         return CommunityLiteViewModel(
             getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile,
             computeStreak: computeStreak,
             listCommunities: listCommunities,
             saveCommunityTemplate: saveCommunityTemplate,
