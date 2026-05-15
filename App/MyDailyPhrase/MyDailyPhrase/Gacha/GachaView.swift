@@ -147,6 +147,9 @@ struct GachaView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 16)
             }
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: tab == .shop ? 112 : 28)
+            }
         }
         .background(AppScreenBackground())
         .navigationTitle("ガチャ")
@@ -303,28 +306,32 @@ struct GachaView: View {
                     Text(ticketCountText)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
 
-                    Text("\(vm.profileDisplayName) / ID: \(vm.profileUserId.suffix(6))")
+                    Text("プロフィールや共有カードに使える装飾アイテムを集められます")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 6) {
-                    Text("重複欠片")
+                    Text("重複アイテム")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(vm.shards)")
+                    Text("\(vm.shards) 欠片")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
+                    Text("重複時は欠片に変わります")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Button {
                     vm.grantDailyTicketIfNeeded()
                 } label: {
                     VStack(spacing: 4) {
-                        Text("デイリー")
+                        Text("今日の")
                             .font(.caption2)
-                        Text("無料券")
+                        Text("無料ガチャ")
                             .font(.caption)
                             .fontWeight(.semibold)
                     }
@@ -340,33 +347,67 @@ struct GachaView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 pityBar
-                HStack(spacing: 8) {
-                    Text(vm.untilPityText)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        InfoBadge(title: "今日の無料ガチャ", systemImage: "gift.fill", tint: .green)
+                        InfoBadge(title: "レア保証・天井", systemImage: "sparkles", tint: .orange)
+                        InfoBadge(title: "商品情報を更新", systemImage: "arrow.clockwise", tint: .blue)
+                    }
 
-                    Spacer()
-
-                    Label(vm.stateSummary.label, systemImage: stateIconName)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(vm.currentErrorText == nil ? Color.secondary : Color.red)
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoBadge(title: "今日の無料ガチャ", systemImage: "gift.fill", tint: .green)
+                        InfoBadge(title: "レア保証・天井", systemImage: "sparkles", tint: .orange)
+                        InfoBadge(title: "商品情報を更新", systemImage: "arrow.clockwise", tint: .blue)
+                    }
                 }
                 .padding(.top, 2)
 
-                HStack {
-                    Text(vm.stateSummary.detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    Spacer()
-                    Button("再同期") {
-                        vm.recoverNow()
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("今日の無料ガチャ")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text("1日1回、無料券を確認できます")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    Button("商品情報を更新") {
+                        Task {
+                            vm.load()
+                            await iap.reloadProducts()
+                        }
                     }
                     .font(.caption2.weight(.semibold))
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .tint(.secondary)
+                    .disabled(iap.productLoadState == .loading)
                 }
+
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("レア保証・天井")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(guaranteeDescriptionText)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    if vm.currentErrorText != nil {
+                        Label("要確認", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.red)
+                    }
+                }
+
                 if let msg = vm.lastMessage {
                     Text(msg)
                         .font(.caption)
@@ -386,13 +427,8 @@ struct GachaView: View {
         vm.hasUnlimitedTickets ? "∞" : "\(vm.tickets)"
     }
 
-    private var stateIconName: String {
-        switch vm.state {
-        case .idle: return "checkmark.circle"
-        case .spinning: return "hourglass"
-        case .result: return "gift"
-        case .error: return "exclamationmark.triangle.fill"
-        }
+    private var guaranteeDescriptionText: String {
+        "10連ではレア以上が1つ確定 / \(vm.untilPityText)"
     }
 
     private var pityBar: some View {
@@ -1014,7 +1050,7 @@ struct GachaView: View {
     private var shopPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             AppSectionCard(
-                title: "チケット購入 / Creator Pass",
+                title: "チケット購入とCreator Pass",
                 subtitle: "無料ガチャや手持ちチケットを先に楽しめます。購入は必要なときだけ、Appleの安全な決済で行えます。"
             ) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -1042,43 +1078,7 @@ struct GachaView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     statusBadgeRow
 
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 10) {
-                            Button {
-                                Task { await iap.reloadProducts() }
-                            } label: {
-                                Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                Task { await iap.sync() }
-                            } label: {
-                                Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                        }
-
-                        VStack(spacing: 10) {
-                            Button {
-                                Task { await iap.reloadProducts() }
-                            } label: {
-                                Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                Task { await iap.sync() }
-                            } label: {
-                                Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
+                    storeRecoveryActions
 
                     if let msg = iap.lastMessage {
                         Text(msg)
@@ -1113,7 +1113,7 @@ struct GachaView: View {
                     }
 
                     if !FeatureFlags.creatorPassEnabled {
-                        Text("Creator Pass は現在準備中です")
+                        Text("参加は無料です。コミュニティ作成とお題カスタマイズは、Creator Pass が有効になったときに解放されます。")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     } else if !iap.creatorPassProducts.isEmpty {
@@ -1211,36 +1211,85 @@ struct GachaView: View {
         }
     }
 
+    private var storeRecoveryActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                Button {
+                    Task { await iap.reloadProducts() }
+                } label: {
+                    Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    Task { await iap.sync() }
+                } label: {
+                    Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            VStack(spacing: 10) {
+                Button {
+                    Task { await iap.reloadProducts() }
+                } label: {
+                    Label("商品情報を再読み込み", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    Task { await iap.sync() }
+                } label: {
+                    Label("購入情報を復元", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
     private var disabledCreatorPassCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Creator Pass を確認")
+                    Text("Creator Pass")
                         .font(.subheadline.weight(.semibold))
-                    Text("購入情報を準備中です")
+                    Text("コミュニティ作成とお題カスタマイズを解放")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("参加者は無料のままです")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("--")
+                Text("準備中")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
+
+            Text("現在、購入情報を準備中です")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("商品情報を読み込めるようになると、価格と購入ボタンがここに表示されます。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            storeRecoveryActions
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
+        .background(Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .opacity(0.7)
     }
 
     private func ticketPackCard(_ state: TicketPackPurchaseCardState) -> some View {
         let loadedProduct = iap.ticketProducts.first(where: { $0.id == state.productID })
-        return Button {
-            guard state.isEnabled, let loadedProduct else { return }
-            Task { await iap.purchase(loadedProduct) }
-        } label: {
-            HStack {
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(state.title)
@@ -1257,6 +1306,7 @@ struct GachaView: View {
                     Text(state.statusText)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("チケットはガチャ演出やテーマ収集に使えます")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -1267,17 +1317,42 @@ struct GachaView: View {
                     }
                 }
                 Spacer()
-                Text(state.displayPrice ?? "--")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(state.isEnabled ? .primary : .secondary)
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(state.displayPrice ?? "準備中")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(state.isEnabled ? "購入できます" : "現在購入できません")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(14)
-            .background(.thinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .opacity(state.isEnabled ? 1.0 : 0.72)
+
+            if state.isEnabled, let loadedProduct {
+                Button {
+                    Task { await iap.purchase(loadedProduct) }
+                } label: {
+                    Label("購入する", systemImage: "cart.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(.secondary)
+                    Text("価格情報を取得できないため、現在購入はできません。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!state.isEnabled)
+        .padding(14)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - UI Parts

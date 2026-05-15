@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build `1.0 (7)` carries forward StoreKit2 support for:
+Build `1.0 (8)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
@@ -120,7 +120,7 @@ Recommended notes:
 9. Add review screenshots for each IAP if required by App Store Connect.
 10. Save and submit the IAPs for review together with the app version if needed.
 11. In Xcode, confirm the same product IDs are used in code and in the `.storekit` file.
-12. Upload Build `1.0 (7)` to TestFlight.
+12. Upload Build `1.0 (8)` to TestFlight.
 13. Wait for processing, then test purchases on device.
 
 ## Sandbox / TestFlight monetization QA checklist

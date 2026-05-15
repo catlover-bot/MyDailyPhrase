@@ -123,7 +123,7 @@ public enum MonetizationShopSupport {
             case .loaded:
                 statusText = isLoaded ? "購入できます" : "現在購入を準備中です"
             case .unavailable:
-                statusText = "現在購入を準備中です"
+                statusText = "価格情報を取得できないため、現在購入はできません"
             case .failed:
                 statusText = "App Storeの商品情報を読み込めませんでした"
             }
@@ -153,9 +153,9 @@ public enum MonetizationShopSupport {
         case .loaded:
             statusText = creatorPassLoaded ? "Creator Pass を購入できます" : "購入情報を準備中です"
         case .unavailable:
-            statusText = "購入情報を準備中です"
+            statusText = "現在、購入情報を準備中です"
         case .failed:
-            statusText = "購入情報を準備中です"
+            statusText = "現在、購入情報を準備中です"
         }
 
         return CreatorPassPreviewState(

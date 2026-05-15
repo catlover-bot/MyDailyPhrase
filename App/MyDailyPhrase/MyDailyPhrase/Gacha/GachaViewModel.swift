@@ -451,11 +451,11 @@ final class GachaViewModel: ObservableObject {
     var stateSummary: StateSummary {
         switch state {
         case .idle:
-            return .init(label: "待機中", detail: "操作を受け付けています")
+            return .init(label: "準備完了", detail: "無料ガチャやチケットを選べます")
         case .spinning:
-            return .init(label: "抽選中", detail: "結果を処理しています")
+            return .init(label: "抽選中", detail: "結果を準備しています")
         case .result(let summary):
-            return .init(label: "結果", detail: "\(summary.drawn.count)件の結果を表示中")
+            return .init(label: "結果", detail: "\(summary.drawn.count)件の結果を確認できます")
         case .error(let message):
             return .init(label: "エラー", detail: message)
         }

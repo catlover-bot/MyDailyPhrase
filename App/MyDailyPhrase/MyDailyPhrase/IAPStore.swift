@@ -132,11 +132,11 @@ final class IAPStore: ObservableObject {
     }
 
     var paidGachaUnavailableMessage: String {
-        "チケット商品の準備中です。商品設定が完了すると購入できます。"
+        "価格情報を取得できないため、現在購入はできません。"
     }
 
     var creatorPassUnavailableMessage: String {
-        "参加は無料です。コミュニティ作成のみCreator Pass機能です。商品設定完了後に購入できます。"
+        "参加は無料です。価格情報を取得できるまで、Creator Pass の購入はできません。"
     }
 
     var productLoadState: StoreProductLoadState {
@@ -167,7 +167,7 @@ final class IAPStore: ObservableObject {
         case .loaded:
             return "商品情報を読み込みました"
         case .unavailable:
-            return "現在購入を準備中です"
+            return "App Storeの商品情報を読み込めませんでした"
         case .failed:
             return "App Storeの商品情報を読み込めませんでした"
         }
@@ -180,9 +180,9 @@ final class IAPStore: ObservableObject {
         case .loaded:
             return "StoreKit から取得できた商品のみ価格と購入ボタンを表示しています。"
         case .unavailable:
-            return "現在購入を準備中です。あとで再読み込みするか、購入情報の復元をお試しください。"
-        case .failed(let message):
-            return message
+            return "価格情報を取得できないため、現在購入はできません。商品情報を再読み込みするか、購入情報を復元してください。"
+        case .failed:
+            return "価格情報を取得できないため、現在購入はできません。商品情報を再読み込みするか、購入情報を復元してください。"
         }
     }
 
@@ -273,15 +273,19 @@ final class IAPStore: ObservableObject {
                 state = .failed(message)
                 eventStatus = .unavailable
                 lastStoreKitError = message
+                lastMessage = "App Storeの商品情報を読み込めませんでした。しばらくしてから再読み込みしてください。"
             } else {
                 state = .ready
                 eventStatus = .loaded
+                lastMessage = "商品情報を更新しました"
             }
         } catch {
-            let message = "Productsの取得に失敗: \(error.localizedDescription)"
+            let debugMessage = error.localizedDescription
+            let message = "App Storeの商品情報を読み込めませんでした"
             state = .failed(message)
             eventStatus = .failed(message)
-            lastStoreKitError = message
+            lastStoreKitError = debugMessage
+            lastMessage = "App Storeの商品情報を読み込めませんでした。しばらくしてから再読み込みしてください。"
         }
     }
 
@@ -297,10 +301,10 @@ final class IAPStore: ObservableObject {
             lastMessage = "App Storeと同期しました"
             eventStatus = .restored
         } catch {
-            let message = "同期に失敗: \(error.localizedDescription)"
-            lastMessage = message
-            lastStoreKitError = message
-            eventStatus = .failed(message)
+            let debugMessage = error.localizedDescription
+            lastMessage = "購入情報の復元に失敗しました。しばらくしてからお試しください。"
+            lastStoreKitError = debugMessage
+            eventStatus = .failed("購入情報の復元に失敗しました")
         }
     }
 
@@ -334,10 +338,10 @@ final class IAPStore: ObservableObject {
                 eventStatus = .failed("不明な購入状態です")
             }
         } catch {
-            let message = "購入に失敗: \(error.localizedDescription)"
-            lastMessage = message
-            lastStoreKitError = message
-            eventStatus = .failed(message)
+            let debugMessage = error.localizedDescription
+            lastMessage = "購入に失敗しました。時間をおいてもう一度お試しください。"
+            lastStoreKitError = debugMessage
+            eventStatus = .failed("購入に失敗しました")
         }
     }
 
