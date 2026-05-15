@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum AppChrome {
+    static let screenHorizontalPadding: CGFloat = 16
+    static let pageSectionSpacing: CGFloat = 14
+    static let bottomTabBarReservedSpace: CGFloat = 110
+    static let bottomFloatingBannerReservedSpace: CGFloat = 72
+    static let bottomTabBarItemMinHeight: CGFloat = 52
+}
+
 struct AppScreenBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -242,7 +250,7 @@ struct AppBottomTabBar<ID: Hashable>: View {
                     }
                     .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 52)
+                    .frame(minHeight: AppChrome.bottomTabBarItemMinHeight)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 8)
                     .background {

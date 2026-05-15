@@ -115,34 +115,17 @@ struct GachaView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            header
-
-            tabSelector
-
-            ScrollView {
-                VStack(spacing: 12) {
-                    switch tab {
-                    case .gacha:
-                        gachaPanel
-                    case .inventory:
-                        inventoryPanel
-                    case .exchange:
-                        exchangePanel
-                    case .book:
-                        bookPanel
-                    case .history:
-                        historyPanel
-                    case .shop where FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled:
-                        shopPanel
-                    case .shop:
-                        EmptyView()
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 12)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: AppChrome.pageSectionSpacing) {
+                header
+                tabSelector
+                activePanel
             }
+            .padding(.horizontal, AppChrome.screenHorizontalPadding)
+            .padding(.top, 12)
+            .padding(.bottom, contentBottomPadding)
         }
+        .scrollIndicators(.hidden)
         .background(AppScreenBackground())
         .navigationTitle("ガチャ")
         .navigationBarTitleDisplayMode(.inline)
@@ -264,6 +247,26 @@ struct GachaView: View {
         return tabs
     }
 
+    @ViewBuilder
+    private var activePanel: some View {
+        switch tab {
+        case .gacha:
+            gachaPanel
+        case .inventory:
+            inventoryPanel
+        case .exchange:
+            exchangePanel
+        case .book:
+            bookPanel
+        case .history:
+            historyPanel
+        case .shop where FeatureFlags.paidGachaEnabled || FeatureFlags.creatorPassEnabled:
+            shopPanel
+        case .shop:
+            EmptyView()
+        }
+    }
+
     private var tabSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -293,9 +296,10 @@ struct GachaView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 2)
             .padding(.vertical, 2)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var equippedItem: CardDecoration? {
@@ -353,30 +357,30 @@ struct GachaView: View {
         ) {
             LazyVGrid(columns: [.init(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
                 SummaryMetricTile(
-                    title: "所持チケット",
+                    title: "所持",
                     value: ticketCountText,
-                    detail: vm.hasUnlimitedTickets ? "無制限モード" : "単発や10連に使えます",
+                    detail: vm.hasUnlimitedTickets ? "無制限" : "単発・10連に使用",
                     systemImage: "ticket.fill",
                     tint: .blue
                 )
                 SummaryMetricTile(
-                    title: "重複アイテム",
-                    value: "\(vm.shards) 欠片",
-                    detail: "重複時は欠片に変わります",
+                    title: "欠片",
+                    value: "\(vm.shards)",
+                    detail: "重複でたまります",
                     systemImage: "seal.fill",
                     tint: .orange
                 )
                 SummaryMetricTile(
-                    title: "今日の無料ガチャ",
-                    value: "1日1回",
-                    detail: "無料券を確認できます",
+                    title: "無料ガチャ",
+                    value: "今日 1回",
+                    detail: "毎日確認できます",
                     systemImage: "gift.fill",
                     tint: .green
                 )
                 SummaryMetricTile(
-                    title: "レア保証・天井",
+                    title: "レア保証",
                     value: vm.untilPityText,
-                    detail: "現在のLEGENDARY率 \(vm.currentLegendaryRateText)",
+                    detail: "現在 \(vm.currentLegendaryRateText)",
                     systemImage: "sparkles",
                     tint: .purple
                 )
@@ -394,87 +398,13 @@ struct GachaView: View {
 
                 pityBar
 
-                Text("10連ではレア以上が1つ確定です。\(vm.untilPityText) なので、必要な枚数だけ使うか無料ガチャを待つかを選べます。")
+                Text("10連ではレア以上が1つ確定です。必要な枚数だけ使うか、無料ガチャを待つかを選べます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(14)
             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    Button {
-                        vm.grantDailyTicketIfNeeded()
-                    } label: {
-                        Label("今日の無料ガチャ", systemImage: "gift.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .disabled(vm.isBusy)
-
-                    Button {
-                        requestDraw(count: 1) {
-                            vm.drawOnce()
-                        }
-                    } label: {
-                        Label("1回ひく", systemImage: "sparkles")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(!vm.canDraw(count: 1))
-
-                    Button {
-                        requestDraw(count: 10) {
-                            vm.drawTen()
-                        }
-                    } label: {
-                        Label("10連をひく", systemImage: "sparkles.rectangle.stack")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .disabled(!vm.canDraw(count: 10))
-                }
-
-                VStack(spacing: 10) {
-                    Button {
-                        vm.grantDailyTicketIfNeeded()
-                    } label: {
-                        Label("今日の無料ガチャ", systemImage: "gift.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .disabled(vm.isBusy)
-
-                    Button {
-                        requestDraw(count: 1) {
-                            vm.drawOnce()
-                        }
-                    } label: {
-                        Label("1回ひく", systemImage: "sparkles")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(!vm.canDraw(count: 1))
-
-                    Button {
-                        requestDraw(count: 10) {
-                            vm.drawTen()
-                        }
-                    } label: {
-                        Label("10連をひく", systemImage: "sparkles.rectangle.stack")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .disabled(!vm.canDraw(count: 10))
-                }
-            }
 
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
@@ -576,10 +506,104 @@ struct GachaView: View {
         }
     }
 
+    private var contentBottomPadding: CGFloat {
+        AppChrome.bottomTabBarReservedSpace + (statusBannerMessage == nil ? 24 : AppChrome.bottomFloatingBannerReservedSpace)
+    }
+
+    private var singleDrawDisabledReason: String? {
+        if vm.isBusy {
+            return "抽選中です。結果が出るまでお待ちください。"
+        }
+        if !vm.canDraw(count: 1) {
+            return "チケットが不足しています。無料ガチャか購入セクションを確認してください。"
+        }
+        return nil
+    }
+
+    private var tenDrawDisabledReason: String? {
+        if vm.isBusy {
+            return "抽選中です。結果が出るまでお待ちください。"
+        }
+        if !vm.canDraw(count: 10) {
+            return "10連にはチケットが10枚必要です。所持枚数を確認してください。"
+        }
+        return nil
+    }
+
+    private func drawActionButton(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isPrimary: Bool,
+        isDisabled: Bool,
+        disabledReason: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: action) {
+                Label(title, systemImage: systemImage)
+                    .frame(maxWidth: .infinity)
+            }
+            .gachaDrawButtonStyle(isPrimary: isPrimary)
+            .controlSize(.large)
+            .disabled(isDisabled)
+
+            Text(isDisabled ? (disabledReason ?? subtitle) : subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     // MARK: - Panels
 
     private var gachaPanel: some View {
         VStack(spacing: 12) {
+            AppSectionCard(
+                title: "今日ひけるガチャ",
+                subtitle: "無料ガチャと所持チケットから選べます。購入はあとから必要な分だけ確認できます。"
+            ) {
+                VStack(spacing: 10) {
+                    drawActionButton(
+                        title: "今日の無料ガチャ",
+                        subtitle: "毎日1回、無料券を確認できます。",
+                        systemImage: "gift.fill",
+                        isPrimary: false,
+                        isDisabled: vm.isBusy,
+                        disabledReason: vm.isBusy ? "抽選中は無料ガチャを確認できません。" : nil
+                    ) {
+                        vm.grantDailyTicketIfNeeded()
+                    }
+
+                    drawActionButton(
+                        title: "1回ひく",
+                        subtitle: "手持ちチケット 1 枚でひけます。",
+                        systemImage: "sparkles",
+                        isPrimary: true,
+                        isDisabled: !vm.canDraw(count: 1),
+                        disabledReason: singleDrawDisabledReason
+                    ) {
+                        requestDraw(count: 1) {
+                            vm.drawOnce()
+                        }
+                    }
+
+                    drawActionButton(
+                        title: "10連をひく",
+                        subtitle: "10枚必要です。レア以上が1つ確定します。",
+                        systemImage: "sparkles.rectangle.stack",
+                        isPrimary: false,
+                        isDisabled: !vm.canDraw(count: 10),
+                        disabledReason: tenDrawDisabledReason
+                    ) {
+                        requestDraw(count: 10) {
+                            vm.drawTen()
+                        }
+                    }
+                }
+            }
+
             AppSectionCard(
                 title: "ガチャでできること",
                 subtitle: "無料ガチャやチケットで装飾アイテムを集めると、プロフィール・共有カード・コミュニティカードの見た目を変えられます。"
@@ -1960,6 +1984,15 @@ private extension View {
             .minimumScaleFactor(0.82)
             .allowsTightening(true)
             .truncationMode(.tail)
+    }
+
+    @ViewBuilder
+    func gachaDrawButtonStyle(isPrimary: Bool) -> some View {
+        if isPrimary {
+            buttonStyle(.borderedProminent)
+        } else {
+            buttonStyle(.bordered)
+        }
     }
 }
 
