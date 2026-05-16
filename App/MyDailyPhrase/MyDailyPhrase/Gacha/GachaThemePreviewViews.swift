@@ -86,6 +86,12 @@ struct GachaThemePreviewContent: View {
                         detailChip(systemImage: "shippingbox", text: isOwned ? "所持 x\(max(1, ownedCount))" : "コレクション未登録")
                     }
                 }
+
+                GachaArtworkPreviewPanel(
+                    item: item,
+                    prefersThumbnail: false,
+                    minHeight: 212
+                )
             }
         }
     }
@@ -289,6 +295,169 @@ struct GachaThemePreviewContent: View {
     }
 }
 
+struct GachaArtworkPreviewPanel: View {
+    let item: CardDecoration
+    let prefersThumbnail: Bool
+    let minHeight: CGFloat
+    var cornerRadius: CGFloat = 18
+    var showsCaption: Bool = true
+
+    private var metadata: DecorationItem {
+        GachaThemePresentation.decorationItem(for: item)
+    }
+
+    private var resolvedImage: UIImage? {
+        preferredAssetNames
+            .compactMap { assetName in
+                UIImage(named: assetName)
+            }
+            .first
+    }
+
+    private var preferredAssetNames: [String] {
+        let candidates: [String?]
+        if prefersThumbnail {
+            candidates = [metadata.thumbnailAssetName, metadata.assetName]
+        } else {
+            candidates = [metadata.assetName, metadata.thumbnailAssetName]
+        }
+
+        return candidates.compactMap { $0 }.reduce(into: [String]()) { partialResult, value in
+            if !partialResult.contains(value) {
+                partialResult.append(value)
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(backgroundGradient)
+
+            if let resolvedImage {
+                Image(uiImage: resolvedImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(16)
+            } else {
+                fallbackArtwork
+                    .padding(16)
+            }
+
+            if showsCaption {
+                caption
+                    .padding(12)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: minHeight)
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(item.rarity.previewAccent.opacity(0.14), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    private var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                item.rarity.previewAccent.opacity(0.18),
+                Color(uiColor: .secondarySystemBackground),
+                item.rarity.previewAccent.opacity(0.08)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var fallbackArtwork: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(GachaThemePresentation.itemTypeLabel(for: item))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(item.rarity.previewAccent)
+                    Text(item.name)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: symbolName)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(item.rarity.previewAccent)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 8) {
+                GachaRarityBadge(rarity: item.rarity)
+                if prefersThumbnail {
+                    Text("画像準備前プレビュー")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var caption: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if resolvedImage != nil {
+                Text("アートワークを表示")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("画像未追加でもこのまま使えます")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(item.name)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var symbolName: String {
+        switch metadata.itemType {
+        case .fullTheme:
+            return "paintpalette.fill"
+        case .background:
+            return "sun.max.fill"
+        case .cardFrame:
+            return "rectangle.inset.filled"
+        case .sticker:
+            return "seal.fill"
+        case .badge:
+            return "rosette"
+        case .profileTitle:
+            return "textformat.size.larger"
+        case .shareTemplate:
+            return "square.and.arrow.up.fill"
+        case .gachaRevealEffect:
+            return "sparkles.tv"
+        case .promptPack:
+            return "text.quote"
+        case .journalPaper:
+            return "doc.text.image"
+        case .auraStyle:
+            return "circle.hexagongrid.fill"
+        }
+    }
+}
+
 private struct FlexibleSurfaceChips: View {
     let labels: [String]
 
@@ -332,7 +501,13 @@ struct GachaCollectionTile: View {
                             }
                         }
 
-                        Spacer(minLength: 0)
+                        GachaArtworkPreviewPanel(
+                            item: item,
+                            prefersThumbnail: true,
+                            minHeight: 84,
+                            cornerRadius: 14,
+                            showsCaption: false
+                        )
 
                         Text(item.name)
                             .font(.headline.weight(.semibold))
@@ -346,7 +521,7 @@ struct GachaCollectionTile: View {
                             .multilineTextAlignment(.leading)
                     }
                 }
-                .frame(height: 158)
+                .frame(height: 214)
                 .opacity(isOwned ? 1.0 : 0.72)
 
                 HStack(alignment: .center, spacing: 8) {

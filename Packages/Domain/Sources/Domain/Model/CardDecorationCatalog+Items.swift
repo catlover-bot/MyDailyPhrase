@@ -22,7 +22,9 @@ public extension CardDecorationCatalog {
             previewStyle: previewStyle(for: decoration, type: type),
             profileTitle: profileTitle(for: decoration, type: type),
             shareTemplateName: shareTemplateName(for: decoration, type: type),
-            revealPhraseOverride: revealPhraseOverride(for: decoration, type: type)
+            revealPhraseOverride: revealPhraseOverride(for: decoration, type: type),
+            assetName: assetName(for: decoration),
+            thumbnailAssetName: thumbnailAssetName(for: decoration)
         )
     }
 
@@ -212,6 +214,52 @@ public extension CardDecorationCatalog {
             return "カード背景とコミュニティカードの空気感を整える背景テーマ"
         case .journalPaper:
             return "ひとことを丁寧に見せてくれる紙面テーマ"
+        default:
+            return nil
+        }
+    }
+
+    private static func assetName(for decoration: CardDecoration) -> String? {
+        switch decoration.id {
+        case "paper":
+            return "gacha_soft_paper"
+        case "sunset":
+            return "gacha_sunset_note"
+        case "sakura":
+            return "gacha_sakura_diary"
+        case "neon":
+            return "gacha_neon_city_card"
+        case "moonlit":
+            return "gacha_moonlit_page"
+        case "stardust":
+            return "gacha_stardust_letter"
+        case "ocean":
+            return "gacha_deep_sea_memo"
+        case "gold":
+            return "gacha_crown_page"
+        case "royal":
+            return "gacha_royal_crest"
+        case "phoenix":
+            return "gacha_phoenix_afterglow"
+        case "season_gold_halo":
+            return "gacha_season_gold_halo"
+        default:
+            return nil
+        }
+    }
+
+    private static func thumbnailAssetName(for decoration: CardDecoration) -> String? {
+        switch decoration.id {
+        case "sunset":
+            return "gacha_sunset_note_thumb"
+        case "sakura":
+            return "gacha_sakura_diary_thumb"
+        case "neon":
+            return "gacha_neon_city_card_thumb"
+        case "stardust":
+            return "gacha_stardust_letter_thumb"
+        case "gold":
+            return "gacha_crown_page_thumb"
         default:
             return nil
         }

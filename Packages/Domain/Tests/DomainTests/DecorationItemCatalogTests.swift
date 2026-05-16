@@ -55,4 +55,21 @@ struct DecorationItemCatalogTests {
         #expect(items.allSatisfy { !$0.applicableSurfaces.isEmpty })
         #expect(items.contains { $0.applicableSurfaces.contains(.communityCard) })
     }
+
+    @Test("representative items expose optional asset placeholders safely")
+    func representativeAssetPlaceholdersExist() throws {
+        let sunset = try #require(CardDecorationCatalog.item(for: "sunset"))
+        let stardust = try #require(CardDecorationCatalog.item(for: "stardust"))
+        let gold = try #require(CardDecorationCatalog.item(for: "gold"))
+        let classic = try #require(CardDecorationCatalog.item(for: CardDecorationCatalog.classicId))
+
+        #expect(sunset.assetName == "gacha_sunset_note")
+        #expect(sunset.thumbnailAssetName == "gacha_sunset_note_thumb")
+        #expect(stardust.assetName == "gacha_stardust_letter")
+        #expect(gold.assetName == "gacha_crown_page")
+        #expect(classic.assetName == nil)
+        #expect(CardDecorationCatalog.items.allSatisfy { item in
+            item.assetName == nil || !item.assetName!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        })
+    }
 }

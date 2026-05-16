@@ -70,6 +70,8 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
     public let profileTitle: String?
     public let shareTemplateName: String?
     public let revealPhraseOverride: String?
+    public let assetName: String?
+    public let thumbnailAssetName: String?
 
     public init(
         id: String,
@@ -82,7 +84,9 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
         previewStyle: DecorationPreviewStyle,
         profileTitle: String? = nil,
         shareTemplateName: String? = nil,
-        revealPhraseOverride: String? = nil
+        revealPhraseOverride: String? = nil,
+        assetName: String? = nil,
+        thumbnailAssetName: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -95,6 +99,8 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
         self.profileTitle = profileTitle
         self.shareTemplateName = shareTemplateName
         self.revealPhraseOverride = revealPhraseOverride
+        self.assetName = assetName
+        self.thumbnailAssetName = thumbnailAssetName
     }
 }
 

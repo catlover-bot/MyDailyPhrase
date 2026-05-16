@@ -732,6 +732,12 @@ struct GachaResultDetailScreen: View {
             accent: item.rarity.previewAccent
         ) {
             VStack(alignment: .leading, spacing: 14) {
+                GachaArtworkPreviewPanel(
+                    item: item,
+                    prefersThumbnail: false,
+                    minHeight: 224
+                )
+
                 Card(nil, decorationId: item.id) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .top, spacing: 10) {
