@@ -156,8 +156,8 @@ public enum CommunityLiteSupport {
             ),
             CommunityTemplate(
                 id: "official.games.rpg",
-                name: "RPG好きの部屋",
-                description: "旅、仲間、世界観。RPGの余韻をひとことで残したい人向けです。",
+                name: "RPG酒場",
+                description: "旅、仲間、世界観。RPGの余韻をゆっくり語れる、物語好きのための部屋です。",
                 category: .games,
                 emoji: "🗺️",
                 createdAt: .distantPast,
@@ -181,8 +181,8 @@ public enum CommunityLiteSupport {
             ),
             CommunityTemplate(
                 id: "official.games.fps",
-                name: "FPS好きの部屋",
-                description: "対戦の反省やクラッチの余韻を、短い言葉で残すゲーム部屋です。",
+                name: "FPSロビー",
+                description: "対戦の反省やクラッチの余韻を、短い言葉で整えるロビー型のゲーム部屋です。",
                 category: .games,
                 emoji: "🎯",
                 createdAt: .distantPast,
@@ -231,8 +231,8 @@ public enum CommunityLiteSupport {
             ),
             CommunityTemplate(
                 id: "official.games.indie",
-                name: "インディーゲーム好きの部屋",
-                description: "小さな傑作や雰囲気ゲーを静かに語りたい人向けのコミュニティです。",
+                name: "インディーゲーム発掘部",
+                description: "小さな傑作や雰囲気ゲーを静かに持ち寄る、発見好きのためのコミュニティです。",
                 category: .games,
                 emoji: "🌙",
                 createdAt: .distantPast,

@@ -46,6 +46,9 @@ final class IAPStore: ObservableObject {
     @Published private(set) var eventStatus: StoreEventStatus = .idle
     @Published private(set) var lastProductRefreshAt: Date? = nil
     @Published private(set) var lastSyncAt: Date? = nil
+    @Published private(set) var storefrontCountryCode: String? = nil
+    @Published private(set) var storefrontIdentifier: String? = nil
+    @Published private(set) var storefrontCurrencyCode: String? = nil
 
     // ===== Injected =====
     private let updateMyProfile: UpdateMyProfileUseCase
@@ -179,12 +182,23 @@ final class IAPStore: ObservableObject {
             availability: productLoadState,
             requestedProductIDs: requestedProductIDs,
             loadedProductIDs: loadedProductIDs,
+            loadedProducts: loadedProductLines,
+            storefrontCountryCode: storefrontCountryCode,
+            storefrontIdentifier: storefrontIdentifier,
+            storefrontCurrencyCode: storefrontCurrencyCode,
+            deviceLocaleIdentifier: Locale.current.identifier,
+            deviceCurrencyCode: currentDeviceCurrencyCode,
+            appPreferredLanguages: Bundle.main.preferredLocalizations,
             lastStoreKitError: lastStoreKitError,
             lastRefreshText: lastProductRefreshText,
             lastSyncText: lastSyncText,
             creatorPassStatusText: creatorPassStatusText,
             isCreatorPassActive: isCreatorPassActive
         )
+    }
+
+    var diagnosticsReportText: String {
+        MonetizationDiagnosticsSupport.reportText(from: storeDiagnosticsSnapshot)
     }
 
     var lastProductRefreshText: String? {
@@ -216,6 +230,10 @@ final class IAPStore: ObservableObject {
         case .failed:
             return "確認に時間がかかっています"
         }
+    }
+
+    var storefrontPricingHelpText: String {
+        "価格はApp Storeの国または地域設定に基づいて表示されます。日本のストアでは円で表示されます。"
     }
 
     var productStatusTitle: String {
@@ -257,6 +275,9 @@ final class IAPStore: ObservableObject {
             "loadedIDs: \(loadedProductIDs.joined(separator: ", "))",
             "missingIDs: \(missingProductIDs.joined(separator: ", "))",
             "productCount: \(products.count)",
+            "storefrontCountry: \(storefrontCountryCode ?? "-")",
+            "storefrontCurrency: \(storefrontCurrencyCode ?? "-")",
+            "deviceLocale: \(Locale.current.identifier)",
             "lastError: \(lastStoreKitError ?? "-")",
             "lastRefresh: \(lastProductRefreshText ?? "-")",
             "lastSync: \(lastSyncText ?? "-")",
@@ -276,9 +297,7 @@ final class IAPStore: ObservableObject {
 
     func ticketUnitPriceText(for product: Product) -> String? {
         guard let unit = unitPrice(for: product) else { return nil }
-        let value = NSDecimalNumber(decimal: unit).doubleValue
-        guard value.isFinite else { return nil }
-        return String(format: "1枚あたり約 %.2f", value)
+        return "1枚あたり約 \(unit.formatted(product.priceFormatStyle))"
     }
 
     init(
@@ -314,6 +333,8 @@ final class IAPStore: ObservableObject {
             return
         }
 
+        await refreshStorefrontDiagnostics()
+
         // 1) 商品取得
         if products.isEmpty {
             await loadProducts()
@@ -338,6 +359,7 @@ final class IAPStore: ObservableObject {
         eventStatus = .loading
         lastStoreKitError = nil
         lastProductRefreshAt = Date()
+        await refreshStorefrontDiagnostics()
         do {
             let ps = try await Product.products(for: productIDs)
             self.products = ps.sorted { $0.id < $1.id }
@@ -375,6 +397,7 @@ final class IAPStore: ObservableObject {
         lastSyncAt = Date()
         do {
             try await AppStore.sync()
+            await refreshStorefrontDiagnostics()
             await refreshCreatorPassEntitlement()
             lastMessage = "App Storeと同期しました"
             eventStatus = .restored
@@ -532,6 +555,38 @@ final class IAPStore: ObservableObject {
         let unit = price.dividing(by: NSDecimalNumber(value: amount))
         guard unit != .notANumber else { return nil }
         return unit.decimalValue
+    }
+
+    private var loadedProductLines: [StoreProductDiagnosticsSnapshot.ProductLine] {
+        products.map { product in
+            StoreProductDiagnosticsSnapshot.ProductLine(
+                productID: product.id,
+                displayName: product.displayName,
+                displayPrice: product.displayPrice,
+                currencyCode: product.priceFormatStyle.currencyCode,
+                localeIdentifier: product.priceFormatStyle.locale.identifier
+            )
+        }
+    }
+
+    private var currentDeviceCurrencyCode: String? {
+        Locale.current.currency?.identifier
+    }
+
+    private func refreshStorefrontDiagnostics() async {
+        if let storefront = await Storefront.current {
+            storefrontCountryCode = storefront.countryCode
+            storefrontIdentifier = storefront.id
+            if #available(iOS 17.0, *) {
+                storefrontCurrencyCode = storefront.currency?.identifier
+            } else {
+                storefrontCurrencyCode = nil
+            }
+        } else {
+            storefrontCountryCode = nil
+            storefrontIdentifier = nil
+            storefrontCurrencyCode = nil
+        }
     }
 
     private func grantTicketsIfNeeded(for tx: Transaction) async throws {

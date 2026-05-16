@@ -130,7 +130,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var socialHeaderText: String {
-        "公開フィードはまだありません。参加は無料のまま、フォローやDMは安全なローカル導線から段階的に整えています。"
+        "公開フィードはまだありません。プロフィールカードとDMはこの端末で流れを試せる安全なローカル導線です。"
     }
 
     var joinedCommunities: [CommunityTemplate] {
@@ -146,14 +146,32 @@ final class CommunityLiteViewModel: ObservableObject {
         return socialProfiles.filter { following.contains($0.id) }
     }
 
+    var followerPreviewProfiles: [SocialUserProfileSummary] {
+        SocialSupport.followerPreviewProfiles(
+            profiles: socialProfiles,
+            blockedUserIDs: Set(getMyProfile().blockedUserIDs)
+        )
+    }
+
+    var mutualFollowProfiles: [SocialUserProfileSummary] {
+        let following = Set(getMyProfile().followingUserIDs)
+        let followers = Set(followerPreviewProfiles.map(\.id))
+        let ids = SocialSupport.mutualFollowUserIDs(
+            followingUserIDs: following,
+            followerUserIDs: followers
+        )
+        return socialProfiles.filter { ids.contains($0.id) }
+    }
+
     var recommendedProfiles: [SocialUserProfileSummary] {
         let following = Set(getMyProfile().followingUserIDs)
-        return socialProfiles.filter { !following.contains($0.id) }
+        let followerPreview = Set(followerPreviewProfiles.map(\.id))
+        return socialProfiles.filter { !following.contains($0.id) && !followerPreview.contains($0.id) }
     }
 
     var selectedConversation: DirectMessageConversation? {
         guard let selectedConversationId else { return nil }
-        return dmConversations.first { $0.id == selectedConversationId }
+        return dmConversations.first { $0.participantUserID == selectedConversationId }
     }
 
     var selectedCommunity: CommunityTemplate? {
@@ -380,8 +398,13 @@ final class CommunityLiteViewModel: ObservableObject {
         SocialSupport.canUseDirectMessage(
             with: profile,
             followingUserIDs: Set(getMyProfile().followingUserIDs),
+            followerUserIDs: Set(followerPreviewProfiles.map(\.id)),
             blockedUserIDs: Set(getMyProfile().blockedUserIDs)
         )
+    }
+
+    func isMutualFollow(_ profileID: String) -> Bool {
+        mutualFollowProfiles.contains(where: { $0.id == profileID })
     }
 
     func toggleFollow(_ profile: SocialUserProfileSummary) {
@@ -437,19 +460,32 @@ final class CommunityLiteViewModel: ObservableObject {
         let merged = [updatedConversation] + others
         _ = updateMyProfile(dmConversations: merged)
         dmConversations = getMyProfile().dmConversations
-        selectedConversationId = updatedConversation.id
+        selectedConversationId = updatedConversation.participantUserID
         dmDraftText = ""
         lastMessage = "この端末にDMの下書きを保存しました"
     }
 
     func deleteConversation(_ conversationID: String) {
+        let removedParticipantID = getMyProfile().dmConversations
+            .first(where: { $0.id == conversationID })?
+            .participantUserID
         let remaining = getMyProfile().dmConversations.filter { $0.id != conversationID }
         _ = updateMyProfile(dmConversations: remaining)
         dmConversations = getMyProfile().dmConversations
-        if selectedConversationId == conversationID {
-            selectedConversationId = dmConversations.first?.id
+        if selectedConversationId == removedParticipantID {
+            selectedConversationId = dmConversations.first?.participantUserID
         }
         lastMessage = "会話を削除しました"
+    }
+
+    func promptPreviewText(for community: CommunityTemplate) -> String {
+        promptEngine.promptBundle(for: community, referenceDate: referenceDate).primary.text
+    }
+
+    func challengePreviewText(for community: CommunityTemplate) -> String? {
+        let previews = promptEngine.previewPrompts(for: community, startDate: referenceDate, count: 2)
+        guard previews.count > 1 else { return nil }
+        return previews[1].text
     }
 
     func profiles(for community: CommunityTemplate) -> [SocialUserProfileSummary] {
@@ -618,7 +654,7 @@ final class CommunityLiteViewModel: ObservableObject {
         dmConversations = profile.dmConversations
             .sorted { $0.updatedAt > $1.updatedAt }
         if selectedConversationId == nil {
-            selectedConversationId = dmConversations.first?.id
+            selectedConversationId = dmConversations.first?.participantUserID
         }
     }
 
@@ -715,10 +751,10 @@ fileprivate extension CommunityLiteViewModel {
     var gameCreationPresets: [GameCommunityPreset] {
         [
             GameCommunityPreset(id: "games.general", name: "ゲーム好きの部屋", description: "最近遊んだ一本や推しキャラを気軽に残す定番ルームです。", emoji: "🎮", tags: ["games", "general"], tone: .casual),
-            GameCommunityPreset(id: "games.rpg", name: "RPG好きの部屋", description: "旅や仲間、世界観について深めに語れるRPG向けルームです。", emoji: "🗺️", tags: ["games", "rpg", "story"], tone: .deep, promptLength: .medium, answerStyle: .shortMemo, schedule: .weekly),
-            GameCommunityPreset(id: "games.fps", name: "FPS好きの部屋", description: "クラッチや反省を短く残せる対戦寄りの部屋です。", emoji: "🎯", tags: ["games", "fps", "competitive"], tone: .challenge, answerStyle: .ranking),
+            GameCommunityPreset(id: "games.rpg", name: "RPG酒場", description: "旅や仲間、世界観について深めに語れるRPG向けルームです。", emoji: "🗺️", tags: ["games", "rpg", "story"], tone: .deep, promptLength: .medium, answerStyle: .shortMemo, schedule: .weekly),
+            GameCommunityPreset(id: "games.fps", name: "FPSロビー", description: "クラッチや反省を短く残せる対戦寄りのロビーです。", emoji: "🎯", tags: ["games", "fps", "competitive"], tone: .challenge, answerStyle: .ranking),
             GameCommunityPreset(id: "games.nintendo", name: "任天堂好きの部屋", description: "思い出や好きなキャラを明るく話せる部屋です。", emoji: "🍄", tags: ["games", "nintendo"], tone: .nostalgic, schedule: .weekly),
-            GameCommunityPreset(id: "games.indie", name: "インディーゲーム好きの部屋", description: "小さな傑作や雰囲気ゲーを静かに語れる部屋です。", emoji: "🌙", tags: ["games", "indie"], tone: .deep, promptLength: .medium, answerStyle: .recommendation, schedule: .weekly),
+            GameCommunityPreset(id: "games.indie", name: "インディーゲーム発掘部", description: "小さな傑作や雰囲気ゲーを静かに発掘して持ち寄る部屋です。", emoji: "🌙", tags: ["games", "indie"], tone: .deep, promptLength: .medium, answerStyle: .recommendation, schedule: .weekly),
             GameCommunityPreset(id: "games.backlog", name: "積みゲー消化部", description: "今週ひらきたい一本をゆるく宣言して続ける部屋です。", emoji: "📦", tags: ["games", "backlog"], tone: .challenge),
             GameCommunityPreset(id: "games.retro", name: "レトロゲーム部", description: "昔のハードやドット絵の思い出を残す部屋です。", emoji: "🕹️", tags: ["games", "retro"], tone: .nostalgic, answerStyle: .shortMemo, schedule: .weekly),
             GameCommunityPreset(id: "games.character", name: "推しキャラ語り部", description: "好きなキャラや世界観を一言で残せる部屋です。", emoji: "💫", tags: ["games", "character"], tone: .fun),
@@ -842,7 +878,7 @@ struct CommunityLiteView: View {
                 )
                 SummaryMetricTile(
                     title: "フォロー",
-                    value: "\(vm.followingProfiles.count)人",
+                    value: "\(vm.mutualFollowProfiles.count)人",
                     detail: "相互フォローでDMできます",
                     systemImage: "person.crop.circle.badge.plus",
                     tint: .purple
@@ -880,7 +916,7 @@ struct CommunityLiteView: View {
             dashboardCard(
                 section: .follow,
                 title: "フォロー",
-                subtitle: vm.followingProfiles.isEmpty ? "つながりを作る" : "\(vm.followingProfiles.count)人をフォロー中",
+                subtitle: vm.mutualFollowProfiles.isEmpty ? "つながりを作る" : "\(vm.mutualFollowProfiles.count)人と相互フォロー",
                 accent: .purple
             )
             dashboardCard(
@@ -980,6 +1016,19 @@ struct CommunityLiteView: View {
                 subtitle: "参加は無料です。気になるテーマを選ぶと、その部屋向けのお題をすぐ確認できます。"
             )
 
+            AppSectionCard(
+                title: "今日できること",
+                subtitle: "まずは好きな部屋に無料で参加して、今日のお題か今週のチャレンジを1つ選ぶところから始められます。"
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("・気になるゲーム部屋を選ぶ")
+                    Text("・お題例を確認する")
+                    Text("・無料で参加してひとこと残す")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             communityCatalogGrid
 
             if let community = vm.selectedCommunity {
@@ -1064,7 +1113,7 @@ struct CommunityLiteView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "フォロー",
-                subtitle: "フォローすると相手のプロフィールカードを見つけやすくなります。公開検索は使わず、ローカルなおすすめカードだけを表示しています。"
+                subtitle: "フォローすると相手のプロフィールカードを見つけやすくなります。公開検索は使わず、この端末で確認できる安全なローカルカードだけを表示しています。"
             )
 
             Card("安全なつながり方", decorationId: vm.selectedDecorationId) {
@@ -1100,8 +1149,28 @@ struct CommunityLiteView: View {
                 socialProfileSection(title: "フォロー中", profiles: vm.followingProfiles)
             }
 
+            if !vm.followerPreviewProfiles.isEmpty {
+                socialProfileSection(
+                    title: "この端末のフォロワープレビュー",
+                    subtitle: "公開検索を使わずに、相互フォローの雰囲気を確かめられるローカルカードです。",
+                    profiles: vm.followerPreviewProfiles
+                )
+            }
+
+            if !vm.mutualFollowProfiles.isEmpty {
+                socialProfileSection(
+                    title: "相互フォロー",
+                    subtitle: "相互フォローになった相手だけ、DM の下書き保存を試せます。",
+                    profiles: vm.mutualFollowProfiles
+                )
+            }
+
             if !vm.recommendedProfiles.isEmpty {
-                socialProfileSection(title: "おすすめプロフィール", profiles: vm.recommendedProfiles)
+                socialProfileSection(
+                    title: "おすすめプロフィール",
+                    subtitle: "すべてローカルプレビューです。ブロック中の相手はここに表示しません。",
+                    profiles: vm.recommendedProfiles
+                )
             }
 
             profileExchangeSection
@@ -1157,8 +1226,12 @@ struct CommunityLiteView: View {
                 }
             }
 
-            if !vm.followingProfiles.isEmpty {
-                socialProfileSection(title: "DM候補", profiles: vm.followingProfiles)
+            if !vm.mutualFollowProfiles.isEmpty {
+                socialProfileSection(
+                    title: "DM候補",
+                    subtitle: "相互フォロー済みのローカルカードだけが表示されます。",
+                    profiles: vm.mutualFollowProfiles
+                )
             }
         }
     }
@@ -1231,10 +1304,30 @@ struct CommunityLiteView: View {
                                 .lineLimit(3)
                                 .multilineTextAlignment(.leading)
 
-                            Text("お題例: \(vm.selectedCommunityId == community.id ? (vm.currentCommunityPromptBundle?.primary.text ?? "参加すると専用お題を見られます") : "参加すると専用お題を見られます")")
+                            if let challengePreview = vm.challengePreviewText(for: community) {
+                                Text("チャレンジ例: \(challengePreview)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+
+                            Text("お題例: \(vm.promptPreviewText(for: community))")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(Array(community.allowedTags.prefix(3)), id: \.self) { tag in
+                                        Text("#\(tag)")
+                                            .font(.caption2.weight(.semibold))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.accentColor.opacity(0.10))
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
 
                             HStack {
                                 Text(categoryLabel(community.category))
@@ -1775,6 +1868,11 @@ struct CommunityLiteView: View {
                         .buttonStyle(.bordered)
                     }
                 }
+
+                Text(iap.storefrontPricingHelpText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -1867,7 +1965,7 @@ struct CommunityLiteView: View {
             HStack(spacing: 10) {
                 ForEach(vm.dmConversations) { conversation in
                     Button {
-                        vm.selectedConversationId = conversation.id
+                        vm.selectedConversationId = conversation.participantUserID
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(conversation.participantDisplayName)
@@ -1879,7 +1977,7 @@ struct CommunityLiteView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                        .background(vm.selectedConversationId == conversation.id ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground))
+                        .background(vm.selectedConversationId == conversation.participantUserID ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -2000,10 +2098,17 @@ struct CommunityLiteView: View {
         }
     }
 
-    private func socialProfileSection(title: String, profiles: [SocialUserProfileSummary]) -> some View {
+    private func socialProfileSection(title: String, subtitle: String? = nil, profiles: [SocialUserProfileSummary]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             LazyVStack(spacing: 10) {
                 ForEach(profiles) { profile in
@@ -2055,8 +2160,12 @@ struct CommunityLiteView: View {
 
                     if vm.isBlocked(profile.id) {
                         InfoBadge(title: "ブロック中", systemImage: "hand.raised.fill", tint: .orange)
+                    } else if vm.isMutualFollow(profile.id) {
+                        PremiumBadge(title: "相互フォロー")
                     } else if vm.isFollowing(profile.id) {
                         EquippedItemBadge(title: "フォロー中")
+                    } else if vm.followerPreviewProfiles.contains(where: { $0.id == profile.id }) {
+                        InfoBadge(title: "フォロワープレビュー", systemImage: "person.2.wave.2", tint: .purple)
                     } else {
                         InfoBadge(title: "ローカルカード", systemImage: "person.crop.square", tint: .indigo)
                     }
@@ -2073,7 +2182,7 @@ struct CommunityLiteView: View {
                     HStack(spacing: 8) {
                         InfoBadge(title: "参加中 \(profile.joinedCommunityCount)部屋", systemImage: "person.2", tint: .green)
                         if profile.supportsMutualDM {
-                            InfoBadge(title: "相互フォローでDM可", systemImage: "message", tint: .blue)
+                            InfoBadge(title: vm.isMutualFollow(profile.id) ? "DMを使えます" : "相互フォローでDM可", systemImage: "message", tint: .blue)
                         } else {
                             InfoBadge(title: "DM準備中", systemImage: "message.slash", tint: .secondary)
                         }
@@ -2087,6 +2196,13 @@ struct CommunityLiteView: View {
                             InfoBadge(title: "DM準備中", systemImage: "message.slash", tint: .secondary)
                         }
                     }
+                }
+
+                if !vm.canSendDM(to: profile) {
+                    Text("DMは相互フォローの相手とのみ利用できます。日記の回答が自動で送られることはありません。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 ViewThatFits(in: .horizontal) {
@@ -2103,7 +2219,7 @@ struct CommunityLiteView: View {
                             vm.selectedConversationId = profile.id
                             selectedSection = .dm
                         } label: {
-                            Label("DM", systemImage: "message")
+                            Label(vm.canSendDM(to: profile) ? "DM" : "相互フォローでDM", systemImage: "message")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -2137,7 +2253,7 @@ struct CommunityLiteView: View {
                             vm.selectedConversationId = profile.id
                             selectedSection = .dm
                         } label: {
-                            Label("DM", systemImage: "message")
+                            Label(vm.canSendDM(to: profile) ? "DM" : "相互フォローでDM", systemImage: "message")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)

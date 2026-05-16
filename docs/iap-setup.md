@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build `1.0 (13)` carries forward StoreKit2 support for:
+Build `1.0 (14)` carries forward StoreKit2 support for:
 
 - paid gacha ticket packs
 - Creator Pass entitlement
@@ -17,6 +17,7 @@ This build also reorganizes the in-app UX so:
 - Creator Pass keeps a locked creation preview visible even before entitlement
 - Settings now includes a hidden purchase diagnostics section for TestFlight troubleshooting
 - partial StoreKit product loading is surfaced safely instead of treating the whole shop as broken
+- diagnostics now show Storefront country / currency, StoreKit `displayPrice`, and device/app locale information so USD-vs-JPY issues can be traced without faking conversion
 
 Current App Store Connect status:
 
@@ -26,7 +27,7 @@ Current App Store Connect status:
 - `Creator Pass Lifetime`
 
 have been added to the app version. StoreKit product propagation may still take time, so the app continues to show a safe fallback state until price data is actually returned on device.
-Build `1.0 (13)` also requests only the currently launched Creator Pass SKU (`creatorpass.lifetime`) while keeping future monthly/yearly IDs reserved in code.
+Build `1.0 (14)` also requests only the currently launched Creator Pass SKU (`creatorpass.lifetime`) while keeping future monthly/yearly IDs reserved in code.
 
 Free users should still be able to:
 
@@ -111,6 +112,7 @@ Recommended notes:
 ## Recommended pricing notes
 
 - Use regional App Store pricing rather than hard-coding yen expectations in the app.
+- The app must show exactly what StoreKit returns in `displayPrice`; it must not manually convert USD to JPY.
 - Keep the 50-pack and 120-pack visibly better value than the 10-pack.
 - Avoid artificial urgency or fake scarcity.
 - If you launch only the lifetime Creator Pass first, keep pricing simple and explain that it unlocks community creation only.
@@ -132,7 +134,7 @@ Recommended notes:
 9. Add review screenshots for each IAP if required by App Store Connect.
 10. Save and submit the IAPs for review together with the app version if needed.
 11. In Xcode, confirm the same product IDs are used in code and in the `.storekit` file.
-12. Upload Build `1.0 (13)` to TestFlight.
+12. Upload Build `1.0 (14)` to TestFlight.
 13. Wait for processing, then test purchases on device.
 
 ## Sandbox / TestFlight monetization QA checklist
@@ -147,6 +149,8 @@ Recommended notes:
 - [ ] `商品情報を再読み込み` and `購入情報を復元` are reachable when products fail to load
 - [ ] Hidden purchase diagnostics in Settings can show requested IDs / loaded IDs / missing IDs when troubleshooting
   Open it by tapping the app version badge 5 times.
+- [ ] Hidden purchase diagnostics show Storefront country, Storefront currency, StoreKit `displayPrice`, and device/app locale information
+- [ ] If prices appear in USD, confirm whether the storefront itself is non-Japanese before changing any product metadata
 - [ ] Gacha screen leads with free draw / collection value before purchase
 - [ ] Odds are reachable without entering an actual purchase flow
 - [ ] Buying `tickets10` grants `10`

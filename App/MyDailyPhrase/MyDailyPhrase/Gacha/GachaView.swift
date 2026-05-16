@@ -1328,6 +1328,11 @@ struct GachaView: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+
+                    Text(iap.storefrontPricingHelpText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -1408,6 +1413,11 @@ struct GachaView: View {
                     }
 
                     Text("装飾アイテム専用 / 現金価値なし / 譲渡・売買・換金不可 / 外部決済リンクなし / 購入前に確率を確認できます")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(iap.storefrontPricingHelpText)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

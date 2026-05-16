@@ -96,11 +96,42 @@ public enum StoreProductLoadState: Equatable, Sendable {
 }
 
 public struct StoreProductDiagnosticsSnapshot: Equatable, Sendable {
+    public struct ProductLine: Equatable, Sendable, Identifiable {
+        public let productID: String
+        public let displayName: String
+        public let displayPrice: String?
+        public let currencyCode: String?
+        public let localeIdentifier: String?
+
+        public var id: String { productID }
+
+        public init(
+            productID: String,
+            displayName: String,
+            displayPrice: String?,
+            currencyCode: String?,
+            localeIdentifier: String?
+        ) {
+            self.productID = productID
+            self.displayName = displayName
+            self.displayPrice = displayPrice
+            self.currencyCode = currencyCode
+            self.localeIdentifier = localeIdentifier
+        }
+    }
+
     public let availability: StoreProductLoadState
     public let requestedProductIDs: [String]
     public let loadedProductIDs: [String]
     public let missingProductIDs: [String]
     public let productCount: Int
+    public let loadedProducts: [ProductLine]
+    public let storefrontCountryCode: String?
+    public let storefrontIdentifier: String?
+    public let storefrontCurrencyCode: String?
+    public let deviceLocaleIdentifier: String
+    public let deviceCurrencyCode: String?
+    public let appPreferredLanguages: [String]
     public let lastStoreKitError: String?
     public let lastRefreshText: String?
     public let lastSyncText: String?
@@ -199,6 +230,13 @@ public enum MonetizationDiagnosticsSupport {
         availability: StoreProductLoadState,
         requestedProductIDs: [String],
         loadedProductIDs: [String],
+        loadedProducts: [StoreProductDiagnosticsSnapshot.ProductLine],
+        storefrontCountryCode: String?,
+        storefrontIdentifier: String?,
+        storefrontCurrencyCode: String?,
+        deviceLocaleIdentifier: String,
+        deviceCurrencyCode: String?,
+        appPreferredLanguages: [String],
         lastStoreKitError: String?,
         lastRefreshText: String?,
         lastSyncText: String?,
@@ -216,11 +254,69 @@ public enum MonetizationDiagnosticsSupport {
             loadedProductIDs: loaded,
             missingProductIDs: missing,
             productCount: loaded.count,
+            loadedProducts: loadedProducts.sorted { $0.productID < $1.productID },
+            storefrontCountryCode: storefrontCountryCode,
+            storefrontIdentifier: storefrontIdentifier,
+            storefrontCurrencyCode: storefrontCurrencyCode,
+            deviceLocaleIdentifier: deviceLocaleIdentifier,
+            deviceCurrencyCode: deviceCurrencyCode,
+            appPreferredLanguages: appPreferredLanguages,
             lastStoreKitError: lastStoreKitError,
             lastRefreshText: lastRefreshText,
             lastSyncText: lastSyncText,
             creatorPassStatusText: creatorPassStatusText,
             isCreatorPassActive: isCreatorPassActive
         )
+    }
+
+    public static func reportText(
+        from snapshot: StoreProductDiagnosticsSnapshot
+    ) -> String {
+        var lines: [String] = []
+        lines.append("状態: \(availabilityText(snapshot.availability))")
+        lines.append("要求した商品ID: \(snapshot.requestedProductIDs.joined(separator: ", "))")
+        lines.append("読み込めた商品ID: \(snapshot.loadedProductIDs.joined(separator: ", "))")
+        lines.append("未取得の商品ID: \(snapshot.missingProductIDs.joined(separator: ", "))")
+        lines.append("商品数: \(snapshot.productCount)")
+        lines.append("Storefront国コード: \(snapshot.storefrontCountryCode ?? "取得不可")")
+        lines.append("Storefront ID: \(snapshot.storefrontIdentifier ?? "取得不可")")
+        lines.append("Storefront通貨: \(snapshot.storefrontCurrencyCode ?? "取得不可")")
+        lines.append("端末Locale: \(snapshot.deviceLocaleIdentifier)")
+        lines.append("端末通貨: \(snapshot.deviceCurrencyCode ?? "取得不可")")
+        lines.append("アプリ言語: \(snapshot.appPreferredLanguages.joined(separator: ", "))")
+        lines.append("最終更新: \(snapshot.lastRefreshText ?? "まだありません")")
+        lines.append("最終復元: \(snapshot.lastSyncText ?? "まだありません")")
+        lines.append("Creator Pass: \(snapshot.creatorPassStatusText)")
+        lines.append("最後のエラー: \(snapshot.lastStoreKitError ?? "なし")")
+
+        if snapshot.loadedProducts.isEmpty {
+            lines.append("読み込めた商品詳細: なし")
+        } else {
+            lines.append("読み込めた商品詳細:")
+            for product in snapshot.loadedProducts {
+                lines.append("- \(product.productID)")
+                lines.append("  表示名: \(product.displayName)")
+                lines.append("  displayPrice: \(product.displayPrice ?? "取得不可")")
+                lines.append("  currencyCode: \(product.currencyCode ?? "取得不可")")
+                lines.append("  priceLocale: \(product.localeIdentifier ?? "取得不可")")
+            }
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private static func availabilityText(_ availability: StoreProductLoadState) -> String {
+        switch availability {
+        case .loading:
+            return "loading"
+        case .loaded:
+            return "loaded"
+        case .partiallyLoaded:
+            return "partiallyLoaded"
+        case .unavailable:
+            return "unavailable"
+        case .failed(let message):
+            return "failed (\(message))"
+        }
     }
 }

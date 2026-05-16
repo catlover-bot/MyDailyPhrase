@@ -52,17 +52,19 @@
   Home, Gacha, みんな, Profile, and Settings now use clearer bottom-safe spacing, lighter copy, and stronger free/paid explanations so users can tell what is private, what is optional, and what each section is for.
 - Build `1.0 (13)` StoreKit and reward polish:
   the app now includes hidden purchase diagnostics in Settings, handles partial StoreKit product loading more clearly, and upgrades gacha reward names / categories / preview labels so obtained items feel like decorative rewards instead of placeholders.
+- Build `1.0 (14)` storefront and community polish:
+  the app now shows storefront-aware purchase diagnostics, keeps StoreKit localized `displayPrice` untouched, clarifies that yen display depends on the Japanese App Store storefront, and strengthens `みんな` with clearer game-room discovery, safer mutual-follow DM rules, and more obvious free-vs-premium community guidance.
 - Public community status:
   full public community surfaces remain hidden from the shipped root navigation until moderation, reporting, blocking, privacy, abuse handling, and terms requirements are finalized.
 - Social backend status:
   follow recommendations and DM are currently local/mock only. There is no real public user discovery, no real backend inbox, and no fake live activity feed in this build.
   See `docs/social-safety.md` for the current safety scope and backend requirements before enabling real social data.
 - Current TestFlight build number:
-  `1.0 (13)`
+  `1.0 (14)`
 - Archive dry-run status:
   `xcodebuild archive` now reaches signing and provisioning checks. The current failure mode is distribution configuration, not a code or asset-catalog build failure.
 - Next recommended step:
-  Confirm signing, provisioning, App Group capability setup, and final App Store Connect IAP propagation status, then create a signed Archive and upload Build `1.0 (13)` to TestFlight.
+  Confirm signing, provisioning, App Group capability setup, and final App Store Connect IAP propagation status, then create a signed Archive and upload Build `1.0 (14)` to TestFlight.
 - TestFlight readiness:
   Ready from a code-and-assets perspective, pending signing/provisioning verification, App Store Connect IAP setup, and Archive upload.
 - App Store submission readiness:
@@ -180,7 +182,9 @@
 - Confirm paid gacha purchase buttons only appear when StoreKit products load
 - Confirm StoreKit-unavailable fallback keeps ticket packs visible but disabled
 - If prices do not appear, tap the app version badge in Settings 5 times to open the hidden purchase diagnostics, then confirm requested IDs / loaded IDs / missing IDs
+- If prices appear in USD, use the hidden purchase diagnostics to confirm Storefront country / currency, StoreKit `displayPrice`, and loaded product details before changing any code or App Store pricing
 - Confirm `商品情報を再読み込み` and `購入情報を復元` are visible and calm when products fail to load
+- Confirm prices shown in app match StoreKit and Apple’s confirmation sheet exactly, without any manual currency conversion
 - Confirm odds disclosure is visible before spending paid tickets
 - Confirm ticket purchase copy feels optional and non-predatory
 - Confirm duplicate items convert to local shards as disclosed
@@ -201,6 +205,7 @@
 - Confirm weekly challenge share does not include the private answer by default
 - Confirm preset game communities are browsable and joinable for free
 - Confirm the `みんな` tab clearly explains that participation is free and no public feed exists
+- Confirm the `みんな` tab clearly marks local/demo follow cards and mutual-follow-only DM
 - Confirm the segmented `みんな` layout is easy to scan and no longer feels like one giant scroll
 - Confirm joining and leaving a preset community updates local state correctly
 - Confirm community prompt generation stays stable for the same day / week
@@ -247,6 +252,7 @@
 - Cancelled gacha ticket sandbox purchase
 - Pending purchase behavior
 - Creator Pass restore / entitlement refresh
+- Japanese App Store storefront / non-Japanese storefront comparison if available
 
 ## App privacy answer recommendation
 

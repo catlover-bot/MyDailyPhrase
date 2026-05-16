@@ -2,6 +2,11 @@ import Foundation
 import Domain
 
 public enum SocialSupport {
+    private static let localFollowerPreviewIDs: Set<String> = [
+        "local.profile.minato",
+        "local.profile.sora"
+    ]
+
     public static func demoProfiles() -> [SocialUserProfileSummary] {
         [
             SocialUserProfileSummary(
@@ -120,14 +125,33 @@ public enum SocialSupport {
         return current + [target]
     }
 
+    public static func followerPreviewProfiles(
+        profiles: [SocialUserProfileSummary],
+        blockedUserIDs: Set<String>
+    ) -> [SocialUserProfileSummary] {
+        profiles
+            .filter { localFollowerPreviewIDs.contains($0.id) }
+            .filter { !blockedUserIDs.contains($0.id) }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    public static func mutualFollowUserIDs(
+        followingUserIDs: Set<String>,
+        followerUserIDs: Set<String>
+    ) -> Set<String> {
+        followingUserIDs.intersection(followerUserIDs)
+    }
+
     public static func canUseDirectMessage(
         with profile: SocialUserProfileSummary,
         followingUserIDs: Set<String>,
+        followerUserIDs: Set<String>,
         blockedUserIDs: Set<String>
     ) -> Bool {
         guard ReleaseFeatureAvailability.dmEnabled else { return false }
         guard !blockedUserIDs.contains(profile.id) else { return false }
         guard followingUserIDs.contains(profile.id) else { return false }
+        guard followerUserIDs.contains(profile.id) else { return false }
         return profile.supportsMutualDM
     }
 

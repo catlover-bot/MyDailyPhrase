@@ -1,6 +1,6 @@
 # Social Safety Scope
 
-## Current scope in Build `1.0 (12)`
+## Current scope in Build `1.0 (14)`
 
 `MyDailyPhrase` includes a lightweight social UX layer, but it is intentionally constrained to avoid unsafe public UGC.
 
@@ -8,8 +8,9 @@
 - community participation is free
 - community creation is gated by Creator Pass entitlement
 - public feed, comments, ranking, and open user discovery remain disabled
-- follow recommendations are local/demo-only in this build
+- follow recommendations and follower previews are local/demo-only in this build
 - DM is local/mock-only in this build and does not send messages to a real backend
+- DM requires mutual follow in the local preview model
 
 ## Follow behavior
 
@@ -17,6 +18,7 @@
 - users can block and unblock a profile
 - users can mark a local report flag for a profile
 - blocked profiles are removed from local recommendations
+- follower / mutual-follow cards are local preview only unless a real backend is added later
 - public discovery is disabled by default
 
 User-facing rule:
@@ -32,6 +34,7 @@ User-facing rule:
 - blocked users cannot be DM targets
 - report / block actions are available from the conversation flow
 - current DM persistence is local-only and should not be described as real network messaging
+- diary answers are not auto-inserted into DM
 
 User-facing rules:
 

@@ -76,6 +76,21 @@ struct MonetizationShopSupportTests {
             availability: .partiallyLoaded,
             requestedProductIDs: MonetizationProducts.allProductIDs,
             loadedProductIDs: [MonetizationProducts.gachaTicket10, MonetizationProducts.creatorPassLifetime],
+            loadedProducts: [
+                .init(
+                    productID: MonetizationProducts.gachaTicket10,
+                    displayName: "ガチャチケット10枚",
+                    displayPrice: "$0.99",
+                    currencyCode: "USD",
+                    localeIdentifier: "en_US"
+                )
+            ],
+            storefrontCountryCode: "US",
+            storefrontIdentifier: "143441",
+            storefrontCurrencyCode: "USD",
+            deviceLocaleIdentifier: "ja_JP",
+            deviceCurrencyCode: "JPY",
+            appPreferredLanguages: ["ja"],
             lastStoreKitError: "none",
             lastRefreshText: "2026/05/16 12:00:00",
             lastSyncText: nil,
@@ -88,5 +103,41 @@ struct MonetizationShopSupportTests {
         #expect(snapshot.missingProductIDs.contains(MonetizationProducts.gachaTicket50))
         #expect(snapshot.missingProductIDs.contains(MonetizationProducts.gachaTicket120))
         #expect(!snapshot.missingProductIDs.contains(MonetizationProducts.creatorPassLifetime))
+    }
+
+    @Test("diagnostics report keeps StoreKit display price and storefront info")
+    func diagnosticsReportIncludesDisplayPrice() {
+        let snapshot = MonetizationDiagnosticsSupport.makeSnapshot(
+            availability: .loaded,
+            requestedProductIDs: MonetizationProducts.allProductIDs,
+            loadedProductIDs: [MonetizationProducts.gachaTicket50],
+            loadedProducts: [
+                .init(
+                    productID: MonetizationProducts.gachaTicket50,
+                    displayName: "ガチャチケット50枚",
+                    displayPrice: "$4.99",
+                    currencyCode: "USD",
+                    localeIdentifier: "en_US"
+                )
+            ],
+            storefrontCountryCode: "US",
+            storefrontIdentifier: "143441",
+            storefrontCurrencyCode: "USD",
+            deviceLocaleIdentifier: "ja_JP",
+            deviceCurrencyCode: "JPY",
+            appPreferredLanguages: ["ja"],
+            lastStoreKitError: nil,
+            lastRefreshText: "2026/05/16 12:30:00",
+            lastSyncText: "2026/05/16 12:35:00",
+            creatorPassStatusText: "Creator Pass 未加入",
+            isCreatorPassActive: false
+        )
+
+        let report = MonetizationDiagnosticsSupport.reportText(from: snapshot)
+
+        #expect(report.contains("$4.99"))
+        #expect(report.contains("Storefront通貨: USD"))
+        #expect(report.contains("端末通貨: JPY"))
+        #expect(report.contains("ガチャチケット50枚"))
     }
 }
