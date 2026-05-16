@@ -14,7 +14,15 @@ struct Card<Content: View>: View {
     }
 
     private var style: DecorationStyle {
-        DecorationStyle.from(decorationId ?? envDecorationId)
+        DecorationStyle.from(resolvedDecorationId)
+    }
+
+    private var resolvedDecorationId: String {
+        decorationId ?? envDecorationId
+    }
+
+    private var hasBundledArtwork: Bool {
+        DecorationBundledArtworkCatalog.hasBundledArtwork(for: resolvedDecorationId)
     }
 
     var body: some View {
@@ -39,9 +47,18 @@ struct Card<Content: View>: View {
                     .blendMode(.overlay)
                     .opacity(0.95)
 
-                decorationLayer
+                if hasBundledArtwork {
+                    DecorationBundledArtworkLayer(
+                        decorationId: resolvedDecorationId,
+                        prefersThumbnail: title == nil
+                    )
                     .allowsHitTesting(false)
                     .clipShape(shape)
+                } else {
+                    decorationLayer
+                        .allowsHitTesting(false)
+                        .clipShape(shape)
+                }
             }
         }
         .clipShape(shape)

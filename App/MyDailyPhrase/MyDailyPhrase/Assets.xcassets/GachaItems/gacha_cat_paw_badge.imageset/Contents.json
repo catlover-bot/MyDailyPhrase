@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "gacha_cat_paw_badge.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

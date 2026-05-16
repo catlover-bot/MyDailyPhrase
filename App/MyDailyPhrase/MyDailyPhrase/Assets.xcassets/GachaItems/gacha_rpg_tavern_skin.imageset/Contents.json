@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "gacha_rpg_tavern_skin.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

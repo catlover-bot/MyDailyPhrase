@@ -11,6 +11,7 @@ public extension CardDecorationCatalog {
 
     static func makeItem(for decoration: CardDecoration) -> DecorationItem {
         let type = itemType(for: decoration)
+        let assetReferences = assetReferences(for: decoration)
         return DecorationItem(
             id: decoration.id,
             displayName: decoration.name,
@@ -23,8 +24,10 @@ public extension CardDecorationCatalog {
             profileTitle: profileTitle(for: decoration, type: type),
             shareTemplateName: shareTemplateName(for: decoration, type: type),
             revealPhraseOverride: revealPhraseOverride(for: decoration, type: type),
-            assetName: assetName(for: decoration),
-            thumbnailAssetName: thumbnailAssetName(for: decoration)
+            assetName: assetReferences.assetName,
+            thumbnailAssetName: assetReferences.thumbnailAssetName,
+            backgroundAssetName: assetReferences.backgroundAssetName,
+            frameAssetName: assetReferences.frameAssetName
         )
     }
 
@@ -219,50 +222,39 @@ public extension CardDecorationCatalog {
         }
     }
 
-    private static func assetName(for decoration: CardDecoration) -> String? {
-        switch decoration.id {
-        case "paper":
-            return "gacha_soft_paper"
-        case "sunset":
-            return "gacha_sunset_note"
-        case "sakura":
-            return "gacha_sakura_diary"
-        case "neon":
-            return "gacha_neon_city_card"
-        case "moonlit":
-            return "gacha_moonlit_page"
-        case "stardust":
-            return "gacha_stardust_letter"
-        case "ocean":
-            return "gacha_deep_sea_memo"
-        case "gold":
-            return "gacha_crown_page"
-        case "royal":
-            return "gacha_royal_crest"
-        case "phoenix":
-            return "gacha_phoenix_afterglow"
-        case "season_gold_halo":
-            return "gacha_season_gold_halo"
-        default:
-            return nil
-        }
+    private static func assetReferences(
+        for decoration: CardDecoration
+    ) -> (
+        assetName: String,
+        thumbnailAssetName: String,
+        backgroundAssetName: String,
+        frameAssetName: String
+    ) {
+        let normalized = normalizedAssetToken(for: decoration.id)
+        return (
+            assetName: "gacha_\(normalized)_art",
+            thumbnailAssetName: "gacha_\(normalized)_thumb",
+            backgroundAssetName: "gacha_\(normalized)_bg",
+            frameAssetName: "gacha_\(normalized)_frame"
+        )
     }
 
-    private static func thumbnailAssetName(for decoration: CardDecoration) -> String? {
-        switch decoration.id {
-        case "sunset":
-            return "gacha_sunset_note_thumb"
-        case "sakura":
-            return "gacha_sakura_diary_thumb"
-        case "neon":
-            return "gacha_neon_city_card_thumb"
-        case "stardust":
-            return "gacha_stardust_letter_thumb"
-        case "gold":
-            return "gacha_crown_page_thumb"
-        default:
-            return nil
+    private static func normalizedAssetToken(for raw: String) -> String {
+        let normalized = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
+        let sanitizedScalars = normalized.unicodeScalars.map { scalar -> UnicodeScalar in
+            allowed.contains(scalar) ? scalar : "_"
         }
+        let sanitized = String(String.UnicodeScalarView(sanitizedScalars))
+        let collapsed = sanitized.replacingOccurrences(
+            of: "_+",
+            with: "_",
+            options: .regularExpression
+        )
+        return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
     }
 
     private static func flavorText(

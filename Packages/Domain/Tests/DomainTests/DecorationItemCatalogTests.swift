@@ -56,20 +56,24 @@ struct DecorationItemCatalogTests {
         #expect(items.contains { $0.applicableSurfaces.contains(.communityCard) })
     }
 
-    @Test("representative items expose optional asset placeholders safely")
-    func representativeAssetPlaceholdersExist() throws {
-        let sunset = try #require(CardDecorationCatalog.item(for: "sunset"))
-        let stardust = try #require(CardDecorationCatalog.item(for: "stardust"))
-        let gold = try #require(CardDecorationCatalog.item(for: "gold"))
+    @Test("catalog items expose future bundled artwork names")
+    func catalogItemsExposeBundledArtworkNames() throws {
+        let seasonItem = try #require(CardDecorationCatalog.item(for: "season_gold_halo"))
         let classic = try #require(CardDecorationCatalog.item(for: CardDecorationCatalog.classicId))
 
-        #expect(sunset.assetName == "gacha_sunset_note")
-        #expect(sunset.thumbnailAssetName == "gacha_sunset_note_thumb")
-        #expect(stardust.assetName == "gacha_stardust_letter")
-        #expect(gold.assetName == "gacha_crown_page")
-        #expect(classic.assetName == nil)
-        #expect(CardDecorationCatalog.items.allSatisfy { item in
-            item.assetName == nil || !item.assetName!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        })
+        #expect(CardDecorationCatalog.items.allSatisfy { $0.assetName?.hasPrefix("gacha_") == true })
+        #expect(CardDecorationCatalog.items.allSatisfy { $0.thumbnailAssetName?.hasSuffix("_thumb") == true })
+        #expect(CardDecorationCatalog.items.allSatisfy { $0.backgroundAssetName?.hasSuffix("_bg") == true })
+        #expect(CardDecorationCatalog.items.allSatisfy { $0.frameAssetName?.hasSuffix("_frame") == true })
+
+        #expect(classic.assetName == "gacha_classic_art")
+        #expect(classic.thumbnailAssetName == "gacha_classic_thumb")
+        #expect(classic.backgroundAssetName == "gacha_classic_bg")
+        #expect(classic.frameAssetName == "gacha_classic_frame")
+
+        #expect(seasonItem.assetName == "gacha_season_gold_halo_art")
+        #expect(seasonItem.thumbnailAssetName == "gacha_season_gold_halo_thumb")
+        #expect(seasonItem.backgroundAssetName == "gacha_season_gold_halo_bg")
+        #expect(seasonItem.frameAssetName == "gacha_season_gold_halo_frame")
     }
 }

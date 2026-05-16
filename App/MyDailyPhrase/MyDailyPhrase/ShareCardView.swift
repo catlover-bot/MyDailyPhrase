@@ -77,6 +77,10 @@ struct ShareCardView: View {
         DecorationStyle.from(model.decorationId)
     }
 
+    private var hasBundledArtwork: Bool {
+        DecorationBundledArtworkCatalog.hasBundledArtwork(for: model.decorationId)
+    }
+
     private func colorForMood(_ mood: String) -> Color {
         switch mood {
         case "喜び": return .yellow
@@ -101,10 +105,23 @@ struct ShareCardView: View {
     var body: some View {
         ZStack {
             background
+
+            if hasBundledArtwork {
+                DecorationBundledArtworkLayer(
+                    decorationId: model.decorationId,
+                    imageInset: 24
+                )
+                .allowsHitTesting(false)
+            }
+
             AuraView(colors: auraColors)
+                .opacity(hasBundledArtwork ? 0.22 : 0.4)
                 .allowsHitTesting(false)
-            decorationLayer
-                .allowsHitTesting(false)
+
+            if !hasBundledArtwork {
+                decorationLayer
+                    .allowsHitTesting(false)
+            }
 
             VStack(alignment: .leading, spacing: 14) {
                 header

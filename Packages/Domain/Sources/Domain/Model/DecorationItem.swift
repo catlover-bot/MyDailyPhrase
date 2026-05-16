@@ -72,6 +72,8 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
     public let revealPhraseOverride: String?
     public let assetName: String?
     public let thumbnailAssetName: String?
+    public let backgroundAssetName: String?
+    public let frameAssetName: String?
 
     public init(
         id: String,
@@ -86,7 +88,9 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
         shareTemplateName: String? = nil,
         revealPhraseOverride: String? = nil,
         assetName: String? = nil,
-        thumbnailAssetName: String? = nil
+        thumbnailAssetName: String? = nil,
+        backgroundAssetName: String? = nil,
+        frameAssetName: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -101,6 +105,8 @@ public struct DecorationItem: Identifiable, Codable, Equatable, Sendable {
         self.revealPhraseOverride = revealPhraseOverride
         self.assetName = assetName
         self.thumbnailAssetName = thumbnailAssetName
+        self.backgroundAssetName = backgroundAssetName
+        self.frameAssetName = frameAssetName
     }
 }
 
