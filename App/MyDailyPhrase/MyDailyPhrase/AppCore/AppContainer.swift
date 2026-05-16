@@ -350,6 +350,13 @@ final class AppContainer {
             },
             updateReminderSettings: { snapshot in
                 await reminderManager.update(snapshot: snapshot)
+            },
+            loadDecorationArtworkPreviewState: { [getMyProfile] in
+                let profile = getMyProfile()
+                return Presentation.DecorationArtworkPreviewState(
+                    ownedDecorationIDs: profile.ownedDecorationIds.sorted(),
+                    equippedDecorationID: profile.selectedDecorationId
+                )
             }
         )
     }

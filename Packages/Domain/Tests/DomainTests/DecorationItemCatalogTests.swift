@@ -56,24 +56,31 @@ struct DecorationItemCatalogTests {
         #expect(items.contains { $0.applicableSurfaces.contains(.communityCard) })
     }
 
-    @Test("catalog items expose future bundled artwork names")
-    func catalogItemsExposeBundledArtworkNames() throws {
-        let seasonItem = try #require(CardDecorationCatalog.item(for: "season_gold_halo"))
+    @Test("catalog items map explicit bundled artwork names when available")
+    func catalogItemsMapExplicitBundledArtworkNames() throws {
+        let expectedMappings: [String: String] = [
+            "sunset": "gacha_sunset_note",
+            "sakura": "gacha_sakura_diary",
+            "ocean": "gacha_deepsea_memo",
+            "neon": "gacha_neon_city",
+            "season_gold_halo": "gacha_cat_paw_badge",
+            "obsidian": "gacha_pixel_frame",
+            "forest": "gacha_rpg_tavern_skin",
+            "starlight": "gacha_starfall_effect"
+        ]
+
+        for (decorationID, assetName) in expectedMappings {
+            let item = try #require(CardDecorationCatalog.item(for: decorationID))
+            #expect(item.assetName == assetName)
+            #expect(item.thumbnailAssetName == nil)
+        }
+
         let classic = try #require(CardDecorationCatalog.item(for: CardDecorationCatalog.classicId))
+        let paper = try #require(CardDecorationCatalog.item(for: "paper"))
 
-        #expect(CardDecorationCatalog.items.allSatisfy { $0.assetName?.hasPrefix("gacha_") == true })
-        #expect(CardDecorationCatalog.items.allSatisfy { $0.thumbnailAssetName?.hasSuffix("_thumb") == true })
-        #expect(CardDecorationCatalog.items.allSatisfy { $0.backgroundAssetName?.hasSuffix("_bg") == true })
-        #expect(CardDecorationCatalog.items.allSatisfy { $0.frameAssetName?.hasSuffix("_frame") == true })
-
-        #expect(classic.assetName == "gacha_classic_art")
-        #expect(classic.thumbnailAssetName == "gacha_classic_thumb")
-        #expect(classic.backgroundAssetName == "gacha_classic_bg")
-        #expect(classic.frameAssetName == "gacha_classic_frame")
-
-        #expect(seasonItem.assetName == "gacha_season_gold_halo_art")
-        #expect(seasonItem.thumbnailAssetName == "gacha_season_gold_halo_thumb")
-        #expect(seasonItem.backgroundAssetName == "gacha_season_gold_halo_bg")
-        #expect(seasonItem.frameAssetName == "gacha_season_gold_halo_frame")
+        #expect(classic.assetName == nil)
+        #expect(classic.thumbnailAssetName == nil)
+        #expect(paper.assetName == nil)
+        #expect(!CardDecorationCatalog.items.contains { $0.assetName?.hasSuffix("_art") == true })
     }
 }

@@ -52,6 +52,19 @@ public struct ReminderSettingsSnapshot: Equatable, Sendable {
     }
 }
 
+public struct DecorationArtworkPreviewState: Equatable, Sendable {
+    public var ownedDecorationIDs: [String]
+    public var equippedDecorationID: String?
+
+    public init(
+        ownedDecorationIDs: [String] = [],
+        equippedDecorationID: String? = nil
+    ) {
+        self.ownedDecorationIDs = ownedDecorationIDs
+        self.equippedDecorationID = equippedDecorationID
+    }
+}
+
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var appVersionText: String
@@ -64,10 +77,13 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var reminderAuthorizationStatus: ReminderAuthorizationStatus = .notDetermined
     @Published public private(set) var isUpdatingReminder: Bool = false
     @Published public private(set) var feedbackMessage: String? = nil
+    @Published public private(set) var ownedDecorationIDs: [String] = []
+    @Published public private(set) var equippedDecorationID: String? = nil
 
     private let deleteAllEntries: DeleteAllEntriesUseCase
     private let loadReminderSettings: () async -> ReminderSettingsSnapshot
     private let updateReminderSettings: (ReminderSettingsSnapshot) async -> ReminderSettingsSnapshot
+    private let loadDecorationArtworkPreviewState: () -> DecorationArtworkPreviewState
     private let notificationCenter: NotificationCenter
     private let calendar: Calendar
 
@@ -79,6 +95,9 @@ public final class SettingsViewModel: ObservableObject {
         deleteAllEntries: DeleteAllEntriesUseCase,
         loadReminderSettings: @escaping () async -> ReminderSettingsSnapshot,
         updateReminderSettings: @escaping (ReminderSettingsSnapshot) async -> ReminderSettingsSnapshot,
+        loadDecorationArtworkPreviewState: @escaping () -> DecorationArtworkPreviewState = {
+            DecorationArtworkPreviewState()
+        },
         notificationCenter: NotificationCenter = .default,
         calendar: Calendar = .autoupdatingCurrent
     ) {
@@ -89,12 +108,14 @@ public final class SettingsViewModel: ObservableObject {
         self.deleteAllEntries = deleteAllEntries
         self.loadReminderSettings = loadReminderSettings
         self.updateReminderSettings = updateReminderSettings
+        self.loadDecorationArtworkPreviewState = loadDecorationArtworkPreviewState
         self.notificationCenter = notificationCenter
         self.calendar = calendar
     }
 
     public func load() async {
         apply(await loadReminderSettings())
+        apply(loadDecorationArtworkPreviewState())
     }
 
     public func setReminderEnabled(_ isEnabled: Bool) async {
@@ -158,6 +179,11 @@ public final class SettingsViewModel: ObservableObject {
         reminderAuthorizationStatus = snapshot.authorizationStatus
         reminderAuthorizationText = snapshot.authorizationStatus.description
         reminderTime = Self.makeDisplayDate(hour: snapshot.hour, minute: snapshot.minute, calendar: calendar)
+    }
+
+    private func apply(_ previewState: DecorationArtworkPreviewState) {
+        ownedDecorationIDs = previewState.ownedDecorationIDs
+        equippedDecorationID = previewState.equippedDecorationID
     }
 
     private static func makeDisplayDate(hour: Int, minute: Int, calendar: Calendar) -> Date {

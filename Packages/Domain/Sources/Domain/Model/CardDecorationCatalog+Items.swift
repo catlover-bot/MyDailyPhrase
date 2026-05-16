@@ -25,9 +25,7 @@ public extension CardDecorationCatalog {
             shareTemplateName: shareTemplateName(for: decoration, type: type),
             revealPhraseOverride: revealPhraseOverride(for: decoration, type: type),
             assetName: assetReferences.assetName,
-            thumbnailAssetName: assetReferences.thumbnailAssetName,
-            backgroundAssetName: assetReferences.backgroundAssetName,
-            frameAssetName: assetReferences.frameAssetName
+            thumbnailAssetName: assetReferences.thumbnailAssetName
         )
     }
 
@@ -225,36 +223,29 @@ public extension CardDecorationCatalog {
     private static func assetReferences(
         for decoration: CardDecoration
     ) -> (
-        assetName: String,
-        thumbnailAssetName: String,
-        backgroundAssetName: String,
-        frameAssetName: String
+        assetName: String?,
+        thumbnailAssetName: String?
     ) {
-        let normalized = normalizedAssetToken(for: decoration.id)
-        return (
-            assetName: "gacha_\(normalized)_art",
-            thumbnailAssetName: "gacha_\(normalized)_thumb",
-            backgroundAssetName: "gacha_\(normalized)_bg",
-            frameAssetName: "gacha_\(normalized)_frame"
-        )
-    }
-
-    private static func normalizedAssetToken(for raw: String) -> String {
-        let normalized = raw
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-
-        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
-        let sanitizedScalars = normalized.unicodeScalars.map { scalar -> UnicodeScalar in
-            allowed.contains(scalar) ? scalar : "_"
+        switch decoration.id {
+        case "sunset":
+            return ("gacha_sunset_note", nil)
+        case "sakura":
+            return ("gacha_sakura_diary", nil)
+        case "ocean":
+            return ("gacha_deepsea_memo", nil)
+        case "neon":
+            return ("gacha_neon_city", nil)
+        case "season_gold_halo":
+            return ("gacha_cat_paw_badge", nil)
+        case "obsidian":
+            return ("gacha_pixel_frame", nil)
+        case "forest":
+            return ("gacha_rpg_tavern_skin", nil)
+        case "starlight":
+            return ("gacha_starfall_effect", nil)
+        default:
+            return (nil, nil)
         }
-        let sanitized = String(String.UnicodeScalarView(sanitizedScalars))
-        let collapsed = sanitized.replacingOccurrences(
-            of: "_+",
-            with: "_",
-            options: .regularExpression
-        )
-        return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
     }
 
     private static func flavorText(

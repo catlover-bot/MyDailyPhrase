@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Domain
 import Presentation
 
 struct SettingsView: View {
@@ -207,6 +208,28 @@ struct SettingsView: View {
                     }
                 }
 
+                if showsIAPDiagnostics {
+                    AppSectionCard(
+                        title: "ガチャアート確認",
+                        subtitle: "未所持のアイテムも含めて、assets.xcassets に登録したアートがこの端末で見えているか確認できます。"
+                    ) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("通常のコレクション画面では、所持・未所持の扱いはこれまで通りです。ここではアート確認のために全アイテムを一覧できます。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            ForEach(artworkPreviewItems, id: \.id) { item in
+                                GachaArtworkDiagnosticCard(
+                                    item: item,
+                                    isOwned: vm.ownedDecorationIDs.contains(item.id),
+                                    isEquipped: vm.equippedDecorationID == item.id
+                                )
+                            }
+                        }
+                    }
+                }
+
                 AppSectionCard(
                     title: "データ管理",
                     subtitle: "保存済みの回答と連続記録はこのデバイスにあります。削除すると元に戻せません。"
@@ -281,6 +304,15 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
+    private var artworkPreviewItems: [CardDecoration] {
+        CardDecorationCatalog.all.filter { decoration in
+            guard let item = CardDecorationCatalog.item(for: decoration.id) else {
+                return false
+            }
+            return item.assetName != nil || item.thumbnailAssetName != nil
+        }
+    }
+
     private func diagnosticRow(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -330,5 +362,104 @@ struct SettingsView: View {
             ].joined(separator: "\n")
         }
         .joined(separator: "\n\n")
+    }
+}
+
+private struct GachaArtworkDiagnosticCard: View {
+    let item: CardDecoration
+    let isOwned: Bool
+    let isEquipped: Bool
+
+    private var metadata: DecorationItem {
+        GachaThemePresentation.decorationItem(for: item)
+    }
+
+    private var assetNameText: String {
+        let names = [metadata.assetName, metadata.thumbnailAssetName]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return names.isEmpty ? "未設定" : names.joined(separator: "\n")
+    }
+
+    private var artworkFound: Bool {
+        DecorationBundledArtworkCatalog.hasBundledArtwork(for: item.id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 10) {
+                    titleBlock
+                    Spacer(minLength: 0)
+                    statusBadges
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    titleBlock
+                    statusBadges
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("assetName")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(assetNameText)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            GachaArtworkPreviewPanel(
+                item: item,
+                prefersThumbnail: false,
+                minHeight: 168,
+                cornerRadius: 16
+            )
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.name)
+                .font(.headline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(GachaThemePresentation.itemTypeLabel(for: item))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var statusBadges: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                diagnosticBadge(title: artworkFound ? "画像あり" : "画像未検出", tint: artworkFound ? .green : .orange)
+                if isOwned {
+                    diagnosticBadge(title: "所持", tint: .blue)
+                }
+                if isEquipped {
+                    diagnosticBadge(title: "装備中", tint: item.rarity.previewAccent)
+                }
+            }
+
+            Text(artworkFound ? "この端末で画像が見つかりました" : "画像が見つからない場合は SwiftUI のフォールバック表示になります")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func diagnosticBadge(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.14), in: Capsule())
+            .foregroundStyle(tint)
     }
 }
