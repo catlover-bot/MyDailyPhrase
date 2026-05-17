@@ -1,98 +1,101 @@
 # Gacha Asset Guide
 
-This build prepares `MyDailyPhrase` gacha rewards for optional PNG/PDF artwork.
+Build 18 時点のガチャアート参照ルールです。
 
-No image files are required yet.
-If an item has no matching asset, the app falls back to the existing SwiftUI-generated preview.
+現在のアプリは、画像がなくても必ず SwiftUI フォールバックで表示できます。
+`assetName` は「画像があれば使う」ための任意設定で、画像未登録でもクラッシュしません。
 
-## Recommended asset path
+## Recommended Asset Path
 
-Store future gacha artwork under:
+アートは次の配下に置きます。
 
 `App/MyDailyPhrase/MyDailyPhrase/Assets.xcassets/GachaItems/`
 
-Suggested structure:
+推奨構成:
 
 - `Assets.xcassets/GachaItems/gacha_sunset_note.imageset`
-- `Assets.xcassets/GachaItems/gacha_sunset_note_thumb.imageset`
+- `Assets.xcassets/GachaItems/gacha_sakura_diary.imageset`
 
-## File recommendations
+## File Recommendations
 
-- PNG:
-  `1024x1024`
-- PDF:
-  vector icons only
+- PNG: `1024x1024`
+- PDF: ベクター向きのシンプルなアイコンのみ
 
-Use PNG for full decorative artwork and PDF only for simple icon-style assets that benefit from vector scaling.
+基本は PNG を推奨します。
+バッジや紋章のような単純図形だけ、必要に応じてベクター PDF を使います。
 
-## Naming convention
+## Naming Convention
 
-Use lowercase snake_case names.
+`lowercase snake_case`
 
-Examples:
+例:
 
 - `gacha_sunset_note`
-- `gacha_sunset_note_thumb`
-- `gacha_stardust_letter`
-- `gacha_crown_page`
+- `gacha_pixel_frame`
+- `gacha_rpg_tavern_skin`
+- `gacha_crown_paper`
 
-## Model fields
+## Model Fields
 
-`DecorationItem` now supports:
+`DecorationItem` では次を使えます。
 
 - `assetName: String?`
 - `thumbnailAssetName: String?`
 
-Usage:
+使い分け:
 
-- `assetName`:
-  full artwork for result/detail previews
-- `thumbnailAssetName`:
-  optional smaller artwork for collection tiles
+- `assetName`: 結果画面や詳細画面向けの通常アート
+- `thumbnailAssetName`: コレクションの小さめサムネイル用
 
-If `thumbnailAssetName` is `nil`, the UI falls back to `assetName`.
-If both are `nil` or the asset does not exist, the UI falls back to the existing generated preview.
+現在は 8 件とも `thumbnailAssetName == nil` です。
+将来サムネイルが必要になったら、別 imageset を追加できます。
 
-## Current representative mappings
+## Current Exact Mappings
 
-The current code adds placeholder asset names for representative items only.
-These names do not require files to exist yet.
+現時点でコードに明示登録されているアート参照は次の 8 件です。
 
-| Item ID | Display Name | assetName | thumbnailAssetName |
-| --- | --- | --- | --- |
-| `paper` | やわらか紙面 | `gacha_soft_paper` | `nil` |
-| `sunset` | 夕焼けノート | `gacha_sunset_note` | `gacha_sunset_note_thumb` |
-| `sakura` | 桜の日記帳 | `gacha_sakura_diary` | `gacha_sakura_diary_thumb` |
-| `neon` | ネオンシティ | `gacha_neon_city_card` | `gacha_neon_city_card_thumb` |
-| `moonlit` | 月夜のページ | `gacha_moonlit_page` | `nil` |
-| `stardust` | 星屑レター | `gacha_stardust_letter` | `gacha_stardust_letter_thumb` |
-| `ocean` | 深海メモ | `gacha_deep_sea_memo` | `nil` |
-| `gold` | 王冠の紙面 | `gacha_crown_page` | `gacha_crown_page_thumb` |
-| `royal` | 王室の記章 | `gacha_royal_crest` | `nil` |
-| `phoenix` | 不死鳥の余韻 | `gacha_phoenix_afterglow` | `nil` |
-| `season_gold_halo` | 光輪の印 | `gacha_season_gold_halo` | `nil` |
+| Item ID | Display Name | assetName | thumbnailAssetName | Status |
+| --- | --- | --- | --- | --- |
+| `sunset` | 夕焼けノート | `gacha_sunset_note` | `nil` | available |
+| `sakura` | 桜の日記帳 | `gacha_sakura_diary` | `nil` | available |
+| `ocean` | 深海メモ | `gacha_deepsea_memo` | `nil` | available |
+| `neon` | ネオンシティ | `gacha_neon_city` | `nil` | available |
+| `season_gold_halo` | 光輪の印 | `gacha_cat_paw_badge` | `nil` | available |
+| `obsidian` | 黒曜石フレーム | `gacha_pixel_frame` | `nil` | available |
+| `forest` | 森のカード | `gacha_rpg_tavern_skin` | `nil` | available |
+| `starlight` | 星明かりカード | `gacha_starfall_effect` | `nil` | available |
 
-All other items currently keep `assetName == nil` until artwork is ready.
+それ以外のアイテムは、まだ `assetName == nil` のままです。
+将来の候補名は [gacha-artwork-backlog.md](./gacha-artwork-backlog.md) に整理しています。
 
-## UI behavior
+## Fallback Behavior
 
-If `assetName` exists, these surfaces attempt to render artwork:
+UI は次の順で表示を試みます。
 
-- gacha result screen
-- collection tiles
-- gacha item detail preview
+1. コレクション系の小サイズ表示では `thumbnailAssetName`
+2. なければ `assetName`
+3. どちらも未設定、または画像が存在しなければ SwiftUI フォールバック
 
-Safe fallback behavior:
+つまり、次のどちらでも安全です。
 
-1. Try `thumbnailAssetName` for collection tiles when available.
-2. Otherwise try `assetName`.
-3. If the asset is missing, show the current SwiftUI-generated preview.
+- `assetName == nil`
+- `assetName` はあるが画像ファイルがまだ未追加
 
-Missing assets must never crash the app.
+どちらの場合も、空白やクラッシュではなくフォールバック表示になります。
 
-## Adding a new item asset later
+## Where Artwork Appears
 
-1. Add the image set to `Assets.xcassets/GachaItems/`.
-2. Use the final asset name in `CardDecorationCatalog+Items.swift`.
-3. Optionally add a thumbnail asset and set `thumbnailAssetName`.
-4. Run the Release build and package tests again.
+アートがある場合、主に次の場所で使われます。
+
+- ガチャ結果画面のヒーローカード
+- コレクションタイル
+- ガチャアイテム詳細
+- 非公開の `ガチャアート確認` QA 画面
+
+## Adding More Artwork Later
+
+1. `Assets.xcassets/GachaItems/` に `.imageset` を追加
+2. imageset 名を `assetName` と一致させる
+3. 必要なら `thumbnailAssetName` も追加
+4. Release build と package test を再実行
+5. 非公開 `ガチャアート確認` 画面で表示確認

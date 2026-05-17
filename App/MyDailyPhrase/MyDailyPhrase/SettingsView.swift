@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var showsIAPDiagnostics = false
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
+    @State private var artworkPrimaryFilter: GachaArtworkQAPrimaryFilter = .all
+    @State private var artworkRarityFilter: GachaArtworkQARarityFilter = .all
+    @State private var artworkTypeFilter: GachaArtworkQATypeFilter = .all
 
     init(viewModel: SettingsViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
@@ -219,12 +222,31 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            ForEach(artworkPreviewItems, id: \.id) { item in
-                                GachaArtworkDiagnosticCard(
-                                    item: item,
-                                    isOwned: vm.ownedDecorationIDs.contains(item.id),
-                                    isEquipped: vm.equippedDecorationID == item.id
-                                )
+                            artworkPrimaryFilterChips
+
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 10) {
+                                    artworkRarityPicker
+                                    artworkTypePicker
+                                }
+
+                                VStack(spacing: 10) {
+                                    artworkRarityPicker
+                                    artworkTypePicker
+                                }
+                            }
+
+                            ForEach(Array(artworkRowSections.enumerated()), id: \.offset) { _, section in
+                                if !section.rows.isEmpty {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text("\(section.title) (\(section.rows.count))")
+                                            .font(.subheadline.weight(.semibold))
+
+                                        ForEach(section.rows) { row in
+                                            GachaArtworkDiagnosticCard(row: row)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -304,13 +326,85 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private var artworkPreviewItems: [CardDecoration] {
-        CardDecorationCatalog.all.filter { decoration in
-            guard let item = CardDecorationCatalog.item(for: decoration.id) else {
-                return false
+    private var artworkAllRows: [GachaArtworkQAItemRow] {
+        GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set(vm.ownedDecorationIDs),
+            equippedDecorationID: vm.equippedDecorationID,
+            hasBundledArtwork: { decorationID in
+                DecorationBundledArtworkCatalog.hasBundledArtwork(for: decorationID)
             }
-            return item.assetName != nil || item.thumbnailAssetName != nil
+        )
+    }
+
+    private var filteredArtworkRows: [GachaArtworkQAItemRow] {
+        GachaArtworkQASupport.filteredRows(
+            from: artworkAllRows,
+            primaryFilter: artworkPrimaryFilter,
+            rarityFilter: artworkRarityFilter,
+            typeFilter: artworkTypeFilter
+        )
+    }
+
+    private var artworkRowSections: [(title: String, rows: [GachaArtworkQAItemRow])] {
+        if artworkPrimaryFilter == .all,
+           artworkRarityFilter == .all,
+           artworkTypeFilter == .all {
+            let order: [GachaArtworkQAAssetStatus] = [.available, .mappedMissing, .fallbackOnly]
+            return order.compactMap { status in
+                let rows = filteredArtworkRows.filter { $0.assetStatus == status }
+                guard !rows.isEmpty else { return nil }
+                return (status.label, rows)
+            }
         }
+
+        return [(artworkPrimaryFilter.rawValue, filteredArtworkRows)]
+    }
+
+    private var artworkPrimaryFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(GachaArtworkQAPrimaryFilter.allCases) { filter in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            artworkPrimaryFilter = filter
+                        }
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                artworkPrimaryFilter == filter
+                                ? Color.accentColor.opacity(0.16)
+                                : Color(uiColor: .secondarySystemBackground),
+                                in: Capsule()
+                            )
+                            .foregroundStyle(artworkPrimaryFilter == filter ? Color.accentColor : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var artworkRarityPicker: some View {
+        Picker("レアリティ", selection: $artworkRarityFilter) {
+            ForEach(GachaArtworkQARarityFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var artworkTypePicker: some View {
+        Picker("種類", selection: $artworkTypeFilter) {
+            ForEach(GachaArtworkQATypeFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
     }
 
     private func diagnosticRow(title: String, value: String) -> some View {
@@ -366,29 +460,23 @@ struct SettingsView: View {
 }
 
 private struct GachaArtworkDiagnosticCard: View {
-    let item: CardDecoration
-    let isOwned: Bool
-    let isEquipped: Bool
+    let row: GachaArtworkQAItemRow
 
-    private var metadata: DecorationItem {
-        GachaThemePresentation.decorationItem(for: item)
+    private var item: CardDecoration? {
+        CardDecorationCatalog.byId(row.id)
     }
 
     private var assetNameText: String {
-        let names = [metadata.assetName, metadata.thumbnailAssetName]
+        let names = [row.assetName, row.thumbnailAssetName]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return names.isEmpty ? "未設定" : names.joined(separator: "\n")
     }
 
-    private var artworkFound: Bool {
-        DecorationBundledArtworkCatalog.hasBundledArtwork(for: item.id)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
                     titleBlock
                     Spacer(minLength: 0)
                     statusBadges
@@ -400,8 +488,17 @@ private struct GachaArtworkDiagnosticCard: View {
                 }
             }
 
+            if let item {
+                GachaArtworkView(
+                    item: item,
+                    displayMode: .diagnostics
+                )
+            }
+
+            metadataGrid
+
             VStack(alignment: .leading, spacing: 4) {
-                Text("assetName")
+                Text("assetName / thumbnailAssetName")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -411,12 +508,14 @@ private struct GachaArtworkDiagnosticCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            GachaArtworkPreviewPanel(
-                item: item,
-                prefersThumbnail: false,
-                minHeight: 168,
-                cornerRadius: 16
-            )
+            if !row.applicableSurfaceLabels.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("使える場所")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    FlexibleSurfaceChips(labels: row.applicableSurfaceLabels)
+                }
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -425,32 +524,78 @@ private struct GachaArtworkDiagnosticCard: View {
 
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(item.name)
+            Text(row.displayName)
                 .font(.headline.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(GachaThemePresentation.itemTypeLabel(for: item))
-                .font(.caption)
+            Text(row.id)
+                .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
     }
 
     private var statusBadges: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                diagnosticBadge(title: artworkFound ? "画像あり" : "画像未検出", tint: artworkFound ? .green : .orange)
-                if isOwned {
+                diagnosticBadge(title: row.assetStatus.label, tint: statusTint)
+                if row.isOwned {
                     diagnosticBadge(title: "所持", tint: .blue)
                 }
-                if isEquipped {
-                    diagnosticBadge(title: "装備中", tint: item.rarity.previewAccent)
+                if row.isEquipped {
+                    diagnosticBadge(title: "装備中", tint: .green)
                 }
             }
 
-            Text(artworkFound ? "この端末で画像が見つかりました" : "画像が見つからない場合は SwiftUI のフォールバック表示になります")
+            Text(statusDescription)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var metadataGrid: some View {
+        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], alignment: .leading, spacing: 10) {
+            metadataCell(title: "レアリティ", value: row.rarityLabel)
+            metadataCell(title: "重み", value: "\(row.weight)")
+            metadataCell(title: "種類", value: row.itemTypeLabel)
+            metadataCell(title: "排出対象", value: row.isInNormalGachaPool ? "はい" : "いいえ")
+            metadataCell(title: "季節限定", value: row.isSeasonLimited ? "はい" : "いいえ")
+            metadataCell(title: "状態", value: row.isOwned ? (row.isEquipped ? "所持 / 装備中" : "所持") : "未所持")
+        }
+    }
+
+    private func metadataCell(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statusTint: Color {
+        switch row.assetStatus {
+        case .available:
+            return .green
+        case .mappedMissing:
+            return .orange
+        case .fallbackOnly:
+            return .secondary
+        }
+    }
+
+    private var statusDescription: String {
+        switch row.assetStatus {
+        case .available:
+            return "この端末で画像が見つかりました。"
+        case .mappedMissing:
+            return "assetName はありますが、画像が見つからないためフォールバック表示になります。"
+        case .fallbackOnly:
+            return "まだ画像参照はなく、SwiftUI のフォールバック表示を使います。"
         }
     }
 

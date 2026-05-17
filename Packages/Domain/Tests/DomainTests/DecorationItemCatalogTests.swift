@@ -81,6 +81,20 @@ struct DecorationItemCatalogTests {
         #expect(classic.assetName == nil)
         #expect(classic.thumbnailAssetName == nil)
         #expect(paper.assetName == nil)
+        #expect(CardDecorationCatalog.items.filter { $0.assetName != nil }.count == expectedMappings.count)
         #expect(!CardDecorationCatalog.items.contains { $0.assetName?.hasSuffix("_art") == true })
+    }
+
+    @Test("every catalog entry has a corresponding inventory item")
+    func everyCatalogEntryHasInventoryMetadata() {
+        #expect(CardDecorationCatalog.items.count == CardDecorationCatalog.all.count)
+        #expect(Set(CardDecorationCatalog.items.map(\.id)).count == CardDecorationCatalog.all.count)
+    }
+
+    @Test("normal gacha pool excludes classic and season limited zero weight items")
+    func normalPoolExcludesClassicAndSeasonLimitedZeroWeightItems() {
+        #expect(!CardDecorationCatalog.pool.contains { $0.id == CardDecorationCatalog.classicId })
+        #expect(!CardDecorationCatalog.pool.contains { CardDecorationCatalog.isSeasonLimited($0.id) })
+        #expect(CardDecorationCatalog.pool.allSatisfy { $0.weight > 0 })
     }
 }

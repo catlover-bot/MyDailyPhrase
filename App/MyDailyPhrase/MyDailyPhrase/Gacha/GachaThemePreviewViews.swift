@@ -87,10 +87,9 @@ struct GachaThemePreviewContent: View {
                     }
                 }
 
-                GachaArtworkPreviewPanel(
+                GachaArtworkView(
                     item: item,
-                    prefersThumbnail: false,
-                    minHeight: 212
+                    displayMode: .detail
                 )
             }
         }
@@ -295,12 +294,97 @@ struct GachaThemePreviewContent: View {
     }
 }
 
-struct GachaArtworkPreviewPanel: View {
+struct GachaArtworkView: View {
+    enum DisplayMode {
+        case thumbnail
+        case collectionTile
+        case detail
+        case resultHero
+        case diagnostics
+        case backgroundAccent
+
+        var maxHeight: CGFloat {
+            switch self {
+            case .thumbnail:
+                return 72
+            case .collectionTile:
+                return 104
+            case .detail:
+                return 156
+            case .resultHero:
+                return 248
+            case .diagnostics:
+                return 144
+            case .backgroundAccent:
+                return 120
+            }
+        }
+
+        var cornerRadius: CGFloat {
+            switch self {
+            case .thumbnail:
+                return 12
+            case .collectionTile:
+                return 16
+            case .detail:
+                return 18
+            case .resultHero:
+                return 22
+            case .diagnostics:
+                return 16
+            case .backgroundAccent:
+                return 18
+            }
+        }
+
+        var contentPadding: CGFloat {
+            switch self {
+            case .thumbnail:
+                return 10
+            case .collectionTile:
+                return 12
+            case .detail:
+                return 16
+            case .resultHero:
+                return 18
+            case .diagnostics:
+                return 14
+            case .backgroundAccent:
+                return 14
+            }
+        }
+
+        var prefersThumbnail: Bool {
+            switch self {
+            case .thumbnail, .collectionTile:
+                return true
+            case .detail, .resultHero, .diagnostics, .backgroundAccent:
+                return false
+            }
+        }
+
+        var symbolSize: CGFloat {
+            switch self {
+            case .thumbnail:
+                return 22
+            case .collectionTile:
+                return 26
+            case .detail:
+                return 34
+            case .resultHero:
+                return 42
+            case .diagnostics:
+                return 30
+            case .backgroundAccent:
+                return 28
+            }
+        }
+    }
+
     let item: CardDecoration
-    let prefersThumbnail: Bool
-    let minHeight: CGFloat
-    var cornerRadius: CGFloat = 18
-    var showsCaption: Bool = true
+    let displayMode: DisplayMode
+    var customMaxHeight: CGFloat? = nil
+    var customCornerRadius: CGFloat? = nil
 
     private var metadata: DecorationItem {
         GachaThemePresentation.decorationItem(for: item)
@@ -316,7 +400,7 @@ struct GachaArtworkPreviewPanel: View {
 
     private var preferredAssetNames: [String] {
         let candidates: [String?]
-        if prefersThumbnail {
+        if displayMode.prefersThumbnail {
             candidates = [metadata.thumbnailAssetName, metadata.assetName]
         } else {
             candidates = [metadata.assetName, metadata.thumbnailAssetName]
@@ -330,7 +414,7 @@ struct GachaArtworkPreviewPanel: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(backgroundGradient)
 
@@ -338,20 +422,17 @@ struct GachaArtworkPreviewPanel: View {
                 Image(uiImage: resolvedImage)
                     .resizable()
                     .scaledToFit()
+                    .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(16)
+                    .padding(displayMode.contentPadding)
             } else {
                 fallbackArtwork
-                    .padding(16)
-            }
-
-            if showsCaption {
-                caption
-                    .padding(12)
+                    .padding(displayMode.contentPadding)
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: minHeight)
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxHeight: maxHeight)
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .stroke(item.rarity.previewAccent.opacity(0.14), lineWidth: 1)
@@ -372,62 +453,16 @@ struct GachaArtworkPreviewPanel: View {
     }
 
     private var fallbackArtwork: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(GachaThemePresentation.itemTypeLabel(for: item))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(item.rarity.previewAccent)
-                    Text(item.name)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+        ZStack {
+            Circle()
+                .fill(item.rarity.previewAccent.opacity(0.10))
+                .frame(width: displayMode.symbolSize * 2.1, height: displayMode.symbolSize * 2.1)
 
-                Spacer(minLength: 0)
-
-                Image(systemName: symbolName)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(item.rarity.previewAccent)
-            }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 8) {
-                GachaRarityBadge(rarity: item.rarity)
-                if prefersThumbnail {
-                    Text("画像準備前プレビュー")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                }
-            }
+            Image(systemName: symbolName)
+                .font(.system(size: displayMode.symbolSize, weight: .semibold))
+                .foregroundStyle(item.rarity.previewAccent)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    private var caption: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if resolvedImage != nil {
-                Text("アートワークを表示")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("画像未追加でもこのまま使えます")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(item.name)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var symbolName: String {
@@ -456,9 +491,17 @@ struct GachaArtworkPreviewPanel: View {
             return "circle.hexagongrid.fill"
         }
     }
+
+    private var cornerRadius: CGFloat {
+        customCornerRadius ?? displayMode.cornerRadius
+    }
+
+    private var maxHeight: CGFloat {
+        customMaxHeight ?? displayMode.maxHeight
+    }
 }
 
-private struct FlexibleSurfaceChips: View {
+struct FlexibleSurfaceChips: View {
     let labels: [String]
 
     var body: some View {
@@ -501,12 +544,9 @@ struct GachaCollectionTile: View {
                             }
                         }
 
-                        GachaArtworkPreviewPanel(
+                        GachaArtworkView(
                             item: item,
-                            prefersThumbnail: true,
-                            minHeight: 84,
-                            cornerRadius: 14,
-                            showsCaption: false
+                            displayMode: .collectionTile
                         )
 
                         Text(item.name)
@@ -521,7 +561,6 @@ struct GachaCollectionTile: View {
                             .multilineTextAlignment(.leading)
                     }
                 }
-                .frame(height: 214)
                 .opacity(isOwned ? 1.0 : 0.72)
 
                 HStack(alignment: .center, spacing: 8) {
