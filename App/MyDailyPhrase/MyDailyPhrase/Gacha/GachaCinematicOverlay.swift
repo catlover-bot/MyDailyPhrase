@@ -551,34 +551,46 @@ private struct FlipRevealCard: View {
 
             Group {
                 if flipped {
-                    Card(nil, decorationId: item.id) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text(item.name)
-                                    .font(.title3.weight(.bold))
-                                Spacer()
-                                if isNew {
-                                    Text("NEW")
-                                        .font(.caption.weight(.bold))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(.thinMaterial)
-                                        .clipShape(Capsule())
-                                }
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(item.name)
+                                .font(.title3.weight(.bold))
+                            Spacer()
+                            if isNew {
+                                Text("NEW")
+                                    .font(.caption.weight(.bold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(.thinMaterial)
+                                    .clipShape(Capsule())
                             }
-
-                            GachaRarityBadge(rarity: item.rarity)
-
-                            Text(GachaThemePresentation.flavorText(for: item))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-
-                            Text("タップでスキップ")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
                         }
+
+                        GachaArtworkView(
+                            item: item,
+                            displayMode: .decorativeAccent,
+                            customMaxHeight: 116,
+                            customCornerRadius: 18
+                        )
+
+                        GachaRarityBadge(rarity: item.rarity)
+
+                        Text(GachaThemePresentation.flavorText(for: item))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+
+                        Text("タップでスキップ")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    )
                 } else {
                     Card("???", decorationId: nil) {
                         Text("開封…")
@@ -643,7 +655,9 @@ struct GachaResultDetailScreen: View {
                                 isOwned: true,
                                 isEquipped: equippedDecorationId == selectedItem.id,
                                 profileDisplayName: profileDisplayName,
-                                showsHeroCard: false
+                                showsHeroCard: false,
+                                showsSummaryCard: false,
+                                showsUsageCard: false
                             )
                             .id("result_preview_\(selectedItem.id)_\(equippedDecorationId)")
                             .transition(
@@ -674,7 +688,7 @@ struct GachaResultDetailScreen: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 14)
-                    .padding(.bottom, 180)
+                    .padding(.bottom, 220)
                 }
                 .scrollIndicators(.hidden)
             }
@@ -725,62 +739,70 @@ struct GachaResultDetailScreen: View {
     }
 
     private func heroSection(for item: CardDecoration) -> some View {
-        PageHeroCard(
-            eyebrow: "ガチャ結果",
-            title: item.name,
-            subtitle: GachaThemePresentation.flavorText(for: item),
-            accent: item.rarity.previewAccent
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
+            AppSectionCard(
+                title: "画像プレビュー",
+                subtitle: "このアイテムの見た目です。"
+            ) {
                 GachaArtworkView(
                     item: item,
                     displayMode: .resultHero
                 )
+            }
 
-                Card(nil, decorationId: item.id) {
-                    VStack(alignment: .leading, spacing: 12) {
+            AppSectionCard(
+                title: item.name,
+                subtitle: GachaThemePresentation.revealPhrase(for: item)
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ViewThatFits(in: .horizontal) {
                         HStack(alignment: .top, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(GachaThemePresentation.revealPhrase(for: item))
-                                    .font(.headline.weight(.bold))
-                                    .fixedSize(horizontal: false, vertical: true)
-
-                                Text(GachaThemePresentation.revealPhrase(for: item.rarity))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer(minLength: 0)
-
-                            VStack(alignment: .trailing, spacing: 8) {
+                            HStack(spacing: 8) {
                                 stateBadge(for: item)
                                 typeBadge(for: item)
                             }
+                            Spacer(minLength: 0)
+                            GachaRarityBadge(rarity: item.rarity)
                         }
 
-                        surfaceChipGrid(labels: GachaThemePresentation.applicableSurfaceLabels(for: item))
-                    }
-                }
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        summaryChip(
-                            title: "NEW",
-                            value: summary.newIds.contains(item.id) ? "はい" : "既所持",
-                            tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
-                        )
-                        summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
-                        summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                stateBadge(for: item)
+                                typeBadge(for: item)
+                            }
+                            GachaRarityBadge(rarity: item.rarity)
+                        }
                     }
 
-                    VStack(spacing: 10) {
-                        summaryChip(
-                            title: "NEW",
-                            value: summary.newIds.contains(item.id) ? "はい" : "既所持",
-                            tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
-                        )
-                        summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
-                        summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                    Text(GachaThemePresentation.flavorText(for: item))
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("装備できる場所")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    surfaceChipGrid(labels: GachaThemePresentation.applicableSurfaceLabels(for: item))
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            summaryChip(
+                                title: "NEW",
+                                value: summary.newIds.contains(item.id) ? "はい" : "既所持",
+                                tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
+                            )
+                            summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
+                            summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                        }
+
+                        VStack(spacing: 10) {
+                            summaryChip(
+                                title: "NEW",
+                                value: summary.newIds.contains(item.id) ? "はい" : "既所持",
+                                tint: summary.newIds.contains(item.id) ? item.rarity.previewAccent : .secondary
+                            )
+                            summaryChip(title: "欠片", value: "+\(summary.shardsGained)", tint: .orange)
+                            summaryChip(title: "天井", value: "\(summary.pityAfter)/\(pityMax)", tint: .blue)
+                        }
                     }
                 }
             }
@@ -995,28 +1017,36 @@ private struct MiniResultCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            Card(nil, decorationId: item.id) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Circle()
-                            .fill(accent.opacity(0.7))
-                            .frame(width: 6, height: 6)
-                        Text(item.name)
-                            .fontWeight(.semibold)
-                            .lineLimit(1)
-                        Spacer()
-                        if isNew { Image(systemName: "sparkles") }
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                GachaArtworkView(
+                    item: item,
+                    displayMode: .thumbnail,
+                    customMaxHeight: 64,
+                    customCornerRadius: 14
+                )
 
-                    Text(GachaThemePresentation.rarityLabel(for: item.rarity))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text(isNew ? "NEW" : "所持済み")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                HStack {
+                    Circle()
+                        .fill(accent.opacity(0.7))
+                        .frame(width: 6, height: 6)
+                    Text(item.name)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    Spacer()
+                    if isNew { Image(systemName: "sparkles") }
                 }
+
+                Text(GachaThemePresentation.rarityLabel(for: item.rarity))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(isNew ? "NEW" : "所持済み")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(isSelected ? accent.opacity(0.95) : .white.opacity(0.08), lineWidth: isSelected ? 2 : 1)

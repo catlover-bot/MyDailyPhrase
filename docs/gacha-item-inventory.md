@@ -1,6 +1,6 @@
 # Gacha Item Inventory
 
-Build 18 時点の `CardDecorationCatalog.all` 全件一覧です。
+Build 19 時点の `CardDecorationCatalog.all` 全件一覧です。
 
 ## Summary
 

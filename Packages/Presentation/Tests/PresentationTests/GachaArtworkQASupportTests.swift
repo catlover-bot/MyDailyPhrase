@@ -53,4 +53,30 @@ struct GachaArtworkQASupportTests {
         #expect(filtered.count == 2)
         #expect(filtered.allSatisfy { $0.assetStatus == .available })
     }
+
+    @Test("available artwork rows keep readable metadata")
+    func availableArtworkRowsKeepMetadata() {
+        let mappedIDs: Set<String> = [
+            "sunset",
+            "sakura",
+            "ocean",
+            "neon",
+            "season_gold_halo",
+            "obsidian",
+            "forest",
+            "starlight"
+        ]
+
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { mappedIDs.contains($0) }
+        )
+
+        let available = rows.filter { $0.assetStatus == .available }
+        #expect(available.count == 8)
+        #expect(available.allSatisfy { !$0.displayName.isEmpty })
+        #expect(available.allSatisfy { !$0.itemTypeLabel.isEmpty })
+        #expect(available.allSatisfy { !$0.applicableSurfaceLabels.isEmpty })
+    }
 }

@@ -477,25 +477,37 @@ private struct GachaArtworkDiagnosticCard: View {
         VStack(alignment: .leading, spacing: 14) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 12) {
-                    titleBlock
+                    if let item {
+                        GachaArtworkView(
+                            item: item,
+                            displayMode: .diagnostics
+                        )
+                        .frame(width: 132, height: 132)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        titleBlock
+                        statusBadges
+                        metadataGrid
+                    }
+
                     Spacer(minLength: 0)
-                    statusBadges
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    if let item {
+                        GachaArtworkView(
+                            item: item,
+                            displayMode: .diagnostics
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+
                     titleBlock
                     statusBadges
+                    metadataGrid
                 }
             }
-
-            if let item {
-                GachaArtworkView(
-                    item: item,
-                    displayMode: .diagnostics
-                )
-            }
-
-            metadataGrid
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("assetName / thumbnailAssetName")
