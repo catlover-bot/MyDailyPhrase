@@ -658,8 +658,8 @@ struct GachaResultDetailScreen: View {
                                 profileDisplayName: profileDisplayName,
                                 showsHeroCard: false,
                                 showsSummaryCard: false,
-                                showsUsageCard: false,
-                                previewSurfaceLimit: 2
+                                showsUsageCard: true,
+                                previewSurfaceLimit: 1
                             )
                             .id("result_preview_\(selectedItem.id)_\(equippedDecorationId)")
                             .transition(

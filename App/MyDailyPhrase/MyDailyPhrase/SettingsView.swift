@@ -506,6 +506,8 @@ struct SettingsView: View {
                 "name: \(row.displayName)",
                 "rarity: \(row.rarityLabel)",
                 "type: \(row.itemTypeLabel)",
+                "primaryPreview: \(row.primaryPreviewSurfaceLabel)",
+                "usageSummary: \(row.usageSummary)",
                 "status: \(row.assetStatus.label)",
                 "assetName: \(row.assetName ?? "none")",
                 "thumbnailAssetName: \(row.thumbnailAssetName ?? "none")",
@@ -643,6 +645,16 @@ private struct GachaArtworkDiagnosticCard: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("使われ方")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("\(row.primaryPreviewSurfaceLabel) / \(row.usageSummary)")
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 if !row.applicableSurfaceLabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("使える場所")
@@ -753,6 +765,8 @@ private struct GachaArtworkDiagnosticCard: View {
             "displayName: \(row.displayName)",
             "rarity: \(row.rarityLabel)",
             "itemType: \(row.itemTypeLabel)",
+            "primaryPreview: \(row.primaryPreviewSurfaceLabel)",
+            "usageSummary: \(row.usageSummary)",
             "assetStatus: \(row.assetStatus.label)",
             "assetName: \(row.assetName ?? "none")",
             "thumbnailAssetName: \(row.thumbnailAssetName ?? "none")",

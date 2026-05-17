@@ -18,6 +18,10 @@ struct GachaThemePreviewContent: View {
         GachaThemePresentation.ownershipState(isOwned: isOwned, isEquipped: isEquipped)
     }
 
+    private var metadata: DecorationItem {
+        GachaThemePresentation.decorationItem(for: item)
+    }
+
     private var previewSurfaces: [DecorationSurface] {
         GachaThemePresentation.orderedUsagePreviewSurfaces(for: item)
     }
@@ -87,6 +91,11 @@ struct GachaThemePreviewContent: View {
                     text: isOwned ? "コレクション登録済み x\(max(1, ownedCount))" : "コレクション未登録"
                 )
 
+                Text(GachaThemePresentation.previewLeadText(for: item))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Text(GachaThemePresentation.compactUsageSummary(for: item))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -105,6 +114,11 @@ struct GachaThemePreviewContent: View {
             subtitle: "このアイテムは以下の画面で見た目に反映できます。"
         ) {
             VStack(alignment: .leading, spacing: 10) {
+                Text(GachaThemePresentation.previewLeadText(for: item))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Text(GachaThemePresentation.usageText(for: item))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -142,68 +156,6 @@ struct GachaThemePreviewContent: View {
         }
     }
 
-    private func readablePreviewCard<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        AppSectionCard(
-            title: title,
-            subtitle: subtitle
-        ) {
-            VStack(alignment: .leading, spacing: 12) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: 12) {
-                        GachaArtworkView(
-                            item: item,
-                            displayMode: .decorativeAccent
-                        )
-                        .frame(width: 72, height: 72)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("このアイテムの見た目")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-
-                            Text("実際のカードでは、文字が読みやすいように控えめに反映されます。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        GachaArtworkView(
-                            item: item,
-                            displayMode: .decorativeAccent
-                        )
-                        .frame(width: 72, height: 72)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("このアイテムの見た目")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-
-                            Text("実際のカードでは、文字が読みやすいように控えめに反映されます。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    content()
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-        }
-    }
-
     private func usagePreviewCard(for surface: DecorationSurface) -> some View {
         GachaItemUsagePreviewCard(
             item: item,
@@ -222,8 +174,8 @@ struct GachaThemePreviewContent: View {
     private func usagePreviewContent(for surface: DecorationSurface) -> some View {
         switch surface {
         case .journalCard:
-            previewTextPanel {
-                Label("サンプルお題", systemImage: "text.quote")
+            surfacePreviewCard(title: "日記カード", surface: surface) {
+                Label("今日のひとこと", systemImage: "book.closed")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -236,19 +188,22 @@ struct GachaThemePreviewContent: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .promptCard:
-            previewTextPanel {
-                Label("お題カード", systemImage: "sparkles.rectangle.stack")
+            surfacePreviewCard(title: "お題カード", surface: surface) {
+                Label("今日のお題", systemImage: "sparkles.rectangle.stack")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+
                 Text("今日遊びたいゲームを1つだけ残すなら？")
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("お題の雰囲気やカードの見た目に反映されます。")
+
+                Text("お題カードの空気感や、質問まわりの見た目に反映されます。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         case .profileCard:
-            previewTextPanel {
+            surfacePreviewCard(title: "プロフィールカード", surface: surface) {
                 HStack(alignment: .center, spacing: 12) {
                     Circle()
                         .fill(item.rarity.previewAccent.opacity(0.22))
@@ -292,16 +247,25 @@ struct GachaThemePreviewContent: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
+                    if metadata.itemType == .badge || metadata.itemType == .sticker {
+                        GachaArtworkView(item: item, displayMode: .decorativeAccent)
+                            .frame(width: 48, height: 48)
+                    }
+
                     Spacer(minLength: 0)
                 }
             }
         case .shareCard:
-            previewTextPanel {
+            surfacePreviewCard(title: "共有カード", surface: surface) {
                 HStack {
                     Text("ひとこと日記")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
+                    if metadata.itemType == .badge || metadata.itemType == .sticker {
+                        GachaArtworkView(item: item, displayMode: .decorativeAccent)
+                            .frame(width: 28, height: 28)
+                    }
                     inlinePreviewChip(GachaThemePresentation.rarityLabel(for: item.rarity))
                 }
 
@@ -318,7 +282,7 @@ struct GachaThemePreviewContent: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .communityCard:
-            previewTextPanel {
+            surfacePreviewCard(title: "コミュニティカード", surface: surface) {
                 HStack {
                     Text("みんなの部屋")
                         .font(.caption.weight(.semibold))
@@ -335,9 +299,10 @@ struct GachaThemePreviewContent: View {
                 Text("部屋カードやお題プレビューの見た目に反映されます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         case .gachaResultCard:
-            previewTextPanel {
+            surfacePreviewCard(title: "ガチャ結果カード", surface: surface) {
                 HStack {
                     Text("獲得アイテム")
                         .font(.caption.weight(.semibold))
@@ -357,7 +322,7 @@ struct GachaThemePreviewContent: View {
                 }
             }
         case .collectionCard:
-            previewTextPanel {
+            surfacePreviewCard(title: "コレクションカード", surface: surface) {
                 HStack(alignment: .top, spacing: 12) {
                     GachaArtworkView(item: item, displayMode: .thumbnail)
                         .frame(width: 64, height: 64)
@@ -379,21 +344,52 @@ struct GachaThemePreviewContent: View {
                 }
             }
         case .gachaCapsule:
-            previewTextPanel {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
-                    Image(systemName: "sparkles.tv")
-                        .font(.title2)
-                        .foregroundStyle(item.rarity.previewAccent)
+                    GachaArtworkView(item: item, displayMode: .decorativeAccent)
+                        .frame(width: 56, height: 56)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("開封演出")
                             .font(.headline)
-                        Text("ガチャを引いた瞬間の光や空気感に反映されます。")
+                        Text("ガチャを引いた瞬間の光や空気感に強く反映されます。")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
                 }
+
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                item.rarity.previewAccent.opacity(0.22),
+                                Color(uiColor: .secondarySystemBackground),
+                                item.rarity.previewAccent.opacity(0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 110)
+                    .overlay {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles.tv")
+                                .font(.title2)
+                                .foregroundStyle(item.rarity.previewAccent)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("ガチャ結果の前に、光や粒子の雰囲気として現れます。")
+                                    .font(.subheadline.weight(.semibold))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("文字よりも空気感を変えるタイプの装飾です。")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(14)
+                    }
             }
         case .appBackground:
             previewTextPanel {
@@ -418,9 +414,14 @@ struct GachaThemePreviewContent: View {
                             .background(.ultraThinMaterial, in: Capsule())
                             .padding(12)
                     }
+
+                Text("本文は別パネルに残しつつ、背景の空気感だけを変える使い方です。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         case .badge:
-            previewTextPanel {
+            surfacePreviewCard(title: "バッジプレビュー", surface: surface) {
                 HStack(spacing: 12) {
                     GachaArtworkView(item: item, displayMode: .decorativeAccent)
                         .frame(width: 56, height: 56)
@@ -436,7 +437,7 @@ struct GachaThemePreviewContent: View {
                 }
             }
         case .sticker:
-            previewTextPanel {
+            surfacePreviewCard(title: "ステッカープレビュー", surface: surface) {
                 HStack(spacing: 12) {
                     GachaArtworkView(item: item, displayMode: .decorativeAccent)
                         .frame(width: 56, height: 56)
@@ -452,7 +453,7 @@ struct GachaThemePreviewContent: View {
                 }
             }
         case .auraFrame:
-            previewTextPanel {
+            surfacePreviewCard(title: "オーラ枠プレビュー", surface: surface) {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemBackground))
                     .frame(height: 110)
@@ -471,7 +472,7 @@ struct GachaThemePreviewContent: View {
                     }
             }
         case .titlePlate:
-            previewTextPanel {
+            surfacePreviewCard(title: "称号プレート", surface: surface) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(profileDisplayName)
                         .font(.headline)
@@ -482,6 +483,82 @@ struct GachaThemePreviewContent: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    private func surfacePreviewCard<Content: View>(
+        title: String,
+        surface: DecorationSurface,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        Card(title, decorationId: previewDecorationId(for: surface)) {
+            VStack(alignment: .leading, spacing: 10) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 8) {
+                        inlinePreviewChip(previewRoleLabel(for: surface))
+                        if isEquipped {
+                            emphasizedChip("装備中", tint: item.rarity.previewAccent)
+                        } else {
+                            emphasizedChip(isOwned ? "所持中" : "プレビュー", tint: item.rarity.previewAccent)
+                        }
+                        Spacer(minLength: 0)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        inlinePreviewChip(previewRoleLabel(for: surface))
+                        if isEquipped {
+                            emphasizedChip("装備中", tint: item.rarity.previewAccent)
+                        } else {
+                            emphasizedChip(isOwned ? "所持中" : "プレビュー", tint: item.rarity.previewAccent)
+                        }
+                    }
+                }
+
+                content()
+            }
+        }
+    }
+
+    private func previewDecorationId(for surface: DecorationSurface) -> String? {
+        switch metadata.itemType {
+        case .badge, .profileTitle, .sticker:
+            return nil
+        case .gachaRevealEffect:
+            switch surface {
+            case .gachaCapsule, .gachaResultCard:
+                return item.id
+            default:
+                return nil
+            }
+        default:
+            return item.id
+        }
+    }
+
+    private func previewRoleLabel(for surface: DecorationSurface) -> String {
+        switch metadata.itemType {
+        case .journalPaper:
+            return surface == .promptCard ? "紙面テーマ" : "紙面 / 余白"
+        case .cardFrame:
+            return "枠 / フレーム"
+        case .background:
+            return surface == .appBackground ? "背景アクセント" : "背景テーマ"
+        case .badge:
+            return "バッジ"
+        case .profileTitle:
+            return "称号 / プレート"
+        case .shareTemplate:
+            return "共有レイアウト"
+        case .promptPack:
+            return surface == .communityCard ? "部屋 / お題スタイル" : "お題スタイル"
+        case .auraStyle:
+            return surface == .auraFrame ? "オーラ枠" : "オーラ"
+        case .gachaRevealEffect:
+            return surface == .gachaCapsule ? "開封演出" : "演出アクセント"
+        case .sticker:
+            return "ワンポイント"
+        case .fullTheme:
+            return "全体テーマ"
         }
     }
 
@@ -839,6 +916,9 @@ struct GachaCollectionTile: View {
                         if isEquipped {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(item.rarity.previewAccent)
+                        } else if !isOwned {
+                            Image(systemName: "lock.fill")
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -862,7 +942,7 @@ struct GachaCollectionTile: View {
                         Text(GachaThemePresentation.compactUsageSummary(for: item))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                            .lineLimit(3)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -878,7 +958,7 @@ struct GachaCollectionTile: View {
                 HStack(alignment: .center, spacing: 8) {
                     GachaOwnershipBadge(state: ownershipState)
                     Spacer(minLength: 0)
-                    Text(isOwned ? "x\(max(1, ownedCount))" : "Preview")
+                    Text(isOwned ? "x\(max(1, ownedCount))" : "プレビュー可")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -908,7 +988,8 @@ struct GachaThemePreviewSheet: View {
                     ownedCount: ownedCount,
                     isOwned: isOwned,
                     isEquipped: isEquipped,
-                    profileDisplayName: profileDisplayName
+                    profileDisplayName: profileDisplayName,
+                    previewSurfaceLimit: 3
                 )
                 .padding(16)
                 .padding(.bottom, 196)

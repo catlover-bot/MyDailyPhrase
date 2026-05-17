@@ -238,6 +238,39 @@ public enum GachaThemePresentation {
         orderedUsagePreviewSurfaces(for: item).map(surfaceLabel(for:))
     }
 
+    public static func primaryPreviewSurfaceLabel(for item: CardDecoration) -> String {
+        surfaceLabel(for: primaryPreviewSurface(for: item))
+    }
+
+    public static func previewLeadText(for item: CardDecoration) -> String {
+        let metadata = decorationItem(for: item)
+
+        switch metadata.itemType {
+        case .journalPaper:
+            return "紙面や余白のトーンが変わり、日記とお題カードにやさしく反映されます。"
+        case .cardFrame:
+            return "カードの縁取りや枠まわりが変わり、本文の読みやすさはそのまま保たれます。"
+        case .background:
+            return "背景の空気感や配色に控えめに反映され、文字は常に読みやすいままです。"
+        case .badge:
+            return "小さなバッジや印として反映され、プロフィールや共有カードの目印になります。"
+        case .profileTitle:
+            return "名前まわりの称号やプレートに反映され、プロフィールの印象を大きく変えます。"
+        case .shareTemplate:
+            return "共有カードの構成や雰囲気に反映され、シェア時の見え方が変わります。"
+        case .promptPack:
+            return "お題カードやコミュニティカードに反映され、質問の見え方や空気感が変わります。"
+        case .auraStyle:
+            return "カードまわりの光や縁取りに反映され、やわらかなオーラとして使われます。"
+        case .gachaRevealEffect:
+            return "ガチャ結果や開封演出に強く反映され、共有カードでは控えめなアクセントになります。"
+        case .sticker:
+            return "カードの角や小さなワンポイントとして反映され、本文を邪魔しません。"
+        case .fullTheme:
+            return "複数の画面にまたがって反映され、全体の雰囲気を揃えるテーマです。"
+        }
+    }
+
     public static func sampleShareCaption(for item: CardDecoration, isEquipped: Bool) -> String {
         let template = shareTemplateName(for: item) ?? "ひとことカード"
         let status = isEquipped ? "装備中" : "共有カードに反映可能"

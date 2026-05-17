@@ -153,6 +153,9 @@ public struct GachaArtworkQAItemRow: Identifiable, Equatable, Sendable {
     public let isEquipped: Bool
     public let applicableSurfaces: [DecorationSurface]
     public let applicableSurfaceLabels: [String]
+    public let primaryPreviewSurface: DecorationSurface
+    public let primaryPreviewSurfaceLabel: String
+    public let usageSummary: String
 }
 
 public enum GachaArtworkQASupport {
@@ -200,7 +203,10 @@ public enum GachaArtworkQASupport {
                 isOwned: ownedDecorationIDs.contains(decoration.id),
                 isEquipped: equippedDecorationID == decoration.id,
                 applicableSurfaces: metadata.applicableSurfaces,
-                applicableSurfaceLabels: metadata.applicableSurfaces.map(surfaceLabel(for:))
+                applicableSurfaceLabels: metadata.applicableSurfaces.map(surfaceLabel(for:)),
+                primaryPreviewSurface: GachaThemePresentation.primaryPreviewSurface(for: decoration),
+                primaryPreviewSurfaceLabel: GachaThemePresentation.primaryPreviewSurfaceLabel(for: decoration),
+                usageSummary: GachaThemePresentation.compactUsageSummary(for: decoration)
             )
         }
     }
@@ -233,7 +239,11 @@ public enum GachaArtworkQASupport {
                     row.id,
                     row.displayName,
                     row.assetName ?? "",
-                    row.thumbnailAssetName ?? ""
+                    row.thumbnailAssetName ?? "",
+                    row.pngFilename ?? "",
+                    row.usageSummary,
+                    row.primaryPreviewSurfaceLabel,
+                    row.applicableSurfaceLabels.joined(separator: " ")
                 ].map { $0.lowercased() }
 
                 if haystacks.allSatisfy({ !$0.contains(normalizedSearchText) }) {

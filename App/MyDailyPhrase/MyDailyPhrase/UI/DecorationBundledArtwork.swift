@@ -150,9 +150,9 @@ struct DecorationBundledArtworkLayer: View {
     private var backgroundOpacity: Double {
         switch treatment {
         case .readableCard:
-            return 0.08
+            return 0.05
         case .softBackground:
-            return 0.10
+            return 0.08
         case .compactAccent:
             return 0
         }
@@ -161,9 +161,9 @@ struct DecorationBundledArtworkLayer: View {
     private var backgroundBlurRadius: CGFloat {
         switch treatment {
         case .readableCard:
-            return 1.5
+            return 2.0
         case .softBackground:
-            return 1.0
+            return 1.4
         case .compactAccent:
             return 0
         }
@@ -172,9 +172,9 @@ struct DecorationBundledArtworkLayer: View {
     private var focalOpacity: Double {
         switch treatment {
         case .readableCard:
-            return 0.24
+            return 0.18
         case .softBackground:
-            return 0.30
+            return 0.22
         case .compactAccent:
             return 0.92
         }
@@ -183,9 +183,9 @@ struct DecorationBundledArtworkLayer: View {
     private var frameOpacity: Double {
         switch treatment {
         case .readableCard:
-            return 0.22
+            return 0.18
         case .softBackground:
-            return 0.30
+            return 0.24
         case .compactAccent:
             return 0.24
         }
@@ -203,9 +203,9 @@ struct DecorationBundledArtworkLayer: View {
     private func focalFrameWidth(in size: CGSize) -> CGFloat {
         switch treatment {
         case .readableCard:
-            return min(size.width * 0.28, 86)
+            return min(size.width * 0.22, 72)
         case .softBackground:
-            return min(size.width * 0.34, 104)
+            return min(size.width * 0.28, 88)
         case .compactAccent:
             return min(size.width * 0.22, 64)
         }
@@ -214,9 +214,9 @@ struct DecorationBundledArtworkLayer: View {
     private func focalFrameHeight(in size: CGSize) -> CGFloat {
         switch treatment {
         case .readableCard:
-            return min(size.height * 0.46, 96)
+            return min(size.height * 0.34, 72)
         case .softBackground:
-            return min(size.height * 0.52, 120)
+            return min(size.height * 0.42, 96)
         case .compactAccent:
             return min(size.height * 0.28, 72)
         }

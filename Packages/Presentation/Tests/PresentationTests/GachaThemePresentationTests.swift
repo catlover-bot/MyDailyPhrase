@@ -81,10 +81,28 @@ struct GachaThemePresentationTests {
         let share = try #require(CardDecorationCatalog.byId("stardust"))
         let reveal = try #require(CardDecorationCatalog.byId("neon"))
         let badge = try #require(CardDecorationCatalog.byId("season_gold_halo"))
+        let background = try #require(CardDecorationCatalog.byId("sunset"))
+        let frame = try #require(CardDecorationCatalog.byId("sakura"))
+        let promptPack = try #require(CardDecorationCatalog.byId("retro"))
+        let aura = try #require(CardDecorationCatalog.byId("forest"))
+        let title = try #require(CardDecorationCatalog.byId("gold"))
 
         #expect(GachaThemePresentation.primaryPreviewSurface(for: journal) == .journalCard)
         #expect(GachaThemePresentation.primaryPreviewSurface(for: share) == .shareCard)
         #expect(GachaThemePresentation.primaryPreviewSurface(for: reveal) == .gachaCapsule)
         #expect(GachaThemePresentation.primaryPreviewSurface(for: badge) == .badge)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: background) == .profileCard)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: frame) == .journalCard)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: promptPack) == .promptCard)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: aura) == .auraFrame)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: title) == .titlePlate)
+    }
+
+    @Test("each item exposes a non-empty preview lead text")
+    func previewLeadTextIsAvailable() {
+        for item in CardDecorationCatalog.all {
+            let text = GachaThemePresentation.previewLeadText(for: item)
+            #expect(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
     }
 }

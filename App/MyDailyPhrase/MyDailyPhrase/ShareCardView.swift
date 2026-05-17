@@ -116,7 +116,7 @@ struct ShareCardView: View {
             }
 
             AuraView(colors: auraColors)
-                .opacity(hasBundledArtwork ? 0.22 : 0.4)
+                .opacity(hasBundledArtwork ? 0.14 : 0.32)
                 .allowsHitTesting(false)
 
             if !hasBundledArtwork {

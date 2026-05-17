@@ -139,6 +139,19 @@ struct GachaArtworkQASupportTests {
         })
     }
 
+    @Test("qa rows expose usage summary and primary preview without ownership")
+    func rowsExposeUsagePreviewMetadata() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        #expect(rows.allSatisfy { !$0.usageSummary.isEmpty })
+        #expect(rows.allSatisfy { !$0.primaryPreviewSurfaceLabel.isEmpty })
+        #expect(rows.allSatisfy { $0.applicableSurfaces.contains($0.primaryPreviewSurface) })
+    }
+
     @Test("prepared filter keeps mapped items without bundled artwork")
     func preparedFilterWorks() {
         let rows = GachaArtworkQASupport.rows(
@@ -157,5 +170,26 @@ struct GachaArtworkQASupportTests {
         #expect(!filtered.isEmpty)
         #expect(filtered.allSatisfy { $0.assetStatus == .prepared })
         #expect(filtered.allSatisfy { $0.id != CardDecorationCatalog.classicId })
+    }
+
+    @Test("search can match png filename without ownership")
+    func searchMatchesPNGFilename() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        let filtered = GachaArtworkQASupport.filteredRows(
+            from: rows,
+            primaryFilter: .all,
+            rarityFilter: .all,
+            typeFilter: .all,
+            surfaceFilter: .all,
+            searchText: "gacha_sunset_note.png"
+        )
+
+        #expect(filtered.count == 1)
+        #expect(filtered.first?.id == "sunset")
     }
 }
