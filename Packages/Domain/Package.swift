@@ -10,6 +10,7 @@ let package = Package(
     products: [
         // Domain パッケージは Domain だけを提供する
         .library(name: "Domain", targets: ["Domain"]),
+        .executable(name: "DomainTools", targets: ["DomainTools"]),
     ],
     targets: [
         // Domain のソースが Packages/Domain/Sources 配下に直置きされている前提
@@ -17,6 +18,12 @@ let package = Package(
             name: "Domain",
             path: "Sources"
             // もし過去の名残で Sources/Data が残っていても Domain に混入させない（無ければ無視されます）
+        ),
+
+        .executableTarget(
+            name: "DomainTools",
+            dependencies: ["Domain"],
+            path: "Tools/DomainTools"
         ),
 
         .testTarget(

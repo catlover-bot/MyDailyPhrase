@@ -226,26 +226,61 @@ public extension CardDecorationCatalog {
         assetName: String?,
         thumbnailAssetName: String?
     ) {
-        switch decoration.id {
-        case "sunset":
-            return ("gacha_sunset_note", nil)
-        case "sakura":
-            return ("gacha_sakura_diary", nil)
-        case "ocean":
-            return ("gacha_deepsea_memo", nil)
-        case "neon":
-            return ("gacha_neon_city", nil)
-        case "season_gold_halo":
-            return ("gacha_cat_paw_badge", nil)
-        case "obsidian":
-            return ("gacha_pixel_frame", nil)
-        case "forest":
-            return ("gacha_rpg_tavern_skin", nil)
-        case "starlight":
-            return ("gacha_starfall_effect", nil)
-        default:
-            return (nil, nil)
+        (
+            assetName: plannedAssetName(for: decoration.id),
+            thumbnailAssetName: nil
+        )
+    }
+
+    static func plannedAssetName(for decorationId: String) -> String? {
+        let normalizedId = decorationId
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !normalizedId.isEmpty, normalizedId != classicId else {
+            return nil
         }
+
+        let explicitNames: [String: String] = [
+            "sunset": "gacha_sunset_note",
+            "sakura": "gacha_sakura_diary",
+            "ocean": "gacha_deepsea_memo",
+            "neon": "gacha_neon_city",
+            "season_gold_halo": "gacha_cat_paw_badge",
+            "obsidian": "gacha_pixel_frame",
+            "forest": "gacha_rpg_tavern_skin",
+            "starlight": "gacha_starfall_effect",
+            "gold": "gacha_gold",
+            "royal": "gacha_royal",
+            "phoenix": "gacha_phoenix",
+            "eclipse": "gacha_eclipse",
+            "prism": "gacha_prism",
+            "celestial": "gacha_celestial",
+            "auric": "gacha_auric",
+            "zenith": "gacha_zenith",
+            "nova": "gacha_nova",
+            "galaxy": "gacha_galaxy",
+            "singularity": "gacha_singularity"
+        ]
+
+        if let explicitName = explicitNames[normalizedId] {
+            return explicitName
+        }
+
+        let sanitized = normalizedId.unicodeScalars.map { scalar -> String in
+            CharacterSet.alphanumerics.contains(scalar) ? String(Character(scalar)) : "_"
+        }
+        .joined()
+
+        let collapsed = sanitized
+            .replacingOccurrences(of: "_+", with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+
+        guard !collapsed.isEmpty else {
+            return nil
+        }
+
+        return "gacha_\(collapsed)"
     }
 
     private static func flavorText(

@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var showsIAPDiagnostics = false
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
+    @State private var artworkCopyFeedback: String? = nil
     @State private var artworkPrimaryFilter: GachaArtworkQAPrimaryFilter = .all
     @State private var artworkRarityFilter: GachaArtworkQARarityFilter = .all
     @State private var artworkTypeFilter: GachaArtworkQATypeFilter = .all
@@ -225,6 +226,54 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 10) {
+                                    Button {
+                                        UIPasteboard.general.string = missingArtworkFilenamesText
+                                        artworkCopyFeedback = "不足PNG名をコピーしました"
+                                    } label: {
+                                        Label("不足PNG名をコピー", systemImage: "doc.on.doc")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+
+                                    Button {
+                                        UIPasteboard.general.string = fullArtworkAssetInfoText
+                                        artworkCopyFeedback = "一覧情報をコピーしました"
+                                    } label: {
+                                        Label("一覧情報をコピー", systemImage: "list.bullet.clipboard")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+
+                                VStack(spacing: 10) {
+                                    Button {
+                                        UIPasteboard.general.string = missingArtworkFilenamesText
+                                        artworkCopyFeedback = "不足PNG名をコピーしました"
+                                    } label: {
+                                        Label("不足PNG名をコピー", systemImage: "doc.on.doc")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+
+                                    Button {
+                                        UIPasteboard.general.string = fullArtworkAssetInfoText
+                                        artworkCopyFeedback = "一覧情報をコピーしました"
+                                    } label: {
+                                        Label("一覧情報をコピー", systemImage: "list.bullet.clipboard")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                            }
+
+                            if let artworkCopyFeedback {
+                                Text(artworkCopyFeedback)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+
                             artworkPrimaryFilterChips
 
                             TextField("id / 名前 / assetName で検索", text: $artworkSearchText)
@@ -374,7 +423,7 @@ struct SettingsView: View {
            artworkTypeFilter == .all,
            artworkSurfaceFilter == .all,
            artworkSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let order: [GachaArtworkQAAssetStatus] = [.available, .mappedMissing, .fallbackOnly]
+            let order: [GachaArtworkQAAssetStatus] = [.existing, .prepared, .missing]
             return order.compactMap { status in
                 let rows = filteredArtworkRows.filter { $0.assetStatus == status }
                 guard !rows.isEmpty else { return nil }
@@ -439,6 +488,31 @@ struct SettingsView: View {
             }
         }
         .pickerStyle(.menu)
+    }
+
+    private var missingArtworkFilenamesText: String {
+        let filenames = artworkAllRows
+            .filter { $0.assetStatus == .prepared }
+            .compactMap(\.pngFilename)
+            .sorted()
+
+        return filenames.isEmpty ? "missing png files: none" : filenames.joined(separator: "\n")
+    }
+
+    private var fullArtworkAssetInfoText: String {
+        artworkAllRows.map { row in
+            [
+                "id: \(row.id)",
+                "name: \(row.displayName)",
+                "rarity: \(row.rarityLabel)",
+                "type: \(row.itemTypeLabel)",
+                "status: \(row.assetStatus.label)",
+                "assetName: \(row.assetName ?? "none")",
+                "thumbnailAssetName: \(row.thumbnailAssetName ?? "none")",
+                "pngFilename: \(row.pngFilename ?? "none")"
+            ].joined(separator: " | ")
+        }
+        .joined(separator: "\n")
     }
 
     private func diagnosticRow(title: String, value: String) -> some View {
@@ -556,6 +630,19 @@ private struct GachaArtworkDiagnosticCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                if let pngFilename = row.pngFilename {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PNG filename")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(pngFilename)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 if !row.applicableSurfaceLabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("使える場所")
@@ -574,6 +661,13 @@ private struct GachaArtworkDiagnosticCard: View {
             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = copySummaryText
+            } label: {
+                Label("項目情報をコピー", systemImage: "doc.on.doc")
+            }
+        }
     }
 
     private var titleBlock: some View {
@@ -633,24 +727,38 @@ private struct GachaArtworkDiagnosticCard: View {
 
     private var statusTint: Color {
         switch row.assetStatus {
-        case .available:
+        case .existing:
             return .green
-        case .mappedMissing:
+        case .prepared:
             return .orange
-        case .fallbackOnly:
+        case .missing:
             return .secondary
         }
     }
 
     private var statusDescription: String {
         switch row.assetStatus {
-        case .available:
+        case .existing:
             return "この端末で画像が見つかりました。"
-        case .mappedMissing:
-            return "assetName はありますが、画像が見つからないためフォールバック表示になります。"
-        case .fallbackOnly:
-            return "まだ画像参照はなく、SwiftUI のフォールバック表示を使います。"
+        case .prepared:
+            return "assetName は準備済みです。PNG を import するまでフォールバック表示になります。"
+        case .missing:
+            return "まだ画像計画がないため、SwiftUI のフォールバック表示を使います。"
         }
+    }
+
+    private var copySummaryText: String {
+        [
+            "id: \(row.id)",
+            "displayName: \(row.displayName)",
+            "rarity: \(row.rarityLabel)",
+            "itemType: \(row.itemTypeLabel)",
+            "assetStatus: \(row.assetStatus.label)",
+            "assetName: \(row.assetName ?? "none")",
+            "thumbnailAssetName: \(row.thumbnailAssetName ?? "none")",
+            "pngFilename: \(row.pngFilename ?? "none")",
+            "surfaces: \(row.applicableSurfaceLabels.joined(separator: ", "))"
+        ].joined(separator: "\n")
     }
 
     private func diagnosticBadge(title: String, tint: Color) -> some View {

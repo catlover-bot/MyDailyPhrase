@@ -1,6 +1,6 @@
 # Gacha Asset Guide
 
-Build 20 時点のガチャアート参照ルールです。
+Build 21 時点のガチャアート参照ルールです。
 
 現在のアプリは、画像がなくても必ず SwiftUI フォールバックで表示できます。
 `assetName` は「画像があれば使う」ための任意設定で、画像未登録でもクラッシュしません。
@@ -33,7 +33,7 @@ Build 20 時点のガチャアート参照ルールです。
 - `gacha_sunset_note`
 - `gacha_pixel_frame`
 - `gacha_rpg_tavern_skin`
-- `gacha_crown_paper`
+- `gacha_gold`
 
 ## Model Fields
 
@@ -52,7 +52,7 @@ Build 20 時点のガチャアート参照ルールです。
 
 ## Current Exact Mappings
 
-現時点でコードに明示登録されているアート参照は次の 8 件です。
+現時点で画像ファイルが存在する confirmed mapping は次の 8 件です。
 
 | Item ID | Display Name | assetName | thumbnailAssetName | Status |
 | --- | --- | --- | --- | --- |
@@ -65,8 +65,24 @@ Build 20 時点のガチャアート参照ルールです。
 | `forest` | 森のカード | `gacha_rpg_tavern_skin` | `nil` | available |
 | `starlight` | 星明かりカード | `gacha_starfall_effect` | `nil` | available |
 
-それ以外のアイテムは、まだ `assetName == nil` のままです。
-将来の候補名は [gacha-artwork-backlog.md](./gacha-artwork-backlog.md) に整理しています。
+それ以外の non-classic item にも、Build 21 で stable な planned `assetName` を割り当てています。
+PNG がまだ無い item は hidden `ガチャアート確認` で `prepared` として表示されます。
+
+Legendary の planned assetName は次の固定名です。
+
+- `gold` -> `gacha_gold`
+- `royal` -> `gacha_royal`
+- `phoenix` -> `gacha_phoenix`
+- `eclipse` -> `gacha_eclipse`
+- `prism` -> `gacha_prism`
+- `celestial` -> `gacha_celestial`
+- `auric` -> `gacha_auric`
+- `zenith` -> `gacha_zenith`
+- `nova` -> `gacha_nova`
+- `galaxy` -> `gacha_galaxy`
+- `singularity` -> `gacha_singularity`
+
+全 item の canonical plan は [gacha-artwork-asset-manifest.md](./gacha-artwork-asset-manifest.md) と `artwork-imports/gacha-all/manifest.json` にあります。
 
 ## Fallback Behavior
 
@@ -82,6 +98,38 @@ UI は次の順で表示を試みます。
 - `assetName` はあるが画像ファイルがまだ未追加
 
 どちらの場合も、空白やクラッシュではなくフォールバック表示になります。
+
+## Full Import Workflow
+
+1. `artwork-imports/gacha-all/manifest.json` で `pngFilename` と `importDirectory` を確認する
+2. 該当 PNG を `artwork-imports/` 配下のフォルダに置く
+3. 次のコマンドを実行する
+
+```bash
+bash Scripts/import_gacha_artwork_assets.sh
+```
+
+4. 取り込み後、次で不足分を確認できます
+
+```bash
+bash Scripts/list_missing_gacha_artwork.sh
+bash Scripts/list_existing_gacha_artwork.sh
+```
+
+5. Release build と package tests を再実行する
+6. 非公開 `ガチャアート確認` で `prepared` が `existing` に変わることを確認する
+
+## Import Directories
+
+- `artwork-imports/gacha-all/`
+- `artwork-imports/gacha-legendary/`
+- `artwork-imports/gacha-epic/`
+- `artwork-imports/gacha-rare/`
+- `artwork-imports/gacha-common/`
+- `artwork-imports/gacha-seasonal/`
+
+Missing PNG は許容され、import script は見つかったものだけ `.imageset` を作ります。
+存在しない PNG を参照する invalid `Contents.json` は生成しません。
 
 ## Where Artwork Appears
 
@@ -124,8 +172,8 @@ UI は次の順で表示を試みます。
 
 ## Adding More Artwork Later
 
-1. `Assets.xcassets/GachaItems/` に `.imageset` を追加
-2. imageset 名を `assetName` と一致させる
-3. 必要なら `thumbnailAssetName` も追加
-4. Release build と package test を再実行
-5. 非公開 `ガチャアート確認` 画面で表示確認
+1. `artwork-imports/` 配下に PNG を置く
+2. `bash Scripts/import_gacha_artwork_assets.sh` を実行する
+3. 必要なら `thumbnailAssetName` を別途設計する
+4. Release build と package test を再実行する
+5. 非公開 `ガチャアート確認` 画面で `existing / prepared / missing` を確認する

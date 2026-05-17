@@ -76,13 +76,43 @@ struct DecorationItemCatalogTests {
         }
 
         let classic = try #require(CardDecorationCatalog.item(for: CardDecorationCatalog.classicId))
-        let paper = try #require(CardDecorationCatalog.item(for: "paper"))
 
         #expect(classic.assetName == nil)
         #expect(classic.thumbnailAssetName == nil)
-        #expect(paper.assetName == nil)
-        #expect(CardDecorationCatalog.items.filter { $0.assetName != nil }.count == expectedMappings.count)
         #expect(!CardDecorationCatalog.items.contains { $0.assetName?.hasSuffix("_art") == true })
+    }
+
+    @Test("legendary asset names stay stable")
+    func legendaryAssetMappingsStayStable() throws {
+        let expectedMappings: [String: String] = [
+            "gold": "gacha_gold",
+            "royal": "gacha_royal",
+            "phoenix": "gacha_phoenix",
+            "eclipse": "gacha_eclipse",
+            "prism": "gacha_prism",
+            "celestial": "gacha_celestial",
+            "auric": "gacha_auric",
+            "zenith": "gacha_zenith",
+            "nova": "gacha_nova",
+            "galaxy": "gacha_galaxy",
+            "singularity": "gacha_singularity"
+        ]
+
+        for (decorationID, assetName) in expectedMappings {
+            let item = try #require(CardDecorationCatalog.item(for: decorationID))
+            #expect(item.assetName == assetName)
+        }
+    }
+
+    @Test("all gacha items have stable lowercase snake case asset names")
+    func allGachaItemsHaveStableAssetNames() {
+        let gachaItems = CardDecorationCatalog.items.filter { $0.id != CardDecorationCatalog.classicId }
+        let assetNames = gachaItems.compactMap(\.assetName)
+
+        #expect(assetNames.count == gachaItems.count)
+        #expect(assetNames.allSatisfy { $0.range(of: #"^gacha_[a-z0-9_]+$"#, options: .regularExpression) != nil })
+        #expect(assetNames.allSatisfy { !$0.hasSuffix("_art") })
+        #expect(assetNames.allSatisfy { "\($0).png".hasSuffix(".png") })
     }
 
     @Test("every catalog entry has a corresponding inventory item")

@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import Domain
 @testable import Presentation
 
 @Suite("Gacha artwork QA support")
@@ -12,9 +13,9 @@ struct GachaArtworkQASupportTests {
             hasBundledArtwork: { _ in false }
         )
 
-        #expect(rows.count == 59)
+        #expect(rows.count == CardDecorationCatalog.all.count)
         #expect(rows.contains { $0.id == "sunset" && !$0.isOwned && !$0.isEquipped })
-        #expect(rows.contains { $0.id == "classic" && $0.assetStatus == .fallbackOnly })
+        #expect(rows.contains { $0.id == "classic" && $0.assetStatus == .missing })
     }
 
     @Test("mapped items become missing when asset is not found")
@@ -28,7 +29,8 @@ struct GachaArtworkQASupportTests {
         )
 
         #expect(row.assetName == "gacha_sunset_note")
-        #expect(row.assetStatus == .mappedMissing)
+        #expect(row.pngFilename == "gacha_sunset_note.png")
+        #expect(row.assetStatus == .prepared)
         #expect(row.isOwned == true)
         #expect(row.isEquipped == true)
     }
@@ -51,7 +53,7 @@ struct GachaArtworkQASupportTests {
         )
 
         #expect(filtered.count == 2)
-        #expect(filtered.allSatisfy { $0.assetStatus == .available })
+        #expect(filtered.allSatisfy { $0.assetStatus == .existing })
     }
 
     @Test("available artwork rows keep readable metadata")
@@ -73,7 +75,7 @@ struct GachaArtworkQASupportTests {
             hasBundledArtwork: { mappedIDs.contains($0) }
         )
 
-        let available = rows.filter { $0.assetStatus == .available }
+        let available = rows.filter { $0.assetStatus == .existing }
         #expect(available.count == 8)
         #expect(available.allSatisfy { !$0.displayName.isEmpty })
         #expect(available.allSatisfy { !$0.itemTypeLabel.isEmpty })
@@ -119,5 +121,41 @@ struct GachaArtworkQASupportTests {
 
         #expect(filtered.count == 1)
         #expect(filtered.first?.id == "neon")
+    }
+
+    @Test("mapped rows expose png filename based on asset name")
+    func mappedRowsExposeMatchingPNGFilename() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        let mappedRows = rows.filter { $0.assetName != nil }
+        #expect(!mappedRows.isEmpty)
+        #expect(mappedRows.allSatisfy { row in
+            guard let assetName = row.assetName else { return false }
+            return row.pngFilename == "\(assetName).png"
+        })
+    }
+
+    @Test("prepared filter keeps mapped items without bundled artwork")
+    func preparedFilterWorks() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        let filtered = GachaArtworkQASupport.filteredRows(
+            from: rows,
+            primaryFilter: .prepared,
+            rarityFilter: .all,
+            typeFilter: .all
+        )
+
+        #expect(!filtered.isEmpty)
+        #expect(filtered.allSatisfy { $0.assetStatus == .prepared })
+        #expect(filtered.allSatisfy { $0.id != CardDecorationCatalog.classicId })
     }
 }

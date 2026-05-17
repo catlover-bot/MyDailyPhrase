@@ -2,18 +2,18 @@ import Foundation
 import Domain
 
 public enum GachaArtworkQAAssetStatus: String, CaseIterable, Equatable, Sendable {
-    case available
-    case mappedMissing
-    case fallbackOnly
+    case existing
+    case prepared
+    case missing
 
     public var label: String {
         switch self {
-        case .available:
-            return "画像あり"
-        case .mappedMissing:
-            return "画像未検出"
-        case .fallbackOnly:
-            return "フォールバック"
+        case .existing:
+            return "existing"
+        case .prepared:
+            return "prepared"
+        case .missing:
+            return "missing"
         }
     }
 }
@@ -22,6 +22,8 @@ public enum GachaArtworkQAPrimaryFilter: String, CaseIterable, Identifiable, Sen
     case all = "すべて"
     case available = "画像あり"
     case missing = "画像なし"
+    case prepared = "prepared"
+    case unmapped = "missing"
     case pool = "ガチャ排出対象"
     case seasonLimited = "季節限定"
 
@@ -145,6 +147,7 @@ public struct GachaArtworkQAItemRow: Identifiable, Equatable, Sendable {
     public let itemTypeLabel: String
     public let assetName: String?
     public let thumbnailAssetName: String?
+    public let pngFilename: String?
     public let assetStatus: GachaArtworkQAAssetStatus
     public let isOwned: Bool
     public let isEquipped: Bool
@@ -173,11 +176,11 @@ public enum GachaArtworkQASupport {
 
             let status: GachaArtworkQAAssetStatus
             if hasBundledArtwork(decoration.id) {
-                status = .available
+                status = .existing
             } else if metadata.assetName != nil || metadata.thumbnailAssetName != nil {
-                status = .mappedMissing
+                status = .prepared
             } else {
-                status = .fallbackOnly
+                status = .missing
             }
 
             return GachaArtworkQAItemRow(
@@ -192,6 +195,7 @@ public enum GachaArtworkQASupport {
                 itemTypeLabel: itemTypeLabel(for: metadata.itemType),
                 assetName: metadata.assetName,
                 thumbnailAssetName: metadata.thumbnailAssetName,
+                pngFilename: metadata.assetName.map { "\($0).png" },
                 assetStatus: status,
                 isOwned: ownedDecorationIDs.contains(decoration.id),
                 isEquipped: equippedDecorationID == decoration.id,
@@ -241,9 +245,13 @@ public enum GachaArtworkQASupport {
             case .all:
                 return true
             case .available:
-                return row.assetStatus == .available
+                return row.assetStatus == .existing
             case .missing:
-                return row.assetStatus != .available
+                return row.assetStatus != .existing
+            case .prepared:
+                return row.assetStatus == .prepared
+            case .unmapped:
+                return row.assetStatus == .missing
             case .pool:
                 return row.isInNormalGachaPool
             case .seasonLimited:
