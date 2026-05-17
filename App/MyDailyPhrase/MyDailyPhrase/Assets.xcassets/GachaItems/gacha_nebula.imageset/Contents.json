@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "gacha_nebula.png",
+      "idiom": "universal",
+      "scale": "1x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}
