@@ -25,6 +25,7 @@ final class AppContainer {
 
     // ===== Profile / Challenge / Reaction =====
     private let profileRepo: UserProfileRepository
+    private let authRepository: AuthRepository
     private let communityTemplateRepo: CommunityTemplateRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
@@ -73,6 +74,7 @@ final class AppContainer {
 
     // ===== Import Challenge → Entry =====
     private let importChallengeToEntry: ImportChallengeToEntryUseCase
+    private let authRuntimeConfiguration: ExternalAuthRuntimeConfiguration
 
     init(appGroupID: String = AppContainer.preferredAppGroupID) {
         Self.migrateLegacyAppGroupDataIfNeeded(
@@ -83,6 +85,7 @@ final class AppContainer {
         self.appGroupID = appGroupID
         let resolvedDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
         self.appGroupDefaults = resolvedDefaults
+        self.authRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -99,6 +102,16 @@ final class AppContainer {
 
         // Profile / events repos
         self.profileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
+        self.authRepository = LocalAuthRepository(
+            defaults: resolvedDefaults,
+            profileRepository: profileRepo,
+            configuration: .init(
+                googleOAuthEnabled: authRuntimeConfiguration.googleOAuthStartURL != nil,
+                guestModeEnabled: authRuntimeConfiguration.guestModeEnabled,
+                adminAppleUserIDs: authRuntimeConfiguration.adminAppleUserIDs,
+                adminEmails: authRuntimeConfiguration.adminEmails
+            )
+        )
         self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
@@ -357,7 +370,21 @@ final class AppContainer {
                     ownedDecorationIDs: profile.ownedDecorationIds.sorted(),
                     equippedDecorationID: profile.selectedDecorationId
                 )
+            },
+            grantLocalTestTickets: { [updateMyProfile] amount in
+                _ = updateMyProfile(addGachaTickets: amount)
+                NotificationCenter.default.post(name: .profileDidUpdate, object: nil)
             }
+        )
+    }
+
+    func makeAuthViewModel() -> AppAuthViewModel {
+        AppAuthViewModel(
+            authRepository: authRepository,
+            getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile,
+            termsOfServiceURL: authRuntimeConfiguration.termsOfServiceURL ?? AppLinks.termsOfService,
+            privacyPolicyURL: authRuntimeConfiguration.privacyPolicyURL ?? AppLinks.privacyPolicy
         )
     }
 
@@ -444,7 +471,7 @@ final class AppContainer {
     }
 
     func makeProfileViewModel() -> ProfileViewModel {
-        let runtimeConfig = ExternalAuthRuntimeConfiguration.load()
+        let runtimeConfig = authRuntimeConfiguration
         let callbackScheme: String? = {
 #if DEBUG
             if let override = Self.stringEnv("UITEST_AUTH_OAUTH_CALLBACK_SCHEME_OVERRIDE") {

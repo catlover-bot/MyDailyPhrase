@@ -314,6 +314,9 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
     let googleOAuthStartURL: URL?
     let xOAuthStartURL: URL?
     let oauthCallbackScheme: String?
+    let guestModeEnabled: Bool
+    let adminAppleUserIDs: Set<String>
+    let adminEmails: Set<String>
     let allowsManualTokenInput: Bool
     let termsOfServiceURL: URL?
     let privacyPolicyURL: URL?
@@ -327,6 +330,9 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
         let googleOAuthStartURL = normalizedOAuthStartURL(from: bundle.urlValue(forInfoDictionaryKey: "AUTH_GOOGLE_OAUTH_START_URL"))
         let xOAuthStartURL = normalizedOAuthStartURL(from: bundle.urlValue(forInfoDictionaryKey: "AUTH_X_OAUTH_START_URL"))
         let callbackScheme = normalizedCallbackScheme(from: bundle.stringValue(forInfoDictionaryKey: "AUTH_OAUTH_CALLBACK_SCHEME"))
+        let guestModeEnabled = bundle.boolValue(forInfoDictionaryKey: "AUTH_GUEST_MODE_ENABLED") ?? true
+        let adminAppleUserIDs = normalizedAllowlistValues(from: bundle.stringValue(forInfoDictionaryKey: "AUTH_ADMIN_APPLE_USER_IDS"))
+        let adminEmails = normalizedAllowlistValues(from: bundle.stringValue(forInfoDictionaryKey: "AUTH_ADMIN_EMAILS"))
         let allowsManualTokenInput = bundle.boolValue(forInfoDictionaryKey: "AUTH_ALLOW_MANUAL_TOKEN_INPUT") ?? true
         let terms = normalizedLegalURL(from: bundle.urlValue(forInfoDictionaryKey: "LEGAL_TERMS_URL"))
         let privacy = normalizedLegalURL(from: bundle.urlValue(forInfoDictionaryKey: "LEGAL_PRIVACY_POLICY_URL"))
@@ -340,6 +346,9 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
             googleOAuthStartURL: googleOAuthStartURL,
             xOAuthStartURL: xOAuthStartURL,
             oauthCallbackScheme: callbackScheme,
+            guestModeEnabled: guestModeEnabled,
+            adminAppleUserIDs: adminAppleUserIDs,
+            adminEmails: adminEmails,
             allowsManualTokenInput: allowsManualTokenInput,
             termsOfServiceURL: terms,
             privacyPolicyURL: privacy,
@@ -399,6 +408,16 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
             return nil
         }
         return raw
+    }
+
+    private static func normalizedAllowlistValues(from raw: String?) -> Set<String> {
+        guard let raw else { return [] }
+        return Set(
+            raw
+                .split { $0 == "," || $0 == "\n" || $0 == ";" }
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                .filter { !$0.isEmpty }
+        )
     }
 
     private static func isPlaceholderHost(_ host: String) -> Bool {

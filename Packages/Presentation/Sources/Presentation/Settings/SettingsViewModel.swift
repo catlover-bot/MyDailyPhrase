@@ -79,11 +79,13 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var feedbackMessage: String? = nil
     @Published public private(set) var ownedDecorationIDs: [String] = []
     @Published public private(set) var equippedDecorationID: String? = nil
+    @Published public private(set) var canGrantLocalTestTickets: Bool = false
 
     private let deleteAllEntries: DeleteAllEntriesUseCase
     private let loadReminderSettings: () async -> ReminderSettingsSnapshot
     private let updateReminderSettings: (ReminderSettingsSnapshot) async -> ReminderSettingsSnapshot
     private let loadDecorationArtworkPreviewState: () -> DecorationArtworkPreviewState
+    private let grantLocalTestTicketsAction: ((Int) -> Void)?
     private let notificationCenter: NotificationCenter
     private let calendar: Calendar
 
@@ -98,6 +100,7 @@ public final class SettingsViewModel: ObservableObject {
         loadDecorationArtworkPreviewState: @escaping () -> DecorationArtworkPreviewState = {
             DecorationArtworkPreviewState()
         },
+        grantLocalTestTickets: ((Int) -> Void)? = nil,
         notificationCenter: NotificationCenter = .default,
         calendar: Calendar = .autoupdatingCurrent
     ) {
@@ -109,8 +112,10 @@ public final class SettingsViewModel: ObservableObject {
         self.loadReminderSettings = loadReminderSettings
         self.updateReminderSettings = updateReminderSettings
         self.loadDecorationArtworkPreviewState = loadDecorationArtworkPreviewState
+        self.grantLocalTestTicketsAction = grantLocalTestTickets
         self.notificationCenter = notificationCenter
         self.calendar = calendar
+        self.canGrantLocalTestTickets = grantLocalTestTickets != nil
     }
 
     public func load() async {
@@ -162,6 +167,12 @@ public final class SettingsViewModel: ObservableObject {
 
     public func clearFeedback() {
         feedbackMessage = nil
+    }
+
+    public func grantLocalTestTickets(_ amount: Int = 30) {
+        guard amount > 0 else { return }
+        grantLocalTestTicketsAction?(amount)
+        feedbackMessage = "ローカルテスト用に \(amount) 枚のチケットを付与しました"
     }
 
     private func currentSnapshot() -> ReminderSettingsSnapshot {

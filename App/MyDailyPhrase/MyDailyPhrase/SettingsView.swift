@@ -6,6 +6,7 @@ import Presentation
 struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
     @EnvironmentObject private var iap: IAPStore
+    @EnvironmentObject private var auth: AppAuthViewModel
     @State private var showDeleteConfirmation = false
     @State private var showsIAPDiagnostics = false
     @State private var versionTapCount = 0
@@ -49,6 +50,79 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+
+                AppSectionCard(
+                    title: "アカウント",
+                    subtitle: "日記の回答は自動で公開されず、共有は自分で選んだ内容だけを使います。"
+                ) {
+                    Text(auth.accountStatusText)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(auth.accountDetailText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            InfoBadge(title: auth.currentSession?.user.provider.displayName ?? "未ログイン", systemImage: "person.crop.circle", tint: .blue)
+                            if auth.isGuest {
+                                InfoBadge(title: "ゲスト", systemImage: "person", tint: .orange)
+                            }
+                            if let adminLabel = auth.currentFeatureAccess.adminStatusLabel {
+                                PremiumBadge(title: adminLabel)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            InfoBadge(title: auth.currentSession?.user.provider.displayName ?? "未ログイン", systemImage: "person.crop.circle", tint: .blue)
+                            if auth.isGuest {
+                                InfoBadge(title: "ゲスト", systemImage: "person", tint: .orange)
+                            }
+                            if let adminLabel = auth.currentFeatureAccess.adminStatusLabel {
+                                PremiumBadge(title: adminLabel)
+                            }
+                        }
+                    }
+
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            Button {
+                                auth.signOut()
+                            } label: {
+                                Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                auth.requestAccountDeletionSupport()
+                            } label: {
+                                Label("アカウント削除の案内", systemImage: "questionmark.circle")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        VStack(spacing: 10) {
+                            Button {
+                                auth.signOut()
+                            } label: {
+                                Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                auth.requestAccountDeletionSupport()
+                            } label: {
+                                Label("アカウント削除の案内", systemImage: "questionmark.circle")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
                 }
 
                 if let feedback = vm.feedbackMessage {
@@ -308,6 +382,114 @@ struct SettingsView: View {
                                 }
                             }
                         }
+                    }
+                }
+
+                if auth.currentFeatureAccess.canAccessAdminMenu {
+                    AppSectionCard(
+                        title: "管理者メニュー",
+                        subtitle: "管理者権限で有効な確認メニューです。通常ユーザーには表示されません。"
+                    ) {
+                        Text("StoreKit の加入状態を変えずに、Creator 機能・ガチャ QA・購入診断・ローカルデモの確認ができます。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                Button {
+                                    showsIAPDiagnostics = true
+                                    artworkPrimaryFilter = .all
+                                } label: {
+                                    Label("全アイテム確認", systemImage: "square.grid.2x2")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button {
+                                    showsIAPDiagnostics = true
+                                    artworkPrimaryFilter = .available
+                                } label: {
+                                    Label("ガチャアート確認", systemImage: "photo.on.rectangle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            VStack(spacing: 10) {
+                                Button {
+                                    showsIAPDiagnostics = true
+                                    artworkPrimaryFilter = .all
+                                } label: {
+                                    Label("全アイテム確認", systemImage: "square.grid.2x2")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button {
+                                    showsIAPDiagnostics = true
+                                    artworkPrimaryFilter = .available
+                                } label: {
+                                    Label("ガチャアート確認", systemImage: "photo.on.rectangle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                Button {
+                                    showsIAPDiagnostics = true
+                                } label: {
+                                    Label("購入診断", systemImage: "stethoscope")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button(role: .destructive) {
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("ローカルデモデータリセット", systemImage: "trash")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            VStack(spacing: 10) {
+                                Button {
+                                    showsIAPDiagnostics = true
+                                } label: {
+                                    Label("購入診断", systemImage: "stethoscope")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button(role: .destructive) {
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("ローカルデモデータリセット", systemImage: "trash")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+
+                        if vm.canGrantLocalTestTickets,
+                           auth.currentFeatureAccess.adminCapabilities.contains(.grantLocalTicketsForTesting) {
+                            Button {
+                                vm.grantLocalTestTickets(30)
+                            } label: {
+                                Label("ローカルテストチケット付与", systemImage: "ticket.fill")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        Label("Creator機能プレビューとコミュニティ作成テストは「みんな > 作成」から確認できます。", systemImage: "crown.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 

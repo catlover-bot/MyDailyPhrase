@@ -26,6 +26,7 @@ final class CommunityLiteViewModel: ObservableObject {
     @Published private(set) var currentCommunityPreviewWindow: [CommunityPrompt] = []
     @Published private(set) var socialProfiles: [SocialUserProfileSummary] = []
     @Published private(set) var dmConversations: [DirectMessageConversation] = []
+    @Published private(set) var featureAccess: FeatureAccessSnapshot = .signedOutDefault
 
     @Published var weeklyResponse: String = "" {
         didSet { persistUIState() }
@@ -130,7 +131,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var socialHeaderText: String {
-        "公開フィードはまだありません。プロフィールカードとDMはこの端末で流れを試せる安全なローカル導線です。"
+        if featureAccess.isGuest {
+            return "フォローとDMはログイン後に使えます。ゲストでは、この端末で日記と見た目の流れだけを安全に試せます。"
+        }
+        return "公開フィードはまだありません。プロフィールカードとDMはこの端末で流れを試せる安全なローカル導線です。"
     }
 
     var joinedCommunities: [CommunityTemplate] {
@@ -200,10 +204,13 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var canCreateCommunity: Bool {
-        creatorEntitlement.canCreateCommunity
+        creatorEntitlement.canCreateCommunity || featureAccess.canCreateCommunity
     }
 
     var communityCreationStatusText: String {
+        if featureAccess.isAdminBypassingCreatorFeatures {
+            return "管理者権限で有効です。この端末では StoreKit 加入状態を変えずに、ローカルな招待制コミュニティ作成を確認できます。"
+        }
         if creatorEntitlement.canCreateCommunity {
             return "Creator Passの権利が有効です。この端末ではローカルな招待制コミュニティを作成できます。"
         }
@@ -360,7 +367,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func createCommunity() {
-        guard creatorEntitlement.canCreateCommunity else {
+        guard canCreateCommunity else {
             lastMessage = "参加は無料です。コミュニティ作成はCreator Pass向け機能として準備中です。"
             return
         }
@@ -395,7 +402,8 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func canSendDM(to profile: SocialUserProfileSummary) -> Bool {
-        SocialSupport.canUseDirectMessage(
+        guard featureAccess.canUseDMPrototype else { return false }
+        return SocialSupport.canUseDirectMessage(
             with: profile,
             followingUserIDs: Set(getMyProfile().followingUserIDs),
             followerUserIDs: Set(followerPreviewProfiles.map(\.id)),
@@ -408,6 +416,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func toggleFollow(_ profile: SocialUserProfileSummary) {
+        guard !featureAccess.isGuest else {
+            lastMessage = "フォローはログイン後に利用できます"
+            return
+        }
         let me = getMyProfile()
         let updated = SocialSupport.toggledFollowIDs(current: me.followingUserIDs, targetUserID: profile.id)
         _ = updateMyProfile(followingUserIDs: updated)
@@ -416,6 +428,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func toggleBlock(_ profile: SocialUserProfileSummary) {
+        guard !featureAccess.isGuest else {
+            lastMessage = "ブロックはログイン後に利用できます"
+            return
+        }
         let me = getMyProfile()
         let updatedBlocked = SocialSupport.blockedIDsAfterBlocking(current: me.blockedUserIDs, targetUserID: profile.id)
         let updatedFollowing = me.followingUserIDs.filter { $0 != profile.id }
@@ -431,6 +447,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func report(_ profile: SocialUserProfileSummary) {
+        guard !featureAccess.isGuest else {
+            lastMessage = "通報メモはログイン後に利用できます"
+            return
+        }
         let me = getMyProfile()
         let updated = SocialSupport.reportedIDsAfterReporting(current: me.reportedUserIDs, targetUserID: profile.id)
         _ = updateMyProfile(reportedUserIDs: updated)
@@ -466,6 +486,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func deleteConversation(_ conversationID: String) {
+        guard !featureAccess.isGuest else {
+            lastMessage = "DMはログイン後に利用できます"
+            return
+        }
         let removedParticipantID = getMyProfile().dmConversations
             .first(where: { $0.id == conversationID })?
             .participantUserID
@@ -504,6 +528,10 @@ final class CommunityLiteViewModel: ObservableObject {
         draftAnswerStyle = preset.answerStyle
         draftSchedule = preset.schedule
         draftTagsText = preset.tags.joined(separator: ", ")
+    }
+
+    func updateFeatureAccess(_ snapshot: FeatureAccessSnapshot) {
+        featureAccess = snapshot
     }
 
     func communityPromptShareText(includeAnswer: Bool) -> String? {
@@ -1139,7 +1167,13 @@ struct CommunityLiteView: View {
                 }
             }
 
-            if vm.followingProfiles.isEmpty {
+            if vm.featureAccess.isGuest {
+                EmptyStateCard(
+                    title: "フォローはログイン後に使えます",
+                    message: "ゲストでは公開検索なしの流れだけを案内しています。Appleでログインすると、フォローと相互フォローの導線を使えます。",
+                    systemImage: "person.crop.circle.badge.plus"
+                )
+            } else if vm.followingProfiles.isEmpty {
                 EmptyStateCard(
                     title: "まだフォローしている相手はいません",
                     message: "まずはおすすめのプロフィールカードを見て、気になる相手をフォローしてみましょう。",
@@ -1207,7 +1241,13 @@ struct CommunityLiteView: View {
                 }
             }
 
-            if vm.dmConversations.isEmpty && selectedConversationProfile == nil {
+            if vm.featureAccess.isGuest {
+                EmptyStateCard(
+                    title: "DMはログイン後に使えます",
+                    message: "日記の回答が自動でDMされることはありません。ログイン後も、相互フォローの相手とのみ安全に利用できます。",
+                    systemImage: "message"
+                )
+            } else if vm.dmConversations.isEmpty && selectedConversationProfile == nil {
                 EmptyStateCard(
                     title: "まだDMはありません",
                     message: "相互フォローの相手ができると、この画面から安全に下書きDMを試せます。",
@@ -1703,7 +1743,12 @@ struct CommunityLiteView: View {
             Button {
                 vm.createCommunity()
             } label: {
-                Label(vm.canCreateCommunity ? "コミュニティを作る" : "Creator Passで作成を解放", systemImage: vm.canCreateCommunity ? "plus.circle.fill" : "lock.fill")
+                Label(
+                    vm.canCreateCommunity
+                        ? (vm.featureAccess.isAdminBypassingCreatorFeatures ? "管理者権限で作成を確認" : "コミュニティを作る")
+                        : "Creator Passで作成を解放",
+                    systemImage: vm.canCreateCommunity ? "plus.circle.fill" : "lock.fill"
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -1738,20 +1783,24 @@ struct CommunityLiteView: View {
             VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        PremiumBadge(title: vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放")
+                        PremiumBadge(title: vm.featureAccess.isAdminBypassingCreatorFeatures ? "管理者権限で有効" : (vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放"))
                         InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
                         InfoBadge(title: "公開フィードなし", systemImage: "shield", tint: .indigo)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        PremiumBadge(title: vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放")
+                        PremiumBadge(title: vm.featureAccess.isAdminBypassingCreatorFeatures ? "管理者権限で有効" : (vm.creatorEntitlement.hasCreatorPass ? "作成機能が有効" : "作成機能を解放"))
                         InfoBadge(title: "参加は無料", systemImage: "person.badge.plus", tint: .green)
                         InfoBadge(title: "公開フィードなし", systemImage: "shield", tint: .indigo)
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
+                    Text(
+                        vm.featureAccess.isAdminBypassingCreatorFeatures
+                            ? "管理者権限で作成機能を確認できます。StoreKit の Creator Pass 状態はそのままです。"
+                            : (vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
+                    )
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1766,7 +1815,11 @@ struct CommunityLiteView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-                if vm.creatorEntitlement.hasCreatorPass {
+                if vm.featureAccess.isAdminBypassingCreatorFeatures {
+                    Label("管理者権限で有効", systemImage: "checkmark.shield.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.orange)
+                } else if vm.creatorEntitlement.hasCreatorPass {
                     Label("Creator Pass 有効", systemImage: "checkmark.seal.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.green)
