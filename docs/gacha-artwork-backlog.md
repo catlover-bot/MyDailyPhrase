@@ -2,6 +2,14 @@
 
 既存 8 点のアートを除く、今後追加したいガチャアート候補一覧です。
 
+## Preview Planning Rules
+
+- 新しいアートを足すときは、`assetName` だけでなく usage preview plan も決める
+- busy artwork は metadata の背後に置かず、hero / accent / watermark で使い分ける
+- `background` 系は色や空気感を中心に、`badge` 系は小さな icon として設計する
+- `shareTemplate` や `gachaRevealEffect` は、共有カードや結果画面での見え方を先に考える
+- 追加後は hidden `ガチャアート確認` と item detail preview の両方で確認する
+
 ## Priority Rules
 
 - Priority 1: 通常ガチャ排出の Legendary と高インパクト項目
@@ -73,4 +81,3 @@
 | season_silver_tidal | 潮騒の紋章 | エピック | バッジ | gacha_season_silver_tidal | gacha_season_silver_tidal.png | 小さく表示しても認識しやすい紋章・バッジ系アート | Japanese mobile gacha reward artwork for 潮騒の紋章, calm decorative style, no text, centered composition, 小さく表示しても認識しやすい紋章・バッジ系アート, transparent background if useful | バッジ<br>プロフィールカード<br>共有カード<br>コミュニティカード<br>コレクション<br>ガチャ結果 | yes | vector PDF |
 | season_gold_crown | 王冠の印 | レジェンド | バッジ | gacha_season_gold_crown | gacha_season_gold_crown.png | 小さく表示しても認識しやすい紋章・バッジ系アート | Japanese mobile gacha reward artwork for 王冠の印, calm decorative style, no text, centered composition, 小さく表示しても認識しやすい紋章・バッジ系アート, transparent background if useful | バッジ<br>プロフィールカード<br>共有カード<br>コミュニティカード<br>コレクション<br>ガチャ結果 | yes | vector PDF |
 | season_gold_eternal | 永遠の印 | レジェンド | バッジ | gacha_season_gold_eternal | gacha_season_gold_eternal.png | 小さく表示しても認識しやすい紋章・バッジ系アート | Japanese mobile gacha reward artwork for 永遠の印, calm decorative style, no text, centered composition, 小さく表示しても認識しやすい紋章・バッジ系アート, transparent background if useful | バッジ<br>プロフィールカード<br>共有カード<br>コミュニティカード<br>コレクション<br>ガチャ結果 | yes | vector PDF |
-

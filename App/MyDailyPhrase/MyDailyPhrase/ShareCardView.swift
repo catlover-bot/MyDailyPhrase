@@ -109,7 +109,8 @@ struct ShareCardView: View {
             if hasBundledArtwork {
                 DecorationBundledArtworkLayer(
                     decorationId: model.decorationId,
-                    imageInset: 24
+                    imageInset: 24,
+                    treatment: .softBackground
                 )
                 .allowsHitTesting(false)
             }

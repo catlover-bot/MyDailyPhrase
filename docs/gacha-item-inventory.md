@@ -1,6 +1,13 @@
 # Gacha Item Inventory
 
-Build 19 時点の `CardDecorationCatalog.all` 全件一覧です。
+Build 20 時点の `CardDecorationCatalog.all` 全件一覧です。
+
+## Usage Preview Rules
+
+- すべてのアイテムは少なくとも 1 つ以上の `applicableSurfaces` を持つ
+- 詳細画面では `applicableSurfaces` に応じて、日記 / お題 / プロフィール / 共有 / コミュニティ / ガチャ結果 / コレクションなどのプレビューを出し分ける
+- 画像が detailed な場合は icon / corner accent として使い、本文の背後には直接置かない
+- 新規アイテムを追加するときは、見た目だけでなく「どこでどう使うか」の preview plan も一緒に決める
 
 ## Summary
 

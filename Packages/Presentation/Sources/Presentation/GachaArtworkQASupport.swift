@@ -96,6 +96,43 @@ public enum GachaArtworkQATypeFilter: String, CaseIterable, Identifiable, Sendab
     }
 }
 
+public enum GachaArtworkQASurfaceFilter: String, CaseIterable, Identifiable, Sendable {
+    case all = "Surface: すべて"
+    case journal = "日記カード"
+    case prompt = "お題カード"
+    case profile = "プロフィール"
+    case share = "共有カード"
+    case community = "コミュニティ"
+    case result = "ガチャ結果"
+    case collection = "コレクション"
+    case special = "背景 / オーラ / バッジ"
+
+    public var id: String { rawValue }
+
+    public var matchedSurfaces: [DecorationSurface]? {
+        switch self {
+        case .all:
+            return nil
+        case .journal:
+            return [.journalCard]
+        case .prompt:
+            return [.promptCard]
+        case .profile:
+            return [.profileCard, .titlePlate]
+        case .share:
+            return [.shareCard]
+        case .community:
+            return [.communityCard]
+        case .result:
+            return [.gachaResultCard, .gachaCapsule]
+        case .collection:
+            return [.collectionCard]
+        case .special:
+            return [.appBackground, .auraFrame, .badge, .sticker]
+        }
+    }
+}
+
 public struct GachaArtworkQAItemRow: Identifiable, Equatable, Sendable {
     public let id: String
     public let displayName: String
@@ -168,14 +205,36 @@ public enum GachaArtworkQASupport {
         from rows: [GachaArtworkQAItemRow],
         primaryFilter: GachaArtworkQAPrimaryFilter,
         rarityFilter: GachaArtworkQARarityFilter,
-        typeFilter: GachaArtworkQATypeFilter
+        typeFilter: GachaArtworkQATypeFilter,
+        surfaceFilter: GachaArtworkQASurfaceFilter = .all,
+        searchText: String = ""
     ) -> [GachaArtworkQAItemRow] {
-        rows.filter { row in
+        let normalizedSearchText = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        return rows.filter { row in
             if let rarity = rarityFilter.rarity, row.rarity != rarity {
                 return false
             }
             if let itemType = typeFilter.itemType, row.itemType != itemType {
                 return false
+            }
+            if let surfaces = surfaceFilter.matchedSurfaces,
+               row.applicableSurfaces.allSatisfy({ !surfaces.contains($0) }) {
+                return false
+            }
+            if !normalizedSearchText.isEmpty {
+                let haystacks = [
+                    row.id,
+                    row.displayName,
+                    row.assetName ?? "",
+                    row.thumbnailAssetName ?? ""
+                ].map { $0.lowercased() }
+
+                if haystacks.allSatisfy({ !$0.contains(normalizedSearchText) }) {
+                    return false
+                }
             }
 
             switch primaryFilter {

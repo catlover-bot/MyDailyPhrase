@@ -50,7 +50,8 @@ struct Card<Content: View>: View {
                 if hasBundledArtwork {
                     DecorationBundledArtworkLayer(
                         decorationId: resolvedDecorationId,
-                        prefersThumbnail: title == nil
+                        prefersThumbnail: title == nil,
+                        treatment: .readableCard
                     )
                     .allowsHitTesting(false)
                     .clipShape(shape)

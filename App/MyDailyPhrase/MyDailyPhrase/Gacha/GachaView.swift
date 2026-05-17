@@ -29,6 +29,8 @@ struct GachaView: View {
     @State private var isPresentingOddsSheet = false
     @State private var rarityFilter: RarityFilter = .all
     @State private var typeFilter: ItemTypeFilter = .all
+    @State private var ownershipFilter: OwnershipFilter = .all
+    @State private var artworkFilter: ArtworkFilter = .all
     @State private var collectionSort: CollectionSort = .newest
 
     enum Tab: String {
@@ -112,6 +114,23 @@ struct GachaView: View {
         case newest = "新しい順"
         case rarity = "レア順"
         case name = "名前順"
+
+        var id: String { rawValue }
+    }
+
+    enum OwnershipFilter: String, CaseIterable, Identifiable {
+        case all = "状態: すべて"
+        case owned = "所持"
+        case locked = "未所持"
+        case equipped = "装備中"
+
+        var id: String { rawValue }
+    }
+
+    enum ArtworkFilter: String, CaseIterable, Identifiable {
+        case all = "画像: すべて"
+        case available = "画像あり"
+        case missing = "画像なし"
 
         var id: String { rawValue }
     }
@@ -332,6 +351,24 @@ struct GachaView: View {
                 }
                 if let itemType = typeFilter.itemType, vm.itemMetadata(for: item.id)?.itemType != itemType {
                     return false
+                }
+                switch ownershipFilter {
+                case .all:
+                    break
+                case .owned:
+                    if !vm.isOwned(item.id) { return false }
+                case .locked:
+                    if vm.isOwned(item.id) { return false }
+                case .equipped:
+                    if !vm.isSelected(item.id) { return false }
+                }
+                switch artworkFilter {
+                case .all:
+                    break
+                case .available:
+                    if !DecorationBundledArtworkCatalog.hasBundledArtwork(for: item.id) { return false }
+                case .missing:
+                    if DecorationBundledArtworkCatalog.hasBundledArtwork(for: item.id) { return false }
                 }
                 return true
             }
@@ -1059,6 +1096,10 @@ struct GachaView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Text("各カードをタップすると、使える場所と実際の見え方を確認できます。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -1184,6 +1225,10 @@ struct GachaView: View {
             Text("※「限定」アイテムは通常ガチャ対象外です")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+
+            Text("各アイテムはタップでプレビューできます。未所持アイテムも、どこに反映されるか確認できます。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -1198,6 +1243,18 @@ struct GachaView: View {
                 VStack(spacing: 10) {
                     rarityFilterPicker
                     typeFilterPicker
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    ownershipFilterPicker
+                    artworkFilterPicker
+                }
+
+                VStack(spacing: 10) {
+                    ownershipFilterPicker
+                    artworkFilterPicker
                 }
             }
 
@@ -1222,6 +1279,24 @@ struct GachaView: View {
     private var typeFilterPicker: some View {
         Picker("種類", selection: $typeFilter) {
             ForEach(ItemTypeFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var ownershipFilterPicker: some View {
+        Picker("状態", selection: $ownershipFilter) {
+            ForEach(OwnershipFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var artworkFilterPicker: some View {
+        Picker("画像", selection: $artworkFilter) {
+            ForEach(ArtworkFilter.allCases) { filter in
                 Text(filter.rawValue).tag(filter)
             }
         }

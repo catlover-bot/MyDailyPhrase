@@ -13,6 +13,9 @@ struct SettingsView: View {
     @State private var artworkPrimaryFilter: GachaArtworkQAPrimaryFilter = .all
     @State private var artworkRarityFilter: GachaArtworkQARarityFilter = .all
     @State private var artworkTypeFilter: GachaArtworkQATypeFilter = .all
+    @State private var artworkSurfaceFilter: GachaArtworkQASurfaceFilter = .all
+    @State private var artworkSearchText: String = ""
+    @State private var selectedArtworkPreviewItem: CardDecoration? = nil
 
     init(viewModel: SettingsViewModel) {
         _vm = StateObject(wrappedValue: viewModel)
@@ -224,15 +227,20 @@ struct SettingsView: View {
 
                             artworkPrimaryFilterChips
 
+                            TextField("id / 名前 / assetName で検索", text: $artworkSearchText)
+                                .textFieldStyle(.roundedBorder)
+
                             ViewThatFits(in: .horizontal) {
                                 HStack(spacing: 10) {
                                     artworkRarityPicker
                                     artworkTypePicker
+                                    artworkSurfacePicker
                                 }
 
                                 VStack(spacing: 10) {
                                     artworkRarityPicker
                                     artworkTypePicker
+                                    artworkSurfacePicker
                                 }
                             }
 
@@ -243,7 +251,9 @@ struct SettingsView: View {
                                             .font(.subheadline.weight(.semibold))
 
                                         ForEach(section.rows) { row in
-                                            GachaArtworkDiagnosticCard(row: row)
+                                            GachaArtworkDiagnosticCard(row: row) {
+                                                selectedArtworkPreviewItem = CardDecorationCatalog.byId(row.id)
+                                            }
                                         }
                                     }
                                 }
@@ -288,6 +298,17 @@ struct SettingsView: View {
         }
         .task {
             await vm.load()
+        }
+        .sheet(item: $selectedArtworkPreviewItem) { item in
+            GachaThemePreviewSheet(
+                item: item,
+                ownedCount: vm.ownedDecorationIDs.contains(item.id) ? 1 : 0,
+                isOwned: vm.ownedDecorationIDs.contains(item.id),
+                isEquipped: vm.equippedDecorationID == item.id,
+                profileDisplayName: "QA Preview",
+                onEquip: {},
+                onShare: {}
+            )
         }
     }
 
@@ -341,14 +362,18 @@ struct SettingsView: View {
             from: artworkAllRows,
             primaryFilter: artworkPrimaryFilter,
             rarityFilter: artworkRarityFilter,
-            typeFilter: artworkTypeFilter
+            typeFilter: artworkTypeFilter,
+            surfaceFilter: artworkSurfaceFilter,
+            searchText: artworkSearchText
         )
     }
 
     private var artworkRowSections: [(title: String, rows: [GachaArtworkQAItemRow])] {
         if artworkPrimaryFilter == .all,
            artworkRarityFilter == .all,
-           artworkTypeFilter == .all {
+           artworkTypeFilter == .all,
+           artworkSurfaceFilter == .all,
+           artworkSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let order: [GachaArtworkQAAssetStatus] = [.available, .mappedMissing, .fallbackOnly]
             return order.compactMap { status in
                 let rows = filteredArtworkRows.filter { $0.assetStatus == status }
@@ -401,6 +426,15 @@ struct SettingsView: View {
     private var artworkTypePicker: some View {
         Picker("種類", selection: $artworkTypeFilter) {
             ForEach(GachaArtworkQATypeFilter.allCases) { filter in
+                Text(filter.rawValue).tag(filter)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var artworkSurfacePicker: some View {
+        Picker("Surface", selection: $artworkSurfaceFilter) {
+            ForEach(GachaArtworkQASurfaceFilter.allCases) { filter in
                 Text(filter.rawValue).tag(filter)
             }
         }
@@ -461,6 +495,7 @@ struct SettingsView: View {
 
 private struct GachaArtworkDiagnosticCard: View {
     let row: GachaArtworkQAItemRow
+    let onTap: () -> Void
 
     private var item: CardDecoration? {
         CardDecorationCatalog.byId(row.id)
@@ -474,64 +509,71 @@ private struct GachaArtworkDiagnosticCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 12) {
-                    if let item {
-                        GachaArtworkView(
-                            item: item,
-                            displayMode: .diagnostics
-                        )
-                        .frame(width: 132, height: 132)
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 14) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 12) {
+                        if let item {
+                            GachaArtworkView(
+                                item: item,
+                                displayMode: .diagnostics
+                            )
+                            .frame(width: 132, height: 132)
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            titleBlock
+                            statusBadges
+                            metadataGrid
+                        }
+
+                        Spacer(minLength: 0)
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let item {
+                            GachaArtworkView(
+                                item: item,
+                                displayMode: .diagnostics
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+
                         titleBlock
                         statusBadges
                         metadataGrid
                     }
-
-                    Spacer(minLength: 0)
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    if let item {
-                        GachaArtworkView(
-                            item: item,
-                            displayMode: .diagnostics
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    titleBlock
-                    statusBadges
-                    metadataGrid
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("assetName / thumbnailAssetName")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text(assetNameText)
-                    .font(.caption.monospaced())
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if !row.applicableSurfaceLabels.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("使える場所")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("assetName / thumbnailAssetName")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    FlexibleSurfaceChips(labels: row.applicableSurfaceLabels)
+
+                    Text(assetNameText)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+
+                if !row.applicableSurfaceLabels.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("使える場所")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        FlexibleSurfaceChips(labels: row.applicableSurfaceLabels)
+                    }
+                }
+
+                Text("タップで詳細プレビュー")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .buttonStyle(.plain)
     }
 
     private var titleBlock: some View {

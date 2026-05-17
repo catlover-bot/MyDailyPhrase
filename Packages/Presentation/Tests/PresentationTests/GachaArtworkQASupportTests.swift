@@ -79,4 +79,45 @@ struct GachaArtworkQASupportTests {
         #expect(available.allSatisfy { !$0.itemTypeLabel.isEmpty })
         #expect(available.allSatisfy { !$0.applicableSurfaceLabels.isEmpty })
     }
+
+    @Test("surface filter keeps only matching items")
+    func surfaceFilterWorks() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        let filtered = GachaArtworkQASupport.filteredRows(
+            from: rows,
+            primaryFilter: .all,
+            rarityFilter: .all,
+            typeFilter: .all,
+            surfaceFilter: .profile
+        )
+
+        #expect(!filtered.isEmpty)
+        #expect(filtered.allSatisfy { $0.applicableSurfaces.contains(.profileCard) || $0.applicableSurfaces.contains(.titlePlate) })
+    }
+
+    @Test("search finds by asset name without ownership")
+    func searchMatchesAssetNames() {
+        let rows = GachaArtworkQASupport.rows(
+            ownedDecorationIDs: Set<String>(),
+            equippedDecorationID: nil,
+            hasBundledArtwork: { _ in false }
+        )
+
+        let filtered = GachaArtworkQASupport.filteredRows(
+            from: rows,
+            primaryFilter: .all,
+            rarityFilter: .all,
+            typeFilter: .all,
+            surfaceFilter: .all,
+            searchText: "gacha_neon_city"
+        )
+
+        #expect(filtered.count == 1)
+        #expect(filtered.first?.id == "neon")
+    }
 }

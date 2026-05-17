@@ -55,4 +55,36 @@ struct GachaThemePresentationTests {
         #expect(text.contains("Stardust"))
         #expect(!text.contains("stardust\n"))
     }
+
+    @Test("usage preview surfaces only include applicable surfaces")
+    func usagePreviewSurfacesMatchApplicability() throws {
+        let item = try #require(CardDecorationCatalog.byId("starlight"))
+        let metadata = GachaThemePresentation.decorationItem(for: item)
+        let surfaces = GachaThemePresentation.orderedUsagePreviewSurfaces(for: item)
+
+        #expect(!surfaces.isEmpty)
+        #expect(Set(surfaces) == Set(metadata.applicableSurfaces))
+    }
+
+    @Test("each item resolves a primary preview surface from its surfaces")
+    func primaryPreviewSurfaceStaysApplicable() {
+        for item in CardDecorationCatalog.all {
+            let metadata = GachaThemePresentation.decorationItem(for: item)
+            let primary = GachaThemePresentation.primaryPreviewSurface(for: item)
+            #expect(metadata.applicableSurfaces.contains(primary))
+        }
+    }
+
+    @Test("item type maps to expected primary preview surface")
+    func itemTypeMapsToPrimarySurface() throws {
+        let journal = try #require(CardDecorationCatalog.byId("linen"))
+        let share = try #require(CardDecorationCatalog.byId("stardust"))
+        let reveal = try #require(CardDecorationCatalog.byId("neon"))
+        let badge = try #require(CardDecorationCatalog.byId("season_gold_halo"))
+
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: journal) == .journalCard)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: share) == .shareCard)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: reveal) == .gachaCapsule)
+        #expect(GachaThemePresentation.primaryPreviewSurface(for: badge) == .badge)
+    }
 }

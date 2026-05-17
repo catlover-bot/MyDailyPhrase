@@ -19,6 +19,31 @@ public enum GachaThemeOwnershipState: String, Equatable, Sendable {
 }
 
 public enum GachaThemePresentation {
+    public static func orderedUsagePreviewSurfaces(for item: CardDecoration) -> [DecorationSurface] {
+        let metadata = decorationItem(for: item)
+        let primary = primaryPreviewSurface(for: item)
+        let priorities = Dictionary(
+            uniqueKeysWithValues: metadata.applicableSurfaces.map { surface in
+                (surface, surfacePriority(surface, for: metadata.itemType, primary: primary))
+            }
+        )
+
+        return metadata.applicableSurfaces
+            .sorted { lhs, rhs in
+                let lhsPriority = priorities[lhs] ?? Int.max
+                let rhsPriority = priorities[rhs] ?? Int.max
+                if lhsPriority != rhsPriority {
+                    return lhsPriority < rhsPriority
+                }
+                return surfaceLabel(for: lhs) < surfaceLabel(for: rhs)
+            }
+    }
+
+    public static func primaryPreviewSurface(for item: CardDecoration) -> DecorationSurface {
+        let metadata = decorationItem(for: item)
+        return primaryPreviewSurface(for: metadata.itemType, availableSurfaces: metadata.applicableSurfaces)
+    }
+
     public static func rarityLabel(for rarity: CardDecorationRarity) -> String {
         switch rarity {
         case .common:
@@ -55,7 +80,7 @@ public enum GachaThemePresentation {
     }
 
     public static func usageText(for item: CardDecoration) -> String {
-        let labels = applicableSurfaceLabels(for: item)
+        let labels = orderedUsagePreviewSurfaces(for: item).map(surfaceLabel(for:))
         if labels.isEmpty {
             switch item.rarity {
             case .common, .rare:
@@ -68,6 +93,19 @@ public enum GachaThemePresentation {
         }
 
         return labels.joined(separator: "・") + " に反映されます。"
+    }
+
+    public static func compactUsageSummary(for item: CardDecoration) -> String {
+        let labels = orderedUsagePreviewSurfaces(for: item).map(surfaceLabel(for:))
+        guard !labels.isEmpty else {
+            return "見た目のプレビューに使えます"
+        }
+
+        let headlineLabels = Array(labels.prefix(2))
+        if labels.count <= 2 {
+            return headlineLabels.joined(separator: "・") + " で使えます"
+        }
+        return headlineLabels.joined(separator: "・") + " ほかで使えます"
     }
 
     public static func sampleJournalAnswer(for item: CardDecoration) -> String {
@@ -197,13 +235,86 @@ public enum GachaThemePresentation {
     }
 
     public static func applicableSurfaceLabels(for item: CardDecoration) -> [String] {
-        decorationItem(for: item).applicableSurfaces.map(surfaceLabel(for:))
+        orderedUsagePreviewSurfaces(for: item).map(surfaceLabel(for:))
     }
 
     public static func sampleShareCaption(for item: CardDecoration, isEquipped: Bool) -> String {
         let template = shareTemplateName(for: item) ?? "ひとことカード"
         let status = isEquipped ? "装備中" : "共有カードに反映可能"
         return "\(template) ・ \(status)"
+    }
+
+    public static func usagePreviewTitle(for surface: DecorationSurface) -> String {
+        switch surface {
+        case .journalCard:
+            return "日記カードでの見え方"
+        case .promptCard:
+            return "お題カードでの見え方"
+        case .profileCard:
+            return "プロフィールでの見え方"
+        case .shareCard:
+            return "共有カードでの見え方"
+        case .communityCard:
+            return "コミュニティカードでの見え方"
+        case .gachaResultCard:
+            return "ガチャ結果での見え方"
+        case .gachaCapsule:
+            return "ガチャ演出での見え方"
+        case .appBackground:
+            return "背景アクセントでの見え方"
+        case .badge:
+            return "バッジでの見え方"
+        case .sticker:
+            return "ステッカーでの見え方"
+        case .auraFrame:
+            return "オーラ枠での見え方"
+        case .titlePlate:
+            return "称号プレートでの見え方"
+        case .collectionCard:
+            return "コレクションでの見え方"
+        }
+    }
+
+    public static func usagePreviewDescription(
+        for surface: DecorationSurface,
+        item: CardDecoration,
+        isEquipped: Bool
+    ) -> String {
+        let metadata = decorationItem(for: item)
+        let equippedText = isEquipped ? "現在の装備に反映されます。" : "プレビューとして確認できます。"
+
+        switch surface {
+        case .journalCard:
+            return metadata.itemType == .journalPaper
+                ? "日記カードの紙面や余白に反映されます。\(equippedText)"
+                : "日記カードの見た目に控えめに反映されます。\(equippedText)"
+        case .promptCard:
+            return metadata.itemType == .promptPack
+                ? "お題カードや部屋のお題表示に反映されます。\(equippedText)"
+                : "お題カードの見た目に反映されます。\(equippedText)"
+        case .profileCard:
+            return "プロフィールカードの背景・称号・バッジなどに反映されます。\(equippedText)"
+        case .shareCard:
+            return "共有カードのレイアウトや装飾に反映されます。\(equippedText)"
+        case .communityCard:
+            return "コミュニティカードや部屋の見た目に反映されます。\(equippedText)"
+        case .gachaResultCard:
+            return "獲得結果の見え方や演出プレビューに反映されます。\(equippedText)"
+        case .gachaCapsule:
+            return "開封アニメーションや演出の雰囲気に反映されます。\(equippedText)"
+        case .appBackground:
+            return "アプリ内の背景アクセントとして控えめに反映されます。\(equippedText)"
+        case .badge:
+            return "小さなバッジや印として反映されます。\(equippedText)"
+        case .sticker:
+            return "カードの隅に置かれる小さな装飾として反映されます。\(equippedText)"
+        case .auraFrame:
+            return "カードまわりの光や縁取りとして反映されます。\(equippedText)"
+        case .titlePlate:
+            return "名前や称号のまわりのプレートとして反映されます。\(equippedText)"
+        case .collectionCard:
+            return "コレクション一覧でも見分けやすく表示されます。\(equippedText)"
+        }
     }
 
     public static func surfaceLabel(for surface: DecorationSurface) -> String {
@@ -241,6 +352,8 @@ public enum GachaThemePresentation {
         guard !isEquipped else { return "現在装備中" }
 
         switch decorationItem(for: item).itemType {
+        case .cardFrame:
+            return "カード枠に使う"
         case .profileTitle, .badge:
             return "プロフィールに使う"
         case .shareTemplate:
@@ -249,8 +362,154 @@ public enum GachaThemePresentation {
             return "日記カードに使う"
         case .promptPack:
             return "コミュニティに使う"
+        case .gachaRevealEffect:
+            return "ガチャ演出に使う"
+        case .auraStyle:
+            return "オーラに使う"
         default:
             return "まとめて装備"
+        }
+    }
+
+    private static func primaryPreviewSurface(
+        for itemType: DecorationItemType,
+        availableSurfaces: [DecorationSurface]
+    ) -> DecorationSurface {
+        let preferred: [DecorationSurface]
+        switch itemType {
+        case .fullTheme:
+            preferred = [.journalCard, .profileCard, .shareCard, .communityCard]
+        case .background:
+            preferred = [.profileCard, .communityCard, .shareCard, .appBackground]
+        case .cardFrame:
+            preferred = [.journalCard, .profileCard, .shareCard, .gachaResultCard]
+        case .sticker:
+            preferred = [.sticker, .shareCard, .communityCard, .collectionCard]
+        case .badge:
+            preferred = [.badge, .profileCard, .shareCard, .gachaResultCard]
+        case .profileTitle:
+            preferred = [.titlePlate, .profileCard, .shareCard]
+        case .shareTemplate:
+            preferred = [.shareCard, .profileCard, .communityCard]
+        case .gachaRevealEffect:
+            preferred = [.gachaCapsule, .gachaResultCard, .shareCard]
+        case .promptPack:
+            preferred = [.promptCard, .communityCard, .journalCard]
+        case .journalPaper:
+            preferred = [.journalCard, .promptCard, .collectionCard]
+        case .auraStyle:
+            preferred = [.auraFrame, .profileCard, .communityCard, .appBackground]
+        }
+
+        for surface in preferred where availableSurfaces.contains(surface) {
+            return surface
+        }
+        return availableSurfaces.first ?? .collectionCard
+    }
+
+    private static func surfacePriority(
+        _ surface: DecorationSurface,
+        for itemType: DecorationItemType,
+        primary: DecorationSurface
+    ) -> Int {
+        if surface == primary {
+            return 0
+        }
+
+        switch itemType {
+        case .fullTheme:
+            switch surface {
+            case .profileCard: return 1
+            case .shareCard: return 2
+            case .communityCard: return 3
+            case .promptCard: return 4
+            case .gachaResultCard: return 5
+            case .collectionCard: return 6
+            default: return 50
+            }
+        case .background:
+            switch surface {
+            case .communityCard: return 1
+            case .shareCard: return 2
+            case .appBackground: return 3
+            case .collectionCard: return 4
+            default: return 50
+            }
+        case .cardFrame:
+            switch surface {
+            case .profileCard: return 1
+            case .shareCard: return 2
+            case .communityCard: return 3
+            case .gachaResultCard: return 4
+            case .collectionCard: return 5
+            default: return 50
+            }
+        case .sticker:
+            switch surface {
+            case .shareCard: return 1
+            case .communityCard: return 2
+            case .collectionCard: return 3
+            default: return 50
+            }
+        case .badge:
+            switch surface {
+            case .profileCard: return 1
+            case .shareCard: return 2
+            case .communityCard: return 3
+            case .gachaResultCard: return 4
+            case .collectionCard: return 5
+            default: return 50
+            }
+        case .profileTitle:
+            switch surface {
+            case .profileCard: return 1
+            case .shareCard: return 2
+            case .badge: return 3
+            case .gachaResultCard: return 4
+            case .collectionCard: return 5
+            default: return 50
+            }
+        case .shareTemplate:
+            switch surface {
+            case .profileCard: return 1
+            case .communityCard: return 2
+            case .gachaResultCard: return 3
+            case .collectionCard: return 4
+            default: return 50
+            }
+        case .gachaRevealEffect:
+            switch surface {
+            case .gachaResultCard: return 1
+            case .shareCard: return 2
+            case .collectionCard: return 3
+            default: return 50
+            }
+        case .promptPack:
+            switch surface {
+            case .communityCard: return 1
+            case .journalCard: return 2
+            case .shareCard: return 3
+            case .gachaResultCard: return 4
+            case .collectionCard: return 5
+            default: return 50
+            }
+        case .journalPaper:
+            switch surface {
+            case .promptCard: return 1
+            case .collectionCard: return 2
+            case .gachaResultCard: return 3
+            default: return 50
+            }
+        case .auraStyle:
+            switch surface {
+            case .profileCard: return 1
+            case .communityCard: return 2
+            case .shareCard: return 3
+            case .gachaResultCard: return 4
+            case .appBackground: return 5
+            case .collectionCard: return 6
+            default: return 50
+            }
         }
     }
 

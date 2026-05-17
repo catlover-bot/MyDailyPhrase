@@ -60,9 +60,16 @@ enum DecorationBundledArtworkCatalog {
 }
 
 struct DecorationBundledArtworkLayer: View {
+    enum Treatment {
+        case readableCard
+        case softBackground
+        case compactAccent
+    }
+
     let decorationId: String
     var prefersThumbnail: Bool = false
     var imageInset: CGFloat = 14
+    var treatment: Treatment = .readableCard
 
     var body: some View {
         GeometryReader { proxy in
@@ -76,17 +83,22 @@ struct DecorationBundledArtworkLayer: View {
                             .scaledToFill()
                             .frame(width: proxy.size.width, height: proxy.size.height)
                             .clipped()
+                            .opacity(backgroundOpacity)
+                            .blur(radius: backgroundBlurRadius)
                     }
 
                     if let focalImage = preferredFocalImage(from: artwork, compact: compact) {
                         Image(uiImage: focalImage)
                             .resizable()
                             .scaledToFit()
-                            .frame(
-                                maxWidth: max(0, proxy.size.width - imageInset * 2),
-                                maxHeight: max(0, proxy.size.height - imageInset * 2)
-                            )
+                            .frame(width: focalFrameWidth(in: proxy.size), height: focalFrameHeight(in: proxy.size))
                             .padding(imageInset)
+                            .opacity(focalOpacity)
+                            .frame(
+                                width: proxy.size.width,
+                                height: proxy.size.height,
+                                alignment: focalAlignment
+                            )
                     }
 
                     if let frameImage = artwork.frame {
@@ -95,6 +107,7 @@ struct DecorationBundledArtworkLayer: View {
                             .scaledToFill()
                             .frame(width: proxy.size.width, height: proxy.size.height)
                             .clipped()
+                            .opacity(frameOpacity)
                     }
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
@@ -112,16 +125,100 @@ struct DecorationBundledArtworkLayer: View {
         if compact {
             return nil
         }
-        return artwork.artwork ?? artwork.thumbnail
+        switch treatment {
+        case .compactAccent:
+            return nil
+        case .readableCard, .softBackground:
+            return artwork.background ?? artwork.artwork ?? artwork.thumbnail
+        }
     }
 
     private func preferredFocalImage(
         from artwork: DecorationBundledArtwork,
         compact: Bool
     ) -> UIImage? {
-        if compact {
+        switch treatment {
+        case .compactAccent:
             return artwork.thumbnail ?? artwork.artwork
+        case .readableCard:
+            return compact ? (artwork.thumbnail ?? artwork.artwork) : (artwork.thumbnail ?? artwork.artwork)
+        case .softBackground:
+            return compact ? (artwork.thumbnail ?? artwork.artwork) : (artwork.thumbnail ?? artwork.artwork)
         }
-        return artwork.artwork ?? artwork.thumbnail
+    }
+
+    private var backgroundOpacity: Double {
+        switch treatment {
+        case .readableCard:
+            return 0.08
+        case .softBackground:
+            return 0.10
+        case .compactAccent:
+            return 0
+        }
+    }
+
+    private var backgroundBlurRadius: CGFloat {
+        switch treatment {
+        case .readableCard:
+            return 1.5
+        case .softBackground:
+            return 1.0
+        case .compactAccent:
+            return 0
+        }
+    }
+
+    private var focalOpacity: Double {
+        switch treatment {
+        case .readableCard:
+            return 0.24
+        case .softBackground:
+            return 0.30
+        case .compactAccent:
+            return 0.92
+        }
+    }
+
+    private var frameOpacity: Double {
+        switch treatment {
+        case .readableCard:
+            return 0.22
+        case .softBackground:
+            return 0.30
+        case .compactAccent:
+            return 0.24
+        }
+    }
+
+    private var focalAlignment: Alignment {
+        switch treatment {
+        case .readableCard, .softBackground:
+            return .bottomTrailing
+        case .compactAccent:
+            return .topTrailing
+        }
+    }
+
+    private func focalFrameWidth(in size: CGSize) -> CGFloat {
+        switch treatment {
+        case .readableCard:
+            return min(size.width * 0.28, 86)
+        case .softBackground:
+            return min(size.width * 0.34, 104)
+        case .compactAccent:
+            return min(size.width * 0.22, 64)
+        }
+    }
+
+    private func focalFrameHeight(in size: CGSize) -> CGFloat {
+        switch treatment {
+        case .readableCard:
+            return min(size.height * 0.46, 96)
+        case .softBackground:
+            return min(size.height * 0.52, 120)
+        case .compactAccent:
+            return min(size.height * 0.28, 72)
+        }
     }
 }

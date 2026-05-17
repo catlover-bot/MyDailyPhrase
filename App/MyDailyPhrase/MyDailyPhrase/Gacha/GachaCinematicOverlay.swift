@@ -286,7 +286,8 @@ struct GachaCinematicOverlay: View {
                                 ownedCount: max(1, summary.drawn.filter { $0.id == selectedItem.id }.count),
                                 isOwned: true,
                                 isEquipped: equippedDecorationId == selectedItem.id,
-                                profileDisplayName: profileDisplayName
+                                profileDisplayName: profileDisplayName,
+                                previewSurfaceLimit: 3
                             )
                             .id("preview_\(selectedItem.id)_\(equippedDecorationId)")
                             .transition(
@@ -657,7 +658,8 @@ struct GachaResultDetailScreen: View {
                                 profileDisplayName: profileDisplayName,
                                 showsHeroCard: false,
                                 showsSummaryCard: false,
-                                showsUsageCard: false
+                                showsUsageCard: false,
+                                previewSurfaceLimit: 2
                             )
                             .id("result_preview_\(selectedItem.id)_\(equippedDecorationId)")
                             .transition(
