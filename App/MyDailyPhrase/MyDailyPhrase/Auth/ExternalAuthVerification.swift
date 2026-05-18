@@ -308,6 +308,10 @@ struct CompositeExternalAuthTokenVerifier: ExternalAuthTokenVerifier {
 }
 
 struct ExternalAuthRuntimeConfiguration: Sendable {
+    let authEnabled: Bool
+    let signInWithAppleEnabled: Bool
+    let googleSignInEnabled: Bool
+    let adminMenuEnabled: Bool
     let verificationEndpointURL: URL?
     let verificationBearerToken: String?
     let verificationTimeoutSeconds: TimeInterval
@@ -324,6 +328,10 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
     let maxSecurityLogRetentionDays: Int
 
     static func load(from bundle: Bundle = .main) -> ExternalAuthRuntimeConfiguration {
+        let authEnabled = bundle.boolValue(forInfoDictionaryKey: "AUTH_ENABLED") ?? false
+        let signInWithAppleEnabled = bundle.boolValue(forInfoDictionaryKey: "AUTH_SIGN_IN_WITH_APPLE_ENABLED") ?? false
+        let googleSignInEnabled = bundle.boolValue(forInfoDictionaryKey: "AUTH_GOOGLE_SIGN_IN_ENABLED") ?? false
+        let adminMenuEnabled = bundle.boolValue(forInfoDictionaryKey: "AUTH_ADMIN_MENU_ENABLED") ?? false
         let endpoint = normalizedVerifyEndpoint(from: bundle.urlValue(forInfoDictionaryKey: "AUTH_BACKEND_VERIFY_ENDPOINT"))
         let bearer = bundle.stringValue(forInfoDictionaryKey: "AUTH_BACKEND_VERIFY_BEARER")
         let timeout = bundle.doubleValue(forInfoDictionaryKey: "AUTH_BACKEND_TIMEOUT_SECONDS") ?? 8.0
@@ -340,6 +348,10 @@ struct ExternalAuthRuntimeConfiguration: Sendable {
         let retentionMax = bundle.intValue(forInfoDictionaryKey: "SECURITY_LOG_RETENTION_DAYS_MAX") ?? 365
 
         return ExternalAuthRuntimeConfiguration(
+            authEnabled: authEnabled,
+            signInWithAppleEnabled: signInWithAppleEnabled,
+            googleSignInEnabled: googleSignInEnabled,
+            adminMenuEnabled: adminMenuEnabled,
             verificationEndpointURL: endpoint,
             verificationBearerToken: bearer,
             verificationTimeoutSeconds: max(2.0, timeout),

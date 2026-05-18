@@ -18,26 +18,54 @@ final class AppAuthViewModel: ObservableObject {
     @Published var entryScreen: EntryScreen = .welcome
     @Published var pendingDisplayName: String = ""
     @Published var inlineMessage: String? = nil
+    @Published private(set) var lastAuthErrorDescription: String? = nil
 
     private let authRepository: AuthRepository
     private let getMyProfile: GetMyProfileUseCase
     private let updateMyProfile: UpdateMyProfileUseCase
+    private let authEnabledValue: Bool
+    private let signInWithAppleEnabledValue: Bool
+    private let googleSignInEnabledValue: Bool
+    private let guestModeEnabledValue: Bool
+    private let adminMenuEnabledValue: Bool
     private let termsOfServiceURLValue: URL?
     private let privacyPolicyURLValue: URL?
+    private let loadPersistedAuthError: @Sendable () -> String?
     private var creatorPassEntitled: Bool = false
 
     init(
         authRepository: AuthRepository,
         getMyProfile: GetMyProfileUseCase,
         updateMyProfile: UpdateMyProfileUseCase,
+        authEnabled: Bool,
+        signInWithAppleEnabled: Bool,
+        googleSignInEnabled: Bool,
+        guestModeEnabled: Bool,
+        adminMenuEnabled: Bool,
         termsOfServiceURL: URL?,
-        privacyPolicyURL: URL?
+        privacyPolicyURL: URL?,
+        loadPersistedAuthError: @escaping @Sendable () -> String?
     ) {
         self.authRepository = authRepository
         self.getMyProfile = getMyProfile
         self.updateMyProfile = updateMyProfile
+        self.authEnabledValue = authEnabled
+        self.signInWithAppleEnabledValue = signInWithAppleEnabled
+        self.googleSignInEnabledValue = googleSignInEnabled
+        self.guestModeEnabledValue = guestModeEnabled
+        self.adminMenuEnabledValue = adminMenuEnabled
         self.termsOfServiceURLValue = termsOfServiceURL
         self.privacyPolicyURLValue = privacyPolicyURL
+        self.loadPersistedAuthError = loadPersistedAuthError
+
+        if !authEnabled {
+            let fallbackSession = makeLocalPreviewSession()
+            authState = .signedIn(fallbackSession)
+            currentFeatureAccess = FeatureAccessResolver.resolve(
+                session: fallbackSession,
+                creatorPassEntitled: false
+            )
+        }
     }
 
     var currentSession: AuthSession? {
@@ -61,23 +89,82 @@ final class AppAuthViewModel: ObservableObject {
         }
     }
 
+    var isAuthEnabled: Bool {
+        authEnabledValue
+    }
+
+    var shouldBypassLaunchGate: Bool {
+        !authEnabledValue
+    }
+
+    var canUseAppleSignIn: Bool {
+        authEnabledValue
+            && signInWithAppleEnabledValue
+            && authRepository.supportedProviders.contains(.signInWithApple)
+    }
+
     var isGuest: Bool {
         currentSession?.isGuest == true
     }
 
     var isAdmin: Bool {
-        currentSession?.isAdmin == true
+        adminMenuEnabledValue && currentSession?.isAdmin == true
     }
 
     var canUseGoogleSignIn: Bool {
-        authRepository.supportedProviders.contains(.google)
+        authEnabledValue
+            && googleSignInEnabledValue
+            && authRepository.supportedProviders.contains(.google)
     }
 
     var canUseGuestMode: Bool {
-        authRepository.supportedProviders.contains(.guest)
+        guestModeEnabledValue && authRepository.supportedProviders.contains(.guest)
+    }
+
+    var supportsInteractiveAuth: Bool {
+        authEnabledValue
+    }
+
+    var currentAuthStateText: String {
+        switch authState {
+        case .loading:
+            return "loading"
+        case .signedOut:
+            return "signedOut"
+        case .signedIn:
+            return "signedIn"
+        case .guest:
+            return "guest"
+        case .needsProfileSetup:
+            return "needsProfileSetup"
+        case .failed:
+            return "failed"
+        }
+    }
+
+    var diagnosticsReportText: String {
+        [
+            "authEnabled: \(authEnabledValue)",
+            "signInWithAppleEnabled: \(signInWithAppleEnabledValue)",
+            "googleSignInEnabled: \(googleSignInEnabledValue)",
+            "guestModeEnabled: \(guestModeEnabledValue)",
+            "adminMenuEnabled: \(adminMenuEnabledValue)",
+            "authState: \(currentAuthStateText)",
+            "provider: \(currentSession?.user.provider.rawValue ?? "none")",
+            "userId: \(currentSession?.user.id ?? "none")",
+            "providerUserId: \(currentSession?.user.providerUserID ?? "none")",
+            "email: \(currentSession?.user.email ?? "none")",
+            "roles: \(currentSession?.roles.map(\.rawValue).joined(separator: ", ") ?? "none")",
+            "isAdmin: \(isAdmin)",
+            "adminCapabilities: \(currentSession?.adminCapabilities.map(\.rawValue).joined(separator: ", ") ?? "none")",
+            "lastAuthError: \(lastAuthErrorDescription ?? "none")"
+        ].joined(separator: "\n")
     }
 
     var accountStatusText: String {
+        if !authEnabledValue {
+            return "ログインなしで利用中"
+        }
         guard let currentSession else {
             return "未ログイン"
         }
@@ -88,6 +175,9 @@ final class AppAuthViewModel: ObservableObject {
     }
 
     var accountDetailText: String {
+        if !authEnabledValue {
+            return "認証は現在無効です。起動安定化のため、既存のローカル体験でそのまま利用できます。"
+        }
         guard let currentSession else {
             return "日記の回答は自動で公開されず、共有は自分で選んだときだけ行われます。"
         }
@@ -110,6 +200,12 @@ final class AppAuthViewModel: ObservableObject {
     func load() async {
         isBusy = true
         defer { isBusy = false }
+        guard authEnabledValue else {
+            lastAuthErrorDescription = nil
+            applySession(makeLocalPreviewSession())
+            return
+        }
+        lastAuthErrorDescription = loadPersistedAuthError()
         applySession(authRepository.refreshSession())
     }
 
@@ -134,6 +230,13 @@ final class AppAuthViewModel: ObservableObject {
         givenName: String?,
         familyName: String?
     ) {
+        guard canUseAppleSignIn else {
+            let error = AuthError.providerUnavailable(.signInWithApple)
+            authState = .failed(error)
+            inlineMessage = error.localizedDescription
+            lastAuthErrorDescription = error.localizedDescription
+            return
+        }
         isBusy = true
         defer { isBusy = false }
 
@@ -145,16 +248,19 @@ final class AppAuthViewModel: ObservableObject {
                 familyName: familyName
             )
             applySession(session)
+            lastAuthErrorDescription = nil
             inlineMessage = session.requiresProfileSetup
                 ? "表示名を整えると、プロフィールや共有カードが分かりやすくなります。"
                 : "Appleでログインしました"
         } catch let error as AuthError {
             authState = .failed(error)
             inlineMessage = error.localizedDescription
+            lastAuthErrorDescription = error.localizedDescription
             entryScreen = .login
         } catch {
             authState = .failed(.unknown(error.localizedDescription))
             inlineMessage = error.localizedDescription
+            lastAuthErrorDescription = error.localizedDescription
             entryScreen = .login
         }
     }
@@ -164,6 +270,7 @@ final class AppAuthViewModel: ObservableObject {
             let error = AuthError.providerNotConfigured(.google)
             authState = .failed(error)
             inlineMessage = error.localizedDescription
+            lastAuthErrorDescription = error.localizedDescription
             return
         }
 
@@ -171,6 +278,10 @@ final class AppAuthViewModel: ObservableObject {
     }
 
     func continueAsGuest() {
+        guard canUseGuestMode else {
+            inlineMessage = "ゲスト利用は現在無効です"
+            return
+        }
         isBusy = true
         defer { isBusy = false }
 
@@ -178,6 +289,7 @@ final class AppAuthViewModel: ObservableObject {
         let defaultName = profile.displayName == "Me" ? "ゲスト" : profile.displayName
         let session = authRepository.signInAsGuest(displayName: defaultName)
         applySession(session)
+        lastAuthErrorDescription = nil
         inlineMessage = "ゲストとして開始しました。あとから Apple でログインできます。"
     }
 
@@ -195,12 +307,17 @@ final class AppAuthViewModel: ObservableObject {
     }
 
     func signOut() {
+        guard authEnabledValue else {
+            inlineMessage = "認証は現在無効です"
+            return
+        }
         authRepository.signOut()
         creatorPassEntitled = false
         currentFeatureAccess = .signedOutDefault
         authState = .signedOut
         pendingDisplayName = ""
         entryScreen = .welcome
+        lastAuthErrorDescription = nil
         inlineMessage = "ログアウトしました"
     }
 
@@ -257,5 +374,24 @@ final class AppAuthViewModel: ObservableObject {
 
         authState = .signedIn(session)
         entryScreen = .welcome
+    }
+
+    private func makeLocalPreviewSession() -> AuthSession {
+        let profile = getMyProfile()
+        let displayName = profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "ローカルユーザー"
+            : profile.displayName
+        return AuthSession(
+            user: AuthUser(
+                id: profile.userId,
+                providerUserID: nil,
+                displayName: displayName,
+                email: nil,
+                provider: .localDeveloperPreview
+            ),
+            roles: [.user],
+            adminCapabilities: [],
+            requiresProfileSetup: false
+        )
     }
 }

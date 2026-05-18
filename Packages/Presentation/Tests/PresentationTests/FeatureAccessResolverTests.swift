@@ -58,6 +58,35 @@ struct FeatureAccessResolverTests {
         #expect(snapshot.canUseDMPrototype == false)
     }
 
+    @Test("signed out state resolves safely")
+    func signedOutStateResolvesSafely() {
+        let snapshot = FeatureAccessResolver.resolve(
+            session: nil,
+            creatorPassEntitled: false
+        )
+
+        #expect(snapshot.isAuthenticated == false)
+        #expect(snapshot.isGuest == false)
+        #expect(snapshot.canAccessAdminMenu == false)
+        #expect(snapshot.canCreateCommunity == false)
+    }
+
+    @Test("admin bypass does not modify StoreKit entitlement state")
+    func adminBypassKeepsStoreKitStateSeparate() {
+        let snapshot = FeatureAccessResolver.resolve(
+            session: makeSession(
+                provider: .signInWithApple,
+                roles: [.user, .admin],
+                adminCapabilities: [.bypassCreatorPassForAdmin]
+            ),
+            creatorPassEntitled: false
+        )
+
+        #expect(snapshot.creatorFeatureSource == .adminBypass)
+        #expect(snapshot.storeKitCreatorPassActive == false)
+        #expect(snapshot.canCreateCommunity == true)
+    }
+
     private func makeSession(
         provider: AuthProvider,
         roles: [UserRole],

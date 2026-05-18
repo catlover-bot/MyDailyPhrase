@@ -17,6 +17,14 @@
 	</array>
 	<key>AUTH_BACKEND_VERIFY_ENDPOINT</key>
 	<string>$(AUTH_BACKEND_VERIFY_ENDPOINT)</string>
+	<key>AUTH_ENABLED</key>
+	<string>$(AUTH_ENABLED)</string>
+	<key>AUTH_SIGN_IN_WITH_APPLE_ENABLED</key>
+	<string>$(AUTH_SIGN_IN_WITH_APPLE_ENABLED)</string>
+	<key>AUTH_GOOGLE_SIGN_IN_ENABLED</key>
+	<string>$(AUTH_GOOGLE_SIGN_IN_ENABLED)</string>
+	<key>AUTH_ADMIN_MENU_ENABLED</key>
+	<string>$(AUTH_ADMIN_MENU_ENABLED)</string>
 	<key>AUTH_BACKEND_VERIFY_BEARER</key>
 	<string>$(AUTH_BACKEND_VERIFY_BEARER)</string>
 	<key>AUTH_BACKEND_TIMEOUT_SECONDS</key>

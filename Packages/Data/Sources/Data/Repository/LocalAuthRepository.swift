@@ -3,19 +3,25 @@ import Domain
 
 public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
     public struct Configuration: Sendable {
+        public var signInWithAppleEnabled: Bool
         public var googleOAuthEnabled: Bool
         public var guestModeEnabled: Bool
+        public var adminMenuEnabled: Bool
         public var adminAppleUserIDs: Set<String>
         public var adminEmails: Set<String>
 
         public init(
+            signInWithAppleEnabled: Bool = true,
             googleOAuthEnabled: Bool = false,
             guestModeEnabled: Bool = true,
+            adminMenuEnabled: Bool = false,
             adminAppleUserIDs: Set<String> = [],
             adminEmails: Set<String> = []
         ) {
+            self.signInWithAppleEnabled = signInWithAppleEnabled
             self.googleOAuthEnabled = googleOAuthEnabled
             self.guestModeEnabled = guestModeEnabled
+            self.adminMenuEnabled = adminMenuEnabled
             self.adminAppleUserIDs = Self.normalizedValues(adminAppleUserIDs)
             self.adminEmails = Self.normalizedValues(adminEmails)
         }
@@ -42,6 +48,7 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
     private let makeUserID: @Sendable () -> String
     private let lock = NSRecursiveLock()
     private let sessionKey = "MyDailyPhrase.auth.session.v1"
+    public static let lastDiagnosticsErrorKey = "MyDailyPhrase.auth.lastError.v1"
 
     public init(
         defaults: UserDefaults,
@@ -56,7 +63,10 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
     }
 
     public var supportedProviders: Set<AuthProvider> {
-        var providers: Set<AuthProvider> = [.signInWithApple]
+        var providers: Set<AuthProvider> = []
+        if configuration.signInWithAppleEnabled {
+            providers.insert(.signInWithApple)
+        }
         if configuration.googleOAuthEnabled {
             providers.insert(.google)
         }
@@ -76,6 +86,9 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
         givenName: String?,
         familyName: String?
     ) throws -> AuthSession {
+        guard configuration.signInWithAppleEnabled else {
+            throw AuthError.providerUnavailable(.signInWithApple)
+        }
         let trimmedUserID = normalizedUserIdentifier(userID)
         guard !trimmedUserID.isEmpty else {
             throw AuthError.invalidCredential
@@ -175,6 +188,7 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
     public func signOut() {
         withLock {
             defaults.removeObject(forKey: sessionKey)
+            defaults.removeObject(forKey: Self.lastDiagnosticsErrorKey)
         }
     }
 
@@ -218,13 +232,22 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
 
     private func loadStoredSession() -> StoredSession? {
         guard let data = defaults.data(forKey: sessionKey) else { return nil }
-        return try? JSONDecoder().decode(StoredSession.self, from: data)
+        do {
+            let decoded = try JSONDecoder().decode(StoredSession.self, from: data)
+            defaults.removeObject(forKey: Self.lastDiagnosticsErrorKey)
+            return decoded
+        } catch {
+            defaults.removeObject(forKey: sessionKey)
+            defaults.set("保存済み認証情報の読み込みに失敗したため初期化しました: \(error.localizedDescription)", forKey: Self.lastDiagnosticsErrorKey)
+            return nil
+        }
     }
 
     private func saveStoredSession(_ session: StoredSession) {
         withLock {
             if let data = try? JSONEncoder().encode(session) {
                 defaults.set(data, forKey: sessionKey)
+                defaults.removeObject(forKey: Self.lastDiagnosticsErrorKey)
             }
         }
     }
@@ -260,7 +283,7 @@ public final class LocalAuthRepository: AuthRepository, @unchecked Sendable {
         providerUserID: String?,
         email: String?
     ) -> Set<AdminCapability> {
-        guard provider != .guest else { return [] }
+        guard configuration.adminMenuEnabled, provider != .guest else { return [] }
 
         let normalizedEmail = normalizedEmailValue(email)
         let normalizedProviderUserID = normalizedOptional(providerUserID)?.lowercased()

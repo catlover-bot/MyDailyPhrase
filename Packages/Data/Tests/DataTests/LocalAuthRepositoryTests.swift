@@ -28,12 +28,38 @@ struct LocalAuthRepositoryTests {
         #expect(session.roles.contains(.admin) == false)
     }
 
+    @Test("empty admin allowlist does not crash")
+    func emptyAdminAllowlistIsSafe() throws {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: true,
+                adminAppleUserIDs: [],
+                adminEmails: []
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: "plain-user",
+            email: "plain@example.com",
+            givenName: "Hanako",
+            familyName: nil
+        )
+
+        #expect(repo.isAdmin(session: session) == false)
+        #expect(repo.adminCapabilities(session: session).isEmpty)
+    }
+
     @Test("allowlisted admin is admin")
     func allowlistedAdminIsAdmin() throws {
         let repo = makeRepository(
             configuration: .init(
+                signInWithAppleEnabled: true,
                 googleOAuthEnabled: false,
                 guestModeEnabled: true,
+                adminMenuEnabled: true,
                 adminAppleUserIDs: ["apple-admin-1"],
                 adminEmails: []
             )
@@ -64,6 +90,28 @@ struct LocalAuthRepositoryTests {
         }
     }
 
+    @Test("sign in with Apple unavailable state is safe")
+    func signInWithAppleUnavailableStateIsSafe() {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: false,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: false
+            )
+        )
+
+        #expect(repo.supportedProviders.contains(.signInWithApple) == false)
+        #expect(throws: AuthError.providerUnavailable(.signInWithApple)) {
+            _ = try repo.signInWithApple(
+                userID: "apple-user",
+                email: nil,
+                givenName: nil,
+                familyName: nil
+            )
+        }
+    }
+
     @Test("legacy linked auth can restore local session")
     func legacyLinkedAuthRestoresSession() {
         let profileRepo = InMemoryUserProfileRepository()
@@ -88,6 +136,25 @@ struct LocalAuthRepositoryTests {
         #expect(session?.user.provider == .signInWithApple)
         #expect(session?.user.providerUserID == "apple-linked-1")
         #expect(session?.user.displayName == "Linked User")
+    }
+
+    @Test("corrupt saved auth session falls back safely")
+    func corruptSavedSessionFallsBackSafely() {
+        let suiteName = "LocalAuthRepositoryTests.corrupt.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set(Data([0xFF, 0x00, 0xAA]), forKey: "MyDailyPhrase.auth.session.v1")
+
+        let repo = LocalAuthRepository(
+            defaults: defaults,
+            profileRepository: InMemoryUserProfileRepository(),
+            configuration: .init()
+        )
+
+        let session = repo.refreshSession()
+
+        #expect(session == nil)
+        #expect(defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey) != nil)
+        #expect(defaults.data(forKey: "MyDailyPhrase.auth.session.v1") == nil)
     }
 
     private func makeRepository(configuration: LocalAuthRepository.Configuration) -> LocalAuthRepository {

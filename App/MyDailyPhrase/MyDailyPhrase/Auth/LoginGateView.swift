@@ -145,32 +145,38 @@ struct LoginGateView: View {
         VStack(alignment: .leading, spacing: 18) {
             AppSectionCard(title: title, subtitle: subtitle) {
                 VStack(alignment: .leading, spacing: 12) {
-                    SignInWithAppleButton(.continue) { request in
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        switch result {
-                        case .success(let authorization):
-                            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                                vm.inlineMessage = "Apple認証情報の取得に失敗しました"
-                                return
-                            }
-                            vm.signInWithApple(
-                                userID: credential.user,
-                                email: credential.email,
-                                givenName: credential.fullName?.givenName,
-                                familyName: credential.fullName?.familyName
-                            )
-                        case .failure(let error):
-                            if let authError = error as? ASAuthorizationError,
-                               authError.code == .canceled {
-                                vm.inlineMessage = "Appleログインをキャンセルしました"
-                            } else {
-                                vm.inlineMessage = "Appleログインに失敗しました: \(error.localizedDescription)"
+                    if vm.canUseAppleSignIn {
+                        SignInWithAppleButton(.continue) { request in
+                            request.requestedScopes = [.fullName, .email]
+                        } onCompletion: { result in
+                            switch result {
+                            case .success(let authorization):
+                                guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                                    vm.inlineMessage = "Apple認証情報の取得に失敗しました"
+                                    return
+                                }
+                                vm.signInWithApple(
+                                    userID: credential.user,
+                                    email: credential.email,
+                                    givenName: credential.fullName?.givenName,
+                                    familyName: credential.fullName?.familyName
+                                )
+                            case .failure(let error):
+                                if let authError = error as? ASAuthorizationError,
+                                   authError.code == .canceled {
+                                    vm.inlineMessage = "Appleログインをキャンセルしました"
+                                } else {
+                                    vm.inlineMessage = "Appleログインに失敗しました: \(error.localizedDescription)"
+                                }
                             }
                         }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
+                    } else {
+                        Label("Appleログインは現在準備中です", systemImage: "apple.logo")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
 
                     if vm.canUseGoogleSignIn {
                         Button {
@@ -194,6 +200,11 @@ struct LoginGateView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.plain)
+                    } else if !vm.canUseAppleSignIn && !vm.canUseGoogleSignIn {
+                        Text("認証導線は現在安全確認中です。安定版では既存のローカル体験からそのまま利用できます。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }

@@ -2,6 +2,8 @@ import Foundation
 import Presentation
 
 enum FeatureFlags {
+    private static let authRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
+
     static let paidGachaEnabled = ReleaseFeatureAvailability.paidGachaEnabled
     static let communityEnabled = false
     static let publicCommunityEnabled = ReleaseFeatureAvailability.publicCommunityEnabled
@@ -18,6 +20,11 @@ enum FeatureFlags {
     static let advancedProfileToolsEnabled = false
     static let nativeSharingEnabled = ReleaseFeatureAvailability.nativeSharingEnabled
     static let themePreviewEnabled = ReleaseFeatureAvailability.themePreviewEnabled
+    static let authEnabled = authRuntimeConfiguration.authEnabled
+    static let signInWithAppleEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.signInWithAppleEnabled
+    static let googleSignInEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.googleSignInEnabled
+    static let guestModeEnabled = authRuntimeConfiguration.guestModeEnabled
+    static let adminMenuEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.adminMenuEnabled
 }
 
 struct CreatorEntitlementService {

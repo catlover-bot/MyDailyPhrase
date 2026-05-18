@@ -106,8 +106,12 @@ final class AppContainer {
             defaults: resolvedDefaults,
             profileRepository: profileRepo,
             configuration: .init(
-                googleOAuthEnabled: authRuntimeConfiguration.googleOAuthStartURL != nil,
+                signInWithAppleEnabled: authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.signInWithAppleEnabled,
+                googleOAuthEnabled: authRuntimeConfiguration.authEnabled
+                    && authRuntimeConfiguration.googleSignInEnabled
+                    && authRuntimeConfiguration.googleOAuthStartURL != nil,
                 guestModeEnabled: authRuntimeConfiguration.guestModeEnabled,
+                adminMenuEnabled: authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.adminMenuEnabled,
                 adminAppleUserIDs: authRuntimeConfiguration.adminAppleUserIDs,
                 adminEmails: authRuntimeConfiguration.adminEmails
             )
@@ -383,8 +387,16 @@ final class AppContainer {
             authRepository: authRepository,
             getMyProfile: getMyProfile,
             updateMyProfile: updateMyProfile,
+            authEnabled: authRuntimeConfiguration.authEnabled,
+            signInWithAppleEnabled: authRuntimeConfiguration.signInWithAppleEnabled,
+            googleSignInEnabled: authRuntimeConfiguration.googleSignInEnabled,
+            guestModeEnabled: authRuntimeConfiguration.guestModeEnabled,
+            adminMenuEnabled: authRuntimeConfiguration.adminMenuEnabled,
             termsOfServiceURL: authRuntimeConfiguration.termsOfServiceURL ?? AppLinks.termsOfService,
-            privacyPolicyURL: authRuntimeConfiguration.privacyPolicyURL ?? AppLinks.privacyPolicy
+            privacyPolicyURL: authRuntimeConfiguration.privacyPolicyURL ?? AppLinks.privacyPolicy,
+            loadPersistedAuthError: { [defaults = appGroupDefaults] in
+                defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
+            }
         )
     }
 

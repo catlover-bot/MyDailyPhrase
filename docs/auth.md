@@ -17,6 +17,17 @@
 - Google ログインはモデルと導線を先に準備し、設定がないビルドでは無効のままにします。
 - ゲストモードでは日記・ガチャ・見た目確認を試せますが、管理者機能や DM 試作機能は使えません。
 
+## 起動安定化フラグ
+
+- `AUTH_ENABLED`
+- `AUTH_SIGN_IN_WITH_APPLE_ENABLED`
+- `AUTH_GOOGLE_SIGN_IN_ENABLED`
+- `AUTH_GUEST_MODE_ENABLED`
+- `AUTH_ADMIN_MENU_ENABLED`
+
+Release では認証を安定化するまで `AUTH_ENABLED = NO` を既定にしています。
+このときアプリはログイン必須にはならず、既存のローカル体験でそのまま起動します。
+
 ## 画面フロー
 
 1. 起動時に `AuthGate` がセッションを確認
@@ -29,3 +40,4 @@
 - OAuth secret や client secret はリポジトリに置いていません。
 - Google の実運用ログインを有効にする場合は、開始 URL・callback scheme・サーバー検証の設定確認が必要です。
 - 既存の StoreKit / Creator Pass 判定はそのまま維持し、認証だけでは課金状態を変更しません。
+- 保存済み認証情報が壊れていた場合は安全に破棄し、クラッシュせずに signed out / ローカル起動へ戻します。

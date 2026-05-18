@@ -31,13 +31,17 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            switch authVM.authState {
-            case .loading:
-                authLoadingView
-            case .signedOut, .needsProfileSetup(_), .failed(_):
-                LoginGateView(vm: authVM)
-            case .signedIn(_), .guest(_):
+            if authVM.shouldBypassLaunchGate {
                 signedInShell
+            } else {
+                switch authVM.authState {
+                case .loading:
+                    authLoadingView
+                case .signedOut, .needsProfileSetup(_), .failed(_):
+                    LoginGateView(vm: authVM)
+                case .signedIn(_), .guest(_):
+                    signedInShell
+                }
             }
         }
         .environmentObject(authVM)
@@ -113,7 +117,7 @@ struct RootView: View {
     }
 
     private func bootstrapSignedInExperienceIfNeeded() async {
-        if authVM.isSignedInOrGuest {
+        if authVM.shouldBypassLaunchGate || authVM.isSignedInOrGuest {
             if !hasBootstrappedSignedInExperience {
                 homeVM.load()
                 historyVM.load()

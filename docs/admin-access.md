@@ -27,6 +27,9 @@ AUTH_ADMIN_APPLE_USER_IDS = 000123.abcd..., 000987.efgh...
 AUTH_ADMIN_EMAILS = owner@example.com
 ```
 
+`AUTH_ADMIN_MENU_ENABLED = YES` のときだけ allowlist 判定が有効です。
+Release の既定値は `NO` で、認証を再有効化するまでは通常ユーザーに管理者導線を出しません。
+
 ## 管理者権限の内容
 
 - `accessAllFeatures`
@@ -63,3 +66,4 @@ AUTH_ADMIN_EMAILS = owner@example.com
 - public feed / comments / ranking は引き続き無効のままです。
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。
+- allowlist が空でもクラッシュせず、単に非管理者として扱います。

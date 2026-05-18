@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showsIAPDiagnostics = false
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
+    @State private var authDiagnosticsCopyFeedback: String? = nil
     @State private var artworkCopyFeedback: String? = nil
     @State private var artworkPrimaryFilter: GachaArtworkQAPrimaryFilter = .all
     @State private var artworkRarityFilter: GachaArtworkQARarityFilter = .all
@@ -86,41 +87,82 @@ struct SettingsView: View {
                         }
                     }
 
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 10) {
-                            Button {
-                                auth.signOut()
-                            } label: {
-                                Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
+                    if auth.supportsInteractiveAuth {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                Button {
+                                    auth.signOut()
+                                } label: {
+                                    Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
 
-                            Button {
-                                auth.requestAccountDeletionSupport()
-                            } label: {
-                                Label("アカウント削除の案内", systemImage: "questionmark.circle")
-                                    .frame(maxWidth: .infinity)
+                                Button {
+                                    auth.requestAccountDeletionSupport()
+                                } label: {
+                                    Label("アカウント削除の案内", systemImage: "questionmark.circle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
+
+                            VStack(spacing: 10) {
+                                Button {
+                                    auth.signOut()
+                                } label: {
+                                    Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button {
+                                    auth.requestAccountDeletionSupport()
+                                } label: {
+                                    Label("アカウント削除の案内", systemImage: "questionmark.circle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
                         }
+                    } else {
+                        Text("認証は現在無効です。起動安定化のため、アプリはローカル体験モードでそのまま利用できます。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
 
-                        VStack(spacing: 10) {
+                if showsIAPDiagnostics {
+                    AppSectionCard(
+                        title: "認証診断情報",
+                        subtitle: "認証設定が空でも安全に起動できているかを確認できます。"
+                    ) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            diagnosticRow(title: "authEnabled", value: auth.isAuthEnabled ? "true" : "false")
+                            diagnosticRow(title: "現在の状態", value: auth.currentAuthStateText)
+                            diagnosticRow(title: "Provider", value: auth.currentSession?.user.provider.displayName ?? "なし")
+                            diagnosticRow(title: "User ID", value: auth.currentSession?.user.id ?? "なし")
+                            diagnosticRow(title: "Email", value: auth.currentSession?.user.email ?? "なし")
+                            diagnosticRow(title: "Roles", value: auth.currentSession?.roles.map(\.label).joined(separator: " / ") ?? "なし")
+                            diagnosticRow(title: "isAdmin", value: auth.isAdmin ? "true" : "false")
+                            diagnosticRow(title: "Capabilities", value: auth.currentSession?.adminCapabilities.map(\.label).joined(separator: " / ") ?? "なし")
+                            diagnosticRow(title: "最後の認証エラー", value: auth.lastAuthErrorDescription ?? "なし")
+
                             Button {
-                                auth.signOut()
+                                UIPasteboard.general.string = auth.diagnosticsReportText
+                                authDiagnosticsCopyFeedback = "認証診断をコピーしました"
                             } label: {
-                                Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                                Label("認証診断をコピー", systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
 
-                            Button {
-                                auth.requestAccountDeletionSupport()
-                            } label: {
-                                Label("アカウント削除の案内", systemImage: "questionmark.circle")
-                                    .frame(maxWidth: .infinity)
+                            if let authDiagnosticsCopyFeedback {
+                                Text(authDiagnosticsCopyFeedback)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
-                            .buttonStyle(.bordered)
                         }
                     }
                 }
