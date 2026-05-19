@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
     @State private var authDiagnosticsCopyFeedback: String? = nil
+    @State private var manualAuthViewModel: AppAuthViewModel? = nil
+    @State private var manualAuthContext: SettingsAuthContext? = nil
     @State private var artworkCopyFeedback: String? = nil
     @State private var artworkPrimaryFilter: GachaArtworkQAPrimaryFilter = .all
     @State private var artworkRarityFilter: GachaArtworkQARarityFilter = .all
@@ -42,7 +44,13 @@ struct SettingsView: View {
         self.onRequestAccountDeletionSupport = onRequestAccountDeletionSupport
     }
 
+    private var displayedAuthContext: SettingsAuthContext {
+        manualAuthContext ?? authContext
+    }
+
     var body: some View {
+        let authContext = displayedAuthContext
+
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 PageHeroCard(
@@ -608,12 +616,37 @@ struct SettingsView: View {
             )
         }
         .sheet(isPresented: $showsAuthPreview) {
-            if let makeAuthPreviewViewModel {
-                ManualAuthPreviewSheet(makeViewModel: makeAuthPreviewViewModel)
+            if let manualAuthViewModel {
+                ManualAuthPreviewSheet(
+                    viewModel: manualAuthViewModel,
+                    onAuthStateChanged: updateManualAuthContext
+                )
             } else {
                 AuthPreviewUnavailableSheet()
             }
         }
+    }
+
+    private func openManualAuthPreview() {
+        guard let makeAuthPreviewViewModel else {
+            showsAuthPreview = true
+            return
+        }
+
+        if manualAuthViewModel == nil {
+            manualAuthViewModel = makeAuthPreviewViewModel()
+        }
+        if let manualAuthViewModel {
+            updateManualAuthContext(from: manualAuthViewModel)
+        }
+        showsAuthPreview = true
+    }
+
+    private func updateManualAuthContext(from authViewModel: AppAuthViewModel) {
+        manualAuthContext = SettingsAuthContext(
+            manualAuthViewModel: authViewModel,
+            fallback: authContext
+        )
     }
 
     private var reminderToggleBinding: Binding<Bool> {
@@ -639,7 +672,9 @@ struct SettingsView: View {
     }
 
     private var authTestEntrySection: some View {
-        AppSectionCard(
+        let authContext = displayedAuthContext
+
+        return AppSectionCard(
             title: "ログイン機能テスト",
             subtitle: "起動時の認証ゲートは使わず、ここから手動でログイン画面と診断だけを確認できます。"
         ) {
@@ -651,7 +686,7 @@ struct SettingsView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) {
                     Button {
-                        showsAuthPreview = true
+                        openManualAuthPreview()
                     } label: {
                         Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
                             .frame(maxWidth: .infinity)
@@ -672,7 +707,7 @@ struct SettingsView: View {
 
                 VStack(spacing: 10) {
                     Button {
-                        showsAuthPreview = true
+                        openManualAuthPreview()
                     } label: {
                         Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
                             .frame(maxWidth: .infinity)

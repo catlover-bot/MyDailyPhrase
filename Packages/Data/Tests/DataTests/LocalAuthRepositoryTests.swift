@@ -77,6 +77,81 @@ struct LocalAuthRepositoryTests {
         #expect(session.roles.contains(.admin))
     }
 
+    @Test("owner Apple provider user id allowlist grants full admin capabilities")
+    func ownerAppleProviderUserIDAllowlistGrantsAdmin() throws {
+        let ownerProviderUserID = "001525.7eb00859a72e4899b51d4357c5d6acc8.0422"
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: true,
+                adminAppleUserIDs: [ownerProviderUserID],
+                adminEmails: ["dimension0122@gmail.com"]
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: ownerProviderUserID,
+            email: "kbmgczfpfy@privaterelay.appleid.com",
+            givenName: "拓能",
+            familyName: "門谷"
+        )
+
+        #expect(repo.isAdmin(session: session))
+        #expect(session.roles.contains(.admin))
+        #expect(Set(session.adminCapabilities) == AdminCapability.fullAdminSet)
+    }
+
+    @Test("private relay email is safe when provider user id matches allowlist")
+    func privateRelayEmailDoesNotBlockProviderUserIDAdmin() throws {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: true,
+                adminAppleUserIDs: ["001525.7eb00859a72e4899b51d4357c5d6acc8.0422"],
+                adminEmails: ["dimension0122@gmail.com"]
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: "001525.7eb00859a72e4899b51d4357c5d6acc8.0422",
+            email: "kbmgczfpfy@privaterelay.appleid.com",
+            givenName: nil,
+            familyName: nil
+        )
+
+        #expect(repo.isAdmin(session: session))
+        #expect(session.adminCapabilities.contains(.viewDiagnostics))
+    }
+
+    @Test("admin menu flag alone does not make normal user admin")
+    func adminMenuFlagAloneDoesNotGrantAdmin() throws {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: true,
+                adminAppleUserIDs: ["owner-provider-id"],
+                adminEmails: ["dimension0122@gmail.com"]
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: "normal-provider-id",
+            email: "kbmgczfpfy@privaterelay.appleid.com",
+            givenName: nil,
+            familyName: nil
+        )
+
+        #expect(repo.isAdmin(session: session) == false)
+        #expect(session.roles.contains(.admin) == false)
+        #expect(session.adminCapabilities.isEmpty)
+    }
+
     @Test("owner email allowlist accepts dimension0122 Gmail address")
     func ownerEmailAllowlistAcceptsGmailAddress() throws {
         let repo = makeRepository(

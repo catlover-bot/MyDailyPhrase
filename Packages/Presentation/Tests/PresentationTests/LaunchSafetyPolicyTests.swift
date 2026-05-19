@@ -17,6 +17,7 @@ struct LaunchSafetyPolicyTests {
         #expect(policy.shouldConstructAuthFlow == false)
         #expect(policy.shouldShowMainShellImmediately == true)
         #expect(policy.effectiveAdminMenuEnabled == false)
+        #expect(policy.manualAdminMenuTestEnabled)
         #expect(policy.socialPrototypesEnabled == false)
         #expect(policy.shouldShowAuthTestEntry(isDebugBuild: false) == true)
         #expect(policy.manualAppleSignInTestEnabled)
@@ -51,6 +52,7 @@ struct LaunchSafetyPolicyTests {
 
         #expect(policy.shouldShowAuthTestEntry(isDebugBuild: false))
         #expect(policy.manualAppleSignInTestEnabled)
+        #expect(policy.manualAdminMenuTestEnabled == false)
         #expect(policy.shouldConstructAuthFlow == false)
         #expect(policy.shouldShowMainShellImmediately == true)
     }
@@ -70,6 +72,24 @@ struct LaunchSafetyPolicyTests {
         #expect(policy.effectiveAuthEnabled == false)
         #expect(policy.shouldConstructAuthFlow == false)
         #expect(policy.effectiveAdminMenuEnabled == false)
+    }
+
+    @Test("manual admin menu can be enabled without root auth gate")
+    func manualAdminMenuCanBeEnabledWithoutRootAuthGate() {
+        let policy = LaunchSafetyPolicy(
+            authEnabledConfigured: false,
+            guestModeEnabled: true,
+            adminMenuEnabledConfigured: true,
+            safeModeEnabled: true,
+            authTestEntryEnabledConfigured: true,
+            manualAppleSignInEnabledConfigured: true
+        )
+
+        #expect(policy.effectiveAuthEnabled == false)
+        #expect(policy.effectiveAdminMenuEnabled == false)
+        #expect(policy.manualAdminMenuTestEnabled)
+        #expect(policy.shouldConstructAuthFlow == false)
+        #expect(policy.shouldShowMainShellImmediately)
     }
 
     @Test("manual Apple sign in stays disabled without test entry")

@@ -386,6 +386,9 @@ final class AppContainer {
             guestModeEnabled: launchConfiguration.guestModeEnabled,
             adminMenuEnabled: launchConfiguration.adminMenuEnabled,
             safeModeEnabled: launchConfiguration.safeModeEnabled,
+            rootAuthGateEnabled: launchConfiguration.rootAuthGateEnabled,
+            manualAuthTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
+            manualAppleSignInEnabled: launchConfiguration.manualAppleSignInEnabled,
             termsOfServiceURL: runtimeConfig.termsOfServiceURL ?? AppLinks.termsOfService,
             privacyPolicyURL: runtimeConfig.privacyPolicyURL ?? AppLinks.privacyPolicy,
             loadPersistedAuthError: { [suiteName = appGroupID] in
@@ -403,7 +406,7 @@ final class AppContainer {
                 signInWithAppleEnabled: launchConfiguration.manualAppleSignInEnabled,
                 googleSignInEnabled: false,
                 guestModeEnabled: launchConfiguration.guestModeEnabled,
-                adminMenuEnabled: launchConfiguration.adminMenuEnabled
+                adminMenuEnabled: launchConfiguration.manualAdminMenuEnabled
             ),
             getMyProfile: getMyProfile,
             updateMyProfile: updateMyProfile,
@@ -411,8 +414,11 @@ final class AppContainer {
             signInWithAppleEnabled: launchConfiguration.manualAppleSignInEnabled,
             googleSignInEnabled: false,
             guestModeEnabled: launchConfiguration.guestModeEnabled,
-            adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+            adminMenuEnabled: launchConfiguration.manualAdminMenuEnabled,
             safeModeEnabled: launchConfiguration.safeModeEnabled,
+            rootAuthGateEnabled: launchConfiguration.rootAuthGateEnabled,
+            manualAuthTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
+            manualAppleSignInEnabled: launchConfiguration.manualAppleSignInEnabled,
             termsOfServiceURL: runtimeConfig.termsOfServiceURL ?? AppLinks.termsOfService,
             privacyPolicyURL: runtimeConfig.privacyPolicyURL ?? AppLinks.privacyPolicy,
             loadPersistedAuthError: { [suiteName = appGroupID] in

@@ -39,6 +39,10 @@ struct AppLaunchRuntimeConfiguration: Sendable {
         policy.effectiveAdminMenuEnabled
     }
 
+    var manualAdminMenuEnabled: Bool {
+        policy.manualAdminMenuTestEnabled
+    }
+
     var authTestEntryEnabled: Bool {
 #if DEBUG
         return true
@@ -128,11 +132,41 @@ struct SettingsAuthContext {
         self.adminCapabilities = Set(authViewModel.currentFeatureAccess.adminCapabilities)
     }
 
+    init(manualAuthViewModel authViewModel: AppAuthViewModel, fallback: SettingsAuthContext) {
+        self.accountStatusText = authViewModel.accountStatusText
+        self.accountDetailText = authViewModel.accountDetailText
+        self.providerDisplayName = authViewModel.currentSession?.user.provider.displayName ?? "未ログイン"
+        self.isGuest = authViewModel.isGuest
+        self.adminStatusLabel = authViewModel.currentFeatureAccess.adminStatusLabel
+        self.supportsInteractiveAuth = authViewModel.supportsInteractiveAuth
+        self.isAuthEnabled = authViewModel.isAuthEnabled
+        self.isSafeModeEnabled = fallback.isSafeModeEnabled
+        self.rootAuthGateEnabled = fallback.rootAuthGateEnabled
+        self.manualAuthTestEntryEnabled = fallback.manualAuthTestEntryEnabled
+        self.manualAppleSignInEnabled = fallback.manualAppleSignInEnabled
+        self.currentAuthStateText = authViewModel.currentAuthStateText
+        self.userID = authViewModel.currentSession?.user.id
+        self.providerUserID = authViewModel.currentSession?.user.providerUserID
+        self.displayName = authViewModel.currentSession?.user.displayName
+        self.email = authViewModel.currentSession?.user.email
+        self.roleLabels = authViewModel.currentSession?.roles.map(\.label) ?? []
+        self.isAdmin = authViewModel.isAdmin
+        self.capabilityLabels = authViewModel.currentSession?.adminCapabilities.map(\.label) ?? []
+        self.signInWithAppleEnabled = authViewModel.signInWithAppleEnabledForDiagnostics
+        self.googleSignInEnabled = authViewModel.googleSignInEnabledForDiagnostics
+        self.guestModeEnabled = authViewModel.guestModeEnabledForDiagnostics
+        self.adminMenuEnabled = authViewModel.adminMenuEnabledForDiagnostics
+        self.lastAuthErrorDescription = authViewModel.lastAuthErrorDescription
+        self.diagnosticsReportText = authViewModel.diagnosticsReportText
+        self.canAccessAdminMenu = authViewModel.currentFeatureAccess.canAccessAdminMenu
+        self.adminCapabilities = Set(authViewModel.currentFeatureAccess.adminCapabilities)
+    }
+
     static func localSafeMode(launchConfiguration: AppLaunchRuntimeConfiguration? = nil) -> SettingsAuthContext {
         let signInWithAppleEnabled = launchConfiguration?.signInWithAppleEnabled ?? false
         let googleSignInEnabled = launchConfiguration?.googleSignInEnabled ?? false
         let guestModeEnabled = launchConfiguration?.guestModeEnabled ?? true
-        let adminMenuEnabled = launchConfiguration?.adminMenuEnabled ?? false
+        let adminMenuEnabled = launchConfiguration?.adminMenuEnabledConfigured ?? false
         let safeModeEnabled = launchConfiguration?.safeModeEnabled ?? true
         let rootAuthGateEnabled = launchConfiguration?.rootAuthGateEnabled ?? false
         let manualAuthTestEntryEnabled = launchConfiguration?.authTestEntryEnabled ?? false

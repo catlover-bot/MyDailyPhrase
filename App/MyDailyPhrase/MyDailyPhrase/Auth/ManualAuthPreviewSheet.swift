@@ -22,12 +22,17 @@ struct ManualAuthPreviewSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var vm: AppAuthViewModel
+    @ObservedObject private var vm: AppAuthViewModel
+    private let onAuthStateChanged: (AppAuthViewModel) -> Void
     @State private var previewMode: PreviewMode = .welcome
     @State private var copyFeedback: String? = nil
 
-    init(makeViewModel: @escaping () -> AppAuthViewModel) {
-        _vm = StateObject(wrappedValue: makeViewModel())
+    init(
+        viewModel: AppAuthViewModel,
+        onAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in }
+    ) {
+        _vm = ObservedObject(wrappedValue: viewModel)
+        self.onAuthStateChanged = onAuthStateChanged
     }
 
     var body: some View {
@@ -90,11 +95,16 @@ struct ManualAuthPreviewSheet: View {
             }
             .task {
                 await vm.load()
+                onAuthStateChanged(vm)
             }
             .onChange(of: vm.currentAuthStateText) { _, newValue in
+                onAuthStateChanged(vm)
                 if newValue == "needsProfileSetup" {
                     previewMode = .setup
                 }
+            }
+            .onDisappear {
+                onAuthStateChanged(vm)
             }
         }
     }

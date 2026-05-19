@@ -40,6 +40,10 @@ public struct LaunchSafetyPolicy: Equatable, Sendable {
         effectiveAuthEnabled && adminMenuEnabledConfigured
     }
 
+    public var manualAdminMenuTestEnabled: Bool {
+        authTestEntryEnabledConfigured && adminMenuEnabledConfigured
+    }
+
     public var socialPrototypesEnabled: Bool {
         !safeModeEnabled
     }
