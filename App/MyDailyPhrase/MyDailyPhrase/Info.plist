@@ -25,6 +25,8 @@
 	<string>$(AUTH_GOOGLE_SIGN_IN_ENABLED)</string>
 	<key>AUTH_ADMIN_MENU_ENABLED</key>
 	<string>$(AUTH_ADMIN_MENU_ENABLED)</string>
+	<key>APP_SAFE_MODE</key>
+	<string>$(APP_SAFE_MODE)</string>
 	<key>AUTH_BACKEND_VERIFY_BEARER</key>
 	<string>$(AUTH_BACKEND_VERIFY_BEARER)</string>
 	<key>AUTH_BACKEND_TIMEOUT_SECONDS</key>

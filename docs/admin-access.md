@@ -29,6 +29,7 @@ AUTH_ADMIN_EMAILS = owner@example.com
 
 `AUTH_ADMIN_MENU_ENABLED = YES` のときだけ allowlist 判定が有効です。
 Release の既定値は `NO` で、認証を再有効化するまでは通常ユーザーに管理者導線を出しません。
+また `APP_SAFE_MODE = YES` のときは管理者メニュー自体を起動経路から外し、通常シェルだけを優先して起動します。
 
 ## 管理者権限の内容
 

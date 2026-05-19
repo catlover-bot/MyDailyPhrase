@@ -46,6 +46,9 @@ struct ContentView: View {
     let profileVM: ProfileViewModel
     let communityLiteVM: CommunityLiteViewModel
     let settingsVM: SettingsViewModel
+    let settingsAuthContext: SettingsAuthContext
+    let onAuthSignOut: () -> Void
+    let onAuthRequestDeletionSupport: () -> Void
     @State private var selectedTab: RootTab = .today
 
     var body: some View {
@@ -83,7 +86,12 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                SettingsView(viewModel: settingsVM)
+                SettingsView(
+                    viewModel: settingsVM,
+                    authContext: settingsAuthContext,
+                    onSignOut: onAuthSignOut,
+                    onRequestAccountDeletionSupport: onAuthRequestDeletionSupport
+                )
             }
             .tag(RootTab.settings)
             .tabItem {

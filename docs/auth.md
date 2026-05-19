@@ -24,9 +24,11 @@
 - `AUTH_GOOGLE_SIGN_IN_ENABLED`
 - `AUTH_GUEST_MODE_ENABLED`
 - `AUTH_ADMIN_MENU_ENABLED`
+- `APP_SAFE_MODE`
 
 Release では認証を安定化するまで `AUTH_ENABLED = NO` を既定にしています。
 このときアプリはログイン必須にはならず、既存のローカル体験でそのまま起動します。
+さらに `APP_SAFE_MODE = YES` のときは、起動時に auth gate や管理者導線、社交試作導線を組み立てず、既存のメインシェルだけを安全に起動します。
 
 ## 画面フロー
 
@@ -41,3 +43,4 @@ Release では認証を安定化するまで `AUTH_ENABLED = NO` を既定にし
 - Google の実運用ログインを有効にする場合は、開始 URL・callback scheme・サーバー検証の設定確認が必要です。
 - 既存の StoreKit / Creator Pass 判定はそのまま維持し、認証だけでは課金状態を変更しません。
 - 保存済み認証情報が壊れていた場合は安全に破棄し、クラッシュせずに signed out / ローカル起動へ戻します。
+- `AUTH_ENABLED = NO` または `APP_SAFE_MODE = YES` のときは、`AppAuthViewModel` と `LocalAuthRepository` を Release 起動経路で必須にしません。

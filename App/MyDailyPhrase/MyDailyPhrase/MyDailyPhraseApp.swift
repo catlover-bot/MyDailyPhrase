@@ -8,6 +8,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+#if DEBUG
+        let launchConfiguration = AppLaunchRuntimeConfiguration.load()
+        print(
+            "[Launch] app start",
+            "safeMode=\(launchConfiguration.safeModeEnabled)",
+            "auth=\(launchConfiguration.effectiveAuthEnabled)"
+        )
+#endif
         return true
     }
 

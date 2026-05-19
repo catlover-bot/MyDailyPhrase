@@ -2,16 +2,18 @@ import Foundation
 import Presentation
 
 enum FeatureFlags {
-    private static let authRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
+    private static let launchConfiguration = AppLaunchRuntimeConfiguration.load()
 
     static let paidGachaEnabled = ReleaseFeatureAvailability.paidGachaEnabled
     static let communityEnabled = false
     static let publicCommunityEnabled = ReleaseFeatureAvailability.publicCommunityEnabled
     static let communityLiteEnabled = ReleaseFeatureAvailability.communityLiteEnabled
     static let gameCommunityEnabled = ReleaseFeatureAvailability.gameCommunityEnabled
-    static let socialGraphEnabled = ReleaseFeatureAvailability.socialGraphEnabled
+    static let socialGraphEnabled = launchConfiguration.policy.socialPrototypesEnabled
+        && ReleaseFeatureAvailability.socialGraphEnabled
     static let publicUserDiscoveryEnabled = ReleaseFeatureAvailability.publicUserDiscoveryEnabled
-    static let dmEnabled = ReleaseFeatureAvailability.dmEnabled
+    static let dmEnabled = launchConfiguration.policy.socialPrototypesEnabled
+        && ReleaseFeatureAvailability.dmEnabled
     static let publicDMEnabled = ReleaseFeatureAvailability.publicDMEnabled
     static let creatorPassEnabled = ReleaseFeatureAvailability.creatorPassEnabled
     static let creatorCommunityCreationEnabled = ReleaseFeatureAvailability.creatorCommunityCreationEnabled
@@ -20,11 +22,12 @@ enum FeatureFlags {
     static let advancedProfileToolsEnabled = false
     static let nativeSharingEnabled = ReleaseFeatureAvailability.nativeSharingEnabled
     static let themePreviewEnabled = ReleaseFeatureAvailability.themePreviewEnabled
-    static let authEnabled = authRuntimeConfiguration.authEnabled
-    static let signInWithAppleEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.signInWithAppleEnabled
-    static let googleSignInEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.googleSignInEnabled
-    static let guestModeEnabled = authRuntimeConfiguration.guestModeEnabled
-    static let adminMenuEnabled = authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.adminMenuEnabled
+    static let authEnabled = launchConfiguration.effectiveAuthEnabled
+    static let signInWithAppleEnabled = launchConfiguration.signInWithAppleEnabled
+    static let googleSignInEnabled = launchConfiguration.googleSignInEnabled
+    static let guestModeEnabled = launchConfiguration.guestModeEnabled
+    static let adminMenuEnabled = launchConfiguration.adminMenuEnabled
+    static let safeModeEnabled = launchConfiguration.safeModeEnabled
 }
 
 struct CreatorEntitlementService {

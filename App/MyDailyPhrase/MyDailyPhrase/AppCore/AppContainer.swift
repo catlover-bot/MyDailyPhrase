@@ -25,7 +25,6 @@ final class AppContainer {
 
     // ===== Profile / Challenge / Reaction =====
     private let profileRepo: UserProfileRepository
-    private let authRepository: AuthRepository
     private let communityTemplateRepo: CommunityTemplateRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
@@ -74,9 +73,11 @@ final class AppContainer {
 
     // ===== Import Challenge → Entry =====
     private let importChallengeToEntry: ImportChallengeToEntryUseCase
-    private let authRuntimeConfiguration: ExternalAuthRuntimeConfiguration
+    let launchConfiguration: AppLaunchRuntimeConfiguration
+    private lazy var authRuntimeConfiguration: ExternalAuthRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
 
     init(appGroupID: String = AppContainer.preferredAppGroupID) {
+        Self.debugLaunchLog("[Launch] AppContainer init start")
         Self.migrateLegacyAppGroupDataIfNeeded(
             preferredGroupID: appGroupID,
             legacyGroupIDs: Self.legacyAppGroupIDs
@@ -85,7 +86,7 @@ final class AppContainer {
         self.appGroupID = appGroupID
         let resolvedDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
         self.appGroupDefaults = resolvedDefaults
-        self.authRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
+        self.launchConfiguration = AppLaunchRuntimeConfiguration.load()
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -102,20 +103,6 @@ final class AppContainer {
 
         // Profile / events repos
         self.profileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
-        self.authRepository = LocalAuthRepository(
-            defaults: resolvedDefaults,
-            profileRepository: profileRepo,
-            configuration: .init(
-                signInWithAppleEnabled: authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.signInWithAppleEnabled,
-                googleOAuthEnabled: authRuntimeConfiguration.authEnabled
-                    && authRuntimeConfiguration.googleSignInEnabled
-                    && authRuntimeConfiguration.googleOAuthStartURL != nil,
-                guestModeEnabled: authRuntimeConfiguration.guestModeEnabled,
-                adminMenuEnabled: authRuntimeConfiguration.authEnabled && authRuntimeConfiguration.adminMenuEnabled,
-                adminAppleUserIDs: authRuntimeConfiguration.adminAppleUserIDs,
-                adminEmails: authRuntimeConfiguration.adminEmails
-            )
-        )
         self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
@@ -186,6 +173,11 @@ final class AppContainer {
 
         // Import Challenge → Entry
         self.importChallengeToEntry = ImportChallengeToEntryUseCase(entryRepo: entryRepo)
+        Self.debugLaunchLog(
+            "[Launch] AppContainer init end",
+            "safeMode=\(launchConfiguration.safeModeEnabled)",
+            "auth=\(launchConfiguration.effectiveAuthEnabled)"
+        )
     }
 
     // MARK: - Deep link handling
@@ -383,19 +375,21 @@ final class AppContainer {
     }
 
     func makeAuthViewModel() -> AppAuthViewModel {
-        AppAuthViewModel(
-            authRepository: authRepository,
+        let runtimeConfig = authRuntimeConfiguration
+        return AppAuthViewModel(
+            authRepository: makeAuthRepository(runtimeConfig: runtimeConfig),
             getMyProfile: getMyProfile,
             updateMyProfile: updateMyProfile,
-            authEnabled: authRuntimeConfiguration.authEnabled,
-            signInWithAppleEnabled: authRuntimeConfiguration.signInWithAppleEnabled,
-            googleSignInEnabled: authRuntimeConfiguration.googleSignInEnabled,
-            guestModeEnabled: authRuntimeConfiguration.guestModeEnabled,
-            adminMenuEnabled: authRuntimeConfiguration.adminMenuEnabled,
-            termsOfServiceURL: authRuntimeConfiguration.termsOfServiceURL ?? AppLinks.termsOfService,
-            privacyPolicyURL: authRuntimeConfiguration.privacyPolicyURL ?? AppLinks.privacyPolicy,
-            loadPersistedAuthError: { [defaults = appGroupDefaults] in
-                defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
+            authEnabled: launchConfiguration.effectiveAuthEnabled,
+            signInWithAppleEnabled: launchConfiguration.signInWithAppleEnabled,
+            googleSignInEnabled: launchConfiguration.googleSignInEnabled,
+            guestModeEnabled: launchConfiguration.guestModeEnabled,
+            adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+            termsOfServiceURL: runtimeConfig.termsOfServiceURL ?? AppLinks.termsOfService,
+            privacyPolicyURL: runtimeConfig.privacyPolicyURL ?? AppLinks.privacyPolicy,
+            loadPersistedAuthError: { [suiteName = appGroupID] in
+                let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+                return defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
             }
         )
     }
@@ -483,6 +477,28 @@ final class AppContainer {
     }
 
     func makeProfileViewModel() -> ProfileViewModel {
+        guard launchConfiguration.effectiveAuthEnabled else {
+            return ProfileViewModel(
+                get: getMyProfile,
+                update: updateMyProfile,
+                authTokenVerifier: BackendPendingAuthTokenVerifier(),
+                termsOfServiceURL: AppLinks.termsOfService,
+                privacyPolicyURL: AppLinks.privacyPolicy,
+                defaultSecurityLogRetentionDays: 90,
+                maxSecurityLogRetentionDays: 365,
+                isServerAuthVerificationConfigured: false,
+                serverAuthEndpointHost: nil,
+                isDevelopmentVerifierEnabled: false,
+                externalAuthTokenBroker: nil,
+                oauthConfiguredProviders: [],
+                oauthCallbackScheme: nil,
+                isOAuthCallbackSchemeRegistered: false,
+                allowsManualExternalAuthTokenInput: false,
+                isLoginBypassEnabled: false,
+                appDefaults: appGroupDefaults
+            )
+        }
+
         let runtimeConfig = authRuntimeConfiguration
         let callbackScheme: String? = {
 #if DEBUG
@@ -569,6 +585,22 @@ final class AppContainer {
         )
     }
 
+    private func makeAuthRepository(runtimeConfig: ExternalAuthRuntimeConfiguration) -> AuthRepository {
+        LocalAuthRepository(
+            defaults: appGroupDefaults,
+            profileRepository: profileRepo,
+            configuration: .init(
+                signInWithAppleEnabled: launchConfiguration.signInWithAppleEnabled,
+                googleOAuthEnabled: launchConfiguration.googleSignInEnabled
+                    && runtimeConfig.googleOAuthStartURL != nil,
+                guestModeEnabled: launchConfiguration.guestModeEnabled,
+                adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+                adminAppleUserIDs: runtimeConfig.adminAppleUserIDs,
+                adminEmails: runtimeConfig.adminEmails
+            )
+        )
+    }
+
     func makeNotificationScheduler() -> AppNotificationScheduler {
         AppNotificationScheduler(defaults: appGroupDefaults)
     }
@@ -585,6 +617,12 @@ final class AppContainer {
     // MARK: - Debug
 
     private func debugLog(_ items: Any...) {
+        #if DEBUG
+        print(items.map { String(describing: $0) }.joined(separator: " "))
+        #endif
+    }
+
+    private static func debugLaunchLog(_ items: Any...) {
         #if DEBUG
         print(items.map { String(describing: $0) }.joined(separator: " "))
         #endif

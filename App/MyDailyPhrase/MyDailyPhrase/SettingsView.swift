@@ -6,7 +6,9 @@ import Presentation
 struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
     @EnvironmentObject private var iap: IAPStore
-    @EnvironmentObject private var auth: AppAuthViewModel
+    private let authContext: SettingsAuthContext
+    private let onSignOut: () -> Void
+    private let onRequestAccountDeletionSupport: () -> Void
     @State private var showDeleteConfirmation = false
     @State private var showsIAPDiagnostics = false
     @State private var versionTapCount = 0
@@ -20,8 +22,16 @@ struct SettingsView: View {
     @State private var artworkSearchText: String = ""
     @State private var selectedArtworkPreviewItem: CardDecoration? = nil
 
-    init(viewModel: SettingsViewModel) {
+    init(
+        viewModel: SettingsViewModel,
+        authContext: SettingsAuthContext,
+        onSignOut: @escaping () -> Void = {},
+        onRequestAccountDeletionSupport: @escaping () -> Void = {}
+    ) {
         _vm = StateObject(wrappedValue: viewModel)
+        self.authContext = authContext
+        self.onSignOut = onSignOut
+        self.onRequestAccountDeletionSupport = onRequestAccountDeletionSupport
     }
 
     var body: some View {
@@ -57,41 +67,41 @@ struct SettingsView: View {
                     title: "アカウント",
                     subtitle: "日記の回答は自動で公開されず、共有は自分で選んだ内容だけを使います。"
                 ) {
-                    Text(auth.accountStatusText)
+                    Text(authContext.accountStatusText)
                         .font(.subheadline.weight(.semibold))
 
-                    Text(auth.accountDetailText)
+                    Text(authContext.accountDetailText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {
-                            InfoBadge(title: auth.currentSession?.user.provider.displayName ?? "未ログイン", systemImage: "person.crop.circle", tint: .blue)
-                            if auth.isGuest {
+                            InfoBadge(title: authContext.providerDisplayName, systemImage: "person.crop.circle", tint: .blue)
+                            if authContext.isGuest {
                                 InfoBadge(title: "ゲスト", systemImage: "person", tint: .orange)
                             }
-                            if let adminLabel = auth.currentFeatureAccess.adminStatusLabel {
+                            if let adminLabel = authContext.adminStatusLabel {
                                 PremiumBadge(title: adminLabel)
                             }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            InfoBadge(title: auth.currentSession?.user.provider.displayName ?? "未ログイン", systemImage: "person.crop.circle", tint: .blue)
-                            if auth.isGuest {
+                            InfoBadge(title: authContext.providerDisplayName, systemImage: "person.crop.circle", tint: .blue)
+                            if authContext.isGuest {
                                 InfoBadge(title: "ゲスト", systemImage: "person", tint: .orange)
                             }
-                            if let adminLabel = auth.currentFeatureAccess.adminStatusLabel {
+                            if let adminLabel = authContext.adminStatusLabel {
                                 PremiumBadge(title: adminLabel)
                             }
                         }
                     }
 
-                    if auth.supportsInteractiveAuth {
+                    if authContext.supportsInteractiveAuth {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 10) {
                                 Button {
-                                    auth.signOut()
+                                    onSignOut()
                                 } label: {
                                     Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
                                         .frame(maxWidth: .infinity)
@@ -99,7 +109,7 @@ struct SettingsView: View {
                                 .buttonStyle(.bordered)
 
                                 Button {
-                                    auth.requestAccountDeletionSupport()
+                                    onRequestAccountDeletionSupport()
                                 } label: {
                                     Label("アカウント削除の案内", systemImage: "questionmark.circle")
                                         .frame(maxWidth: .infinity)
@@ -109,7 +119,7 @@ struct SettingsView: View {
 
                             VStack(spacing: 10) {
                                 Button {
-                                    auth.signOut()
+                                    onSignOut()
                                 } label: {
                                     Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
                                         .frame(maxWidth: .infinity)
@@ -117,7 +127,7 @@ struct SettingsView: View {
                                 .buttonStyle(.bordered)
 
                                 Button {
-                                    auth.requestAccountDeletionSupport()
+                                    onRequestAccountDeletionSupport()
                                 } label: {
                                     Label("アカウント削除の案内", systemImage: "questionmark.circle")
                                         .frame(maxWidth: .infinity)
@@ -139,18 +149,19 @@ struct SettingsView: View {
                         subtitle: "認証設定が空でも安全に起動できているかを確認できます。"
                     ) {
                         VStack(alignment: .leading, spacing: 10) {
-                            diagnosticRow(title: "authEnabled", value: auth.isAuthEnabled ? "true" : "false")
-                            diagnosticRow(title: "現在の状態", value: auth.currentAuthStateText)
-                            diagnosticRow(title: "Provider", value: auth.currentSession?.user.provider.displayName ?? "なし")
-                            diagnosticRow(title: "User ID", value: auth.currentSession?.user.id ?? "なし")
-                            diagnosticRow(title: "Email", value: auth.currentSession?.user.email ?? "なし")
-                            diagnosticRow(title: "Roles", value: auth.currentSession?.roles.map(\.label).joined(separator: " / ") ?? "なし")
-                            diagnosticRow(title: "isAdmin", value: auth.isAdmin ? "true" : "false")
-                            diagnosticRow(title: "Capabilities", value: auth.currentSession?.adminCapabilities.map(\.label).joined(separator: " / ") ?? "なし")
-                            diagnosticRow(title: "最後の認証エラー", value: auth.lastAuthErrorDescription ?? "なし")
+                            diagnosticRow(title: "authEnabled", value: authContext.isAuthEnabled ? "true" : "false")
+                            diagnosticRow(title: "safeModeEnabled", value: authContext.isSafeModeEnabled ? "true" : "false")
+                            diagnosticRow(title: "現在の状態", value: authContext.currentAuthStateText)
+                            diagnosticRow(title: "Provider", value: authContext.providerDisplayName)
+                            diagnosticRow(title: "User ID", value: authContext.userID ?? "なし")
+                            diagnosticRow(title: "Email", value: authContext.email ?? "なし")
+                            diagnosticRow(title: "Roles", value: authContext.roleLabels.isEmpty ? "なし" : authContext.roleLabels.joined(separator: " / "))
+                            diagnosticRow(title: "isAdmin", value: authContext.isAdmin ? "true" : "false")
+                            diagnosticRow(title: "Capabilities", value: authContext.capabilityLabels.isEmpty ? "なし" : authContext.capabilityLabels.joined(separator: " / "))
+                            diagnosticRow(title: "最後の認証エラー", value: authContext.lastAuthErrorDescription ?? "なし")
 
                             Button {
-                                UIPasteboard.general.string = auth.diagnosticsReportText
+                                UIPasteboard.general.string = authContext.diagnosticsReportText
                                 authDiagnosticsCopyFeedback = "認証診断をコピーしました"
                             } label: {
                                 Label("認証診断をコピー", systemImage: "doc.on.doc")
@@ -427,7 +438,7 @@ struct SettingsView: View {
                     }
                 }
 
-                if auth.currentFeatureAccess.canAccessAdminMenu {
+                if authContext.canAccessAdminMenu {
                     AppSectionCard(
                         title: "管理者メニュー",
                         subtitle: "管理者権限で有効な確認メニューです。通常ユーザーには表示されません。"
@@ -518,7 +529,7 @@ struct SettingsView: View {
                         }
 
                         if vm.canGrantLocalTestTickets,
-                           auth.currentFeatureAccess.adminCapabilities.contains(.grantLocalTicketsForTesting) {
+                           authContext.adminCapabilities.contains(.grantLocalTicketsForTesting) {
                             Button {
                                 vm.grantLocalTestTickets(30)
                             } label: {
