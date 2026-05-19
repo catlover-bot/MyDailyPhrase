@@ -77,6 +77,31 @@ struct LocalAuthRepositoryTests {
         #expect(session.roles.contains(.admin))
     }
 
+    @Test("owner email allowlist accepts dimension0122 Gmail address")
+    func ownerEmailAllowlistAcceptsGmailAddress() throws {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: true,
+                adminAppleUserIDs: [],
+                adminEmails: ["dimension0122@gmail.com"]
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: "apple-owner-id",
+            email: "Dimension0122@Gmail.com",
+            givenName: "Owner",
+            familyName: nil
+        )
+
+        #expect(repo.isAdmin(session: session))
+        #expect(session.roles.contains(.admin))
+        #expect(session.adminCapabilities.contains(.viewDiagnostics))
+    }
+
     @Test("google sign in requires safe configuration")
     func googleSignInRequiresConfiguration() {
         let repo = makeRepository(configuration: .init(googleOAuthEnabled: false))

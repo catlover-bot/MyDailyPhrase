@@ -28,6 +28,7 @@ enum FeatureFlags {
     static let guestModeEnabled = launchConfiguration.guestModeEnabled
     static let adminMenuEnabled = launchConfiguration.adminMenuEnabled
     static let safeModeEnabled = launchConfiguration.safeModeEnabled
+    static let authTestEntryEnabled = launchConfiguration.authTestEntryEnabled
 }
 
 struct CreatorEntitlementService {

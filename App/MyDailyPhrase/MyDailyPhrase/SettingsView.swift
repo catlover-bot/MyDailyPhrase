@@ -7,10 +7,14 @@ struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
     @EnvironmentObject private var iap: IAPStore
     private let authContext: SettingsAuthContext
+    private let authTestEntryEnabled: Bool
+    private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     private let onSignOut: () -> Void
     private let onRequestAccountDeletionSupport: () -> Void
     @State private var showDeleteConfirmation = false
     @State private var showsIAPDiagnostics = false
+    @State private var showsAuthTestDiagnostics = false
+    @State private var showsAuthPreview = false
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
     @State private var authDiagnosticsCopyFeedback: String? = nil
@@ -25,11 +29,15 @@ struct SettingsView: View {
     init(
         viewModel: SettingsViewModel,
         authContext: SettingsAuthContext,
+        authTestEntryEnabled: Bool = false,
+        makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
         onSignOut: @escaping () -> Void = {},
         onRequestAccountDeletionSupport: @escaping () -> Void = {}
     ) {
         _vm = StateObject(wrappedValue: viewModel)
         self.authContext = authContext
+        self.authTestEntryEnabled = authTestEntryEnabled
+        self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
         self.onSignOut = onSignOut
         self.onRequestAccountDeletionSupport = onRequestAccountDeletionSupport
     }
@@ -154,6 +162,7 @@ struct SettingsView: View {
                             diagnosticRow(title: "現在の状態", value: authContext.currentAuthStateText)
                             diagnosticRow(title: "Provider", value: authContext.providerDisplayName)
                             diagnosticRow(title: "User ID", value: authContext.userID ?? "なし")
+                            diagnosticRow(title: "Apple / Provider User ID", value: authContext.providerUserID ?? "なし")
                             diagnosticRow(title: "Email", value: authContext.email ?? "なし")
                             diagnosticRow(title: "Roles", value: authContext.roleLabels.isEmpty ? "なし" : authContext.roleLabels.joined(separator: " / "))
                             diagnosticRow(title: "isAdmin", value: authContext.isAdmin ? "true" : "false")
@@ -176,6 +185,10 @@ struct SettingsView: View {
                             }
                         }
                     }
+                }
+
+                if authTestEntryEnabled {
+                    authTestEntrySection
                 }
 
                 if let feedback = vm.feedbackMessage {
@@ -594,6 +607,13 @@ struct SettingsView: View {
                 onShare: {}
             )
         }
+        .sheet(isPresented: $showsAuthPreview) {
+            if let makeAuthPreviewViewModel {
+                ManualAuthPreviewSheet(makeViewModel: makeAuthPreviewViewModel)
+            } else {
+                AuthPreviewUnavailableSheet()
+            }
+        }
     }
 
     private var reminderToggleBinding: Binding<Bool> {
@@ -616,6 +636,95 @@ struct SettingsView: View {
                 }
             }
         )
+    }
+
+    private var authTestEntrySection: some View {
+        AppSectionCard(
+            title: "ログイン機能テスト",
+            subtitle: "起動時の認証ゲートは使わず、ここから手動でログイン画面と診断だけを確認できます。"
+        ) {
+            Text("Release の通常起動はこれまで通り安全モードのメイン画面です。Appleログインが無効な場合は準備中として表示します。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    Button {
+                        showsAuthPreview = true
+                    } label: {
+                        Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(makeAuthPreviewViewModel == nil)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            showsAuthTestDiagnostics.toggle()
+                        }
+                    } label: {
+                        Label("認証診断を表示", systemImage: "stethoscope")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                VStack(spacing: 10) {
+                    Button {
+                        showsAuthPreview = true
+                    } label: {
+                        Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(makeAuthPreviewViewModel == nil)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            showsAuthTestDiagnostics.toggle()
+                        }
+                    } label: {
+                        Label("認証診断を表示", systemImage: "stethoscope")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            Button {
+                UIPasteboard.general.string = authContext.diagnosticsReportText
+                authDiagnosticsCopyFeedback = "認証診断をコピーしました"
+            } label: {
+                Label("認証診断をコピー", systemImage: "doc.on.doc")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+
+            if let authDiagnosticsCopyFeedback {
+                Text(authDiagnosticsCopyFeedback)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            if showsAuthTestDiagnostics {
+                VStack(alignment: .leading, spacing: 10) {
+                    diagnosticRow(title: "AUTH_ENABLED", value: authContext.isAuthEnabled ? "true" : "false")
+                    diagnosticRow(title: "AUTH_SIGN_IN_WITH_APPLE_ENABLED", value: authContext.signInWithAppleEnabled ? "true" : "false")
+                    diagnosticRow(title: "AUTH_ADMIN_MENU_ENABLED", value: authContext.adminMenuEnabled ? "true" : "false")
+                    diagnosticRow(title: "APP_SAFE_MODE", value: authContext.isSafeModeEnabled ? "true" : "false")
+                    diagnosticRow(title: "現在の状態", value: authContext.currentAuthStateText)
+                    diagnosticRow(title: "Provider", value: authContext.providerDisplayName)
+                    diagnosticRow(title: "AuthUser.id", value: authContext.userID ?? "なし")
+                    diagnosticRow(title: "Apple / Provider User ID", value: authContext.providerUserID ?? "なし")
+                    diagnosticRow(title: "Email", value: authContext.email ?? "なし")
+                    diagnosticRow(title: "Roles", value: authContext.roleLabels.isEmpty ? "なし" : authContext.roleLabels.joined(separator: " / "))
+                    diagnosticRow(title: "isAdmin", value: authContext.isAdmin ? "true" : "false")
+                    diagnosticRow(title: "Capabilities", value: authContext.capabilityLabels.isEmpty ? "なし" : authContext.capabilityLabels.joined(separator: " / "))
+                    diagnosticRow(title: "最後の認証エラー", value: authContext.lastAuthErrorDescription ?? "なし")
+                }
+            }
+        }
     }
 
     private var versionBadge: some View {

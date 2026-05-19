@@ -385,6 +385,7 @@ final class AppContainer {
             googleSignInEnabled: launchConfiguration.googleSignInEnabled,
             guestModeEnabled: launchConfiguration.guestModeEnabled,
             adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+            safeModeEnabled: launchConfiguration.safeModeEnabled,
             termsOfServiceURL: runtimeConfig.termsOfServiceURL ?? AppLinks.termsOfService,
             privacyPolicyURL: runtimeConfig.privacyPolicyURL ?? AppLinks.privacyPolicy,
             loadPersistedAuthError: { [suiteName = appGroupID] in

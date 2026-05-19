@@ -50,6 +50,7 @@ struct RootView: View {
                 )
             } else {
                 SafeModeLaunchRoot(
+                    container: container,
                     launchConfiguration: launchConfiguration,
                     homeVM: homeVM,
                     historyVM: historyVM,
@@ -94,6 +95,7 @@ struct RootView: View {
 }
 
 private struct SafeModeLaunchRoot: View {
+    let container: AppContainer
     let launchConfiguration: AppLaunchRuntimeConfiguration
     let homeVM: HomeViewModel
     let historyVM: HistoryViewModel
@@ -105,7 +107,7 @@ private struct SafeModeLaunchRoot: View {
     let currentDecorationId: String
 
     private var settingsAuthContext: SettingsAuthContext {
-        .localSafeMode()
+        .localSafeMode(launchConfiguration: launchConfiguration)
     }
 
     var body: some View {
@@ -117,6 +119,8 @@ private struct SafeModeLaunchRoot: View {
             communityLiteVM: communityLiteVM,
             settingsVM: settingsVM,
             settingsAuthContext: settingsAuthContext,
+            authTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
+            makeAuthPreviewViewModel: { container.makeAuthViewModel() },
             onAuthSignOut: {},
             onAuthRequestDeletionSupport: {}
         )
@@ -212,6 +216,8 @@ private struct AuthenticatedLaunchRoot: View {
             communityLiteVM: communityLiteVM,
             settingsVM: settingsVM,
             settingsAuthContext: SettingsAuthContext(authViewModel: authVM, safeModeEnabled: launchConfiguration.safeModeEnabled),
+            authTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
+            makeAuthPreviewViewModel: { container.makeAuthViewModel() },
             onAuthSignOut: { authVM.signOut() },
             onAuthRequestDeletionSupport: { authVM.requestAccountDeletionSupport() }
         )

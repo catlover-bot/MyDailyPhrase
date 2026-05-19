@@ -47,6 +47,8 @@ struct ContentView: View {
     let communityLiteVM: CommunityLiteViewModel
     let settingsVM: SettingsViewModel
     let settingsAuthContext: SettingsAuthContext
+    let authTestEntryEnabled: Bool
+    let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     let onAuthSignOut: () -> Void
     let onAuthRequestDeletionSupport: () -> Void
     @State private var selectedTab: RootTab = .today
@@ -89,6 +91,8 @@ struct ContentView: View {
                 SettingsView(
                     viewModel: settingsVM,
                     authContext: settingsAuthContext,
+                    authTestEntryEnabled: authTestEntryEnabled,
+                    makeAuthPreviewViewModel: makeAuthPreviewViewModel,
                     onSignOut: onAuthSignOut,
                     onRequestAccountDeletionSupport: onAuthRequestDeletionSupport
                 )

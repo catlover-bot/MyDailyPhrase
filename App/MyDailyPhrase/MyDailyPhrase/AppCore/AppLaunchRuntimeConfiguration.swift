@@ -9,13 +9,15 @@ struct AppLaunchRuntimeConfiguration: Sendable {
     let guestModeEnabled: Bool
     let adminMenuEnabledConfigured: Bool
     let safeModeEnabled: Bool
+    let authTestEntryEnabledConfigured: Bool
 
     var policy: LaunchSafetyPolicy {
         LaunchSafetyPolicy(
             authEnabledConfigured: authEnabledConfigured,
             guestModeEnabled: guestModeEnabled,
             adminMenuEnabledConfigured: adminMenuEnabledConfigured,
-            safeModeEnabled: safeModeEnabled
+            safeModeEnabled: safeModeEnabled,
+            authTestEntryEnabledConfigured: authTestEntryEnabledConfigured
         )
     }
 
@@ -35,6 +37,14 @@ struct AppLaunchRuntimeConfiguration: Sendable {
         policy.effectiveAdminMenuEnabled
     }
 
+    var authTestEntryEnabled: Bool {
+#if DEBUG
+        return true
+#else
+        return policy.shouldShowAuthTestEntry(isDebugBuild: false)
+#endif
+    }
+
     static func load(from bundle: Bundle = .main) -> AppLaunchRuntimeConfiguration {
         AppLaunchRuntimeConfiguration(
             authEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_ENABLED") ?? false,
@@ -42,7 +52,8 @@ struct AppLaunchRuntimeConfiguration: Sendable {
             googleSignInEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_GOOGLE_SIGN_IN_ENABLED") ?? false,
             guestModeEnabled: bundle.boolValue(forInfoDictionaryKey: "AUTH_GUEST_MODE_ENABLED") ?? true,
             adminMenuEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_ADMIN_MENU_ENABLED") ?? false,
-            safeModeEnabled: bundle.boolValue(forInfoDictionaryKey: "APP_SAFE_MODE") ?? false
+            safeModeEnabled: bundle.boolValue(forInfoDictionaryKey: "APP_SAFE_MODE") ?? false,
+            authTestEntryEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_TEST_ENTRY_ENABLED") ?? false
         )
     }
 }
@@ -58,10 +69,15 @@ struct SettingsAuthContext {
     let isSafeModeEnabled: Bool
     let currentAuthStateText: String
     let userID: String?
+    let providerUserID: String?
     let email: String?
     let roleLabels: [String]
     let isAdmin: Bool
     let capabilityLabels: [String]
+    let signInWithAppleEnabled: Bool
+    let googleSignInEnabled: Bool
+    let guestModeEnabled: Bool
+    let adminMenuEnabled: Bool
     let lastAuthErrorDescription: String?
     let diagnosticsReportText: String
     let canAccessAdminMenu: Bool
@@ -78,18 +94,45 @@ struct SettingsAuthContext {
         self.isSafeModeEnabled = safeModeEnabled
         self.currentAuthStateText = authViewModel.currentAuthStateText
         self.userID = authViewModel.currentSession?.user.id
+        self.providerUserID = authViewModel.currentSession?.user.providerUserID
         self.email = authViewModel.currentSession?.user.email
         self.roleLabels = authViewModel.currentSession?.roles.map(\.label) ?? []
         self.isAdmin = authViewModel.isAdmin
         self.capabilityLabels = authViewModel.currentSession?.adminCapabilities.map(\.label) ?? []
+        self.signInWithAppleEnabled = authViewModel.signInWithAppleEnabledForDiagnostics
+        self.googleSignInEnabled = authViewModel.googleSignInEnabledForDiagnostics
+        self.guestModeEnabled = authViewModel.guestModeEnabledForDiagnostics
+        self.adminMenuEnabled = authViewModel.adminMenuEnabledForDiagnostics
         self.lastAuthErrorDescription = authViewModel.lastAuthErrorDescription
         self.diagnosticsReportText = authViewModel.diagnosticsReportText
         self.canAccessAdminMenu = authViewModel.currentFeatureAccess.canAccessAdminMenu
         self.adminCapabilities = Set(authViewModel.currentFeatureAccess.adminCapabilities)
     }
 
-    static func localSafeMode() -> SettingsAuthContext {
-        SettingsAuthContext(
+    static func localSafeMode(launchConfiguration: AppLaunchRuntimeConfiguration? = nil) -> SettingsAuthContext {
+        let signInWithAppleEnabled = launchConfiguration?.signInWithAppleEnabled ?? false
+        let googleSignInEnabled = launchConfiguration?.googleSignInEnabled ?? false
+        let guestModeEnabled = launchConfiguration?.guestModeEnabled ?? true
+        let adminMenuEnabled = launchConfiguration?.adminMenuEnabled ?? false
+        let safeModeEnabled = launchConfiguration?.safeModeEnabled ?? true
+        let snapshot = AuthDiagnosticsSnapshot(
+            authEnabled: false,
+            signInWithAppleEnabled: signInWithAppleEnabled,
+            googleSignInEnabled: googleSignInEnabled,
+            guestModeEnabled: guestModeEnabled,
+            adminMenuEnabled: adminMenuEnabled,
+            safeModeEnabled: safeModeEnabled,
+            authState: "safeMode",
+            provider: "none",
+            userID: nil,
+            providerUserID: nil,
+            email: nil,
+            roles: [],
+            isAdmin: false,
+            adminCapabilities: [],
+            lastAuthError: nil
+        )
+        return SettingsAuthContext(
             accountStatusText: "ログインなしで利用中",
             accountDetailText: "認証と管理者メニューは安全確認が終わるまで無効です。日記、ガチャ、見た目の変更はこれまで通りこの端末で利用できます。",
             providerDisplayName: "ローカル体験",
@@ -97,26 +140,20 @@ struct SettingsAuthContext {
             adminStatusLabel: nil,
             supportsInteractiveAuth: false,
             isAuthEnabled: false,
-            isSafeModeEnabled: true,
+            isSafeModeEnabled: safeModeEnabled,
             currentAuthStateText: "safeMode",
             userID: nil,
+            providerUserID: nil,
             email: nil,
             roleLabels: [],
             isAdmin: false,
             capabilityLabels: [],
+            signInWithAppleEnabled: signInWithAppleEnabled,
+            googleSignInEnabled: googleSignInEnabled,
+            guestModeEnabled: guestModeEnabled,
+            adminMenuEnabled: adminMenuEnabled,
             lastAuthErrorDescription: nil,
-            diagnosticsReportText: [
-                "authEnabled: false",
-                "safeModeEnabled: true",
-                "authState: safeMode",
-                "provider: none",
-                "userId: none",
-                "email: none",
-                "roles: none",
-                "isAdmin: false",
-                "adminCapabilities: none",
-                "lastAuthError: none"
-            ].joined(separator: "\n"),
+            diagnosticsReportText: snapshot.reportText,
             canAccessAdminMenu: false,
             adminCapabilities: []
         )
@@ -133,10 +170,15 @@ struct SettingsAuthContext {
         isSafeModeEnabled: Bool,
         currentAuthStateText: String,
         userID: String?,
+        providerUserID: String?,
         email: String?,
         roleLabels: [String],
         isAdmin: Bool,
         capabilityLabels: [String],
+        signInWithAppleEnabled: Bool,
+        googleSignInEnabled: Bool,
+        guestModeEnabled: Bool,
+        adminMenuEnabled: Bool,
         lastAuthErrorDescription: String?,
         diagnosticsReportText: String,
         canAccessAdminMenu: Bool,
@@ -152,10 +194,15 @@ struct SettingsAuthContext {
         self.isSafeModeEnabled = isSafeModeEnabled
         self.currentAuthStateText = currentAuthStateText
         self.userID = userID
+        self.providerUserID = providerUserID
         self.email = email
         self.roleLabels = roleLabels
         self.isAdmin = isAdmin
         self.capabilityLabels = capabilityLabels
+        self.signInWithAppleEnabled = signInWithAppleEnabled
+        self.googleSignInEnabled = googleSignInEnabled
+        self.guestModeEnabled = guestModeEnabled
+        self.adminMenuEnabled = adminMenuEnabled
         self.lastAuthErrorDescription = lastAuthErrorDescription
         self.diagnosticsReportText = diagnosticsReportText
         self.canAccessAdminMenu = canAccessAdminMenu

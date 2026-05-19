@@ -28,6 +28,7 @@ final class AppAuthViewModel: ObservableObject {
     private let googleSignInEnabledValue: Bool
     private let guestModeEnabledValue: Bool
     private let adminMenuEnabledValue: Bool
+    private let safeModeEnabledValue: Bool
     private let termsOfServiceURLValue: URL?
     private let privacyPolicyURLValue: URL?
     private let loadPersistedAuthError: @Sendable () -> String?
@@ -42,6 +43,7 @@ final class AppAuthViewModel: ObservableObject {
         googleSignInEnabled: Bool,
         guestModeEnabled: Bool,
         adminMenuEnabled: Bool,
+        safeModeEnabled: Bool = false,
         termsOfServiceURL: URL?,
         privacyPolicyURL: URL?,
         loadPersistedAuthError: @escaping @Sendable () -> String?
@@ -54,6 +56,7 @@ final class AppAuthViewModel: ObservableObject {
         self.googleSignInEnabledValue = googleSignInEnabled
         self.guestModeEnabledValue = guestModeEnabled
         self.adminMenuEnabledValue = adminMenuEnabled
+        self.safeModeEnabledValue = safeModeEnabled
         self.termsOfServiceURLValue = termsOfServiceURL
         self.privacyPolicyURLValue = privacyPolicyURL
         self.loadPersistedAuthError = loadPersistedAuthError
@@ -117,6 +120,22 @@ final class AppAuthViewModel: ObservableObject {
             && authRepository.supportedProviders.contains(.google)
     }
 
+    var signInWithAppleEnabledForDiagnostics: Bool {
+        signInWithAppleEnabledValue
+    }
+
+    var googleSignInEnabledForDiagnostics: Bool {
+        googleSignInEnabledValue
+    }
+
+    var guestModeEnabledForDiagnostics: Bool {
+        guestModeEnabledValue
+    }
+
+    var adminMenuEnabledForDiagnostics: Bool {
+        adminMenuEnabledValue
+    }
+
     var canUseGuestMode: Bool {
         guestModeEnabledValue && authRepository.supportedProviders.contains(.guest)
     }
@@ -142,23 +161,28 @@ final class AppAuthViewModel: ObservableObject {
         }
     }
 
+    var diagnosticsSnapshot: AuthDiagnosticsSnapshot {
+        AuthDiagnosticsSnapshot(
+            authEnabled: authEnabledValue,
+            signInWithAppleEnabled: signInWithAppleEnabledValue,
+            googleSignInEnabled: googleSignInEnabledValue,
+            guestModeEnabled: guestModeEnabledValue,
+            adminMenuEnabled: adminMenuEnabledValue,
+            safeModeEnabled: safeModeEnabledValue,
+            authState: currentAuthStateText,
+            provider: currentSession?.user.provider.rawValue ?? "none",
+            userID: currentSession?.user.id,
+            providerUserID: currentSession?.user.providerUserID,
+            email: currentSession?.user.email,
+            roles: currentSession?.roles.map(\.rawValue) ?? [],
+            isAdmin: isAdmin,
+            adminCapabilities: currentSession?.adminCapabilities.map(\.rawValue) ?? [],
+            lastAuthError: lastAuthErrorDescription
+        )
+    }
+
     var diagnosticsReportText: String {
-        [
-            "authEnabled: \(authEnabledValue)",
-            "signInWithAppleEnabled: \(signInWithAppleEnabledValue)",
-            "googleSignInEnabled: \(googleSignInEnabledValue)",
-            "guestModeEnabled: \(guestModeEnabledValue)",
-            "adminMenuEnabled: \(adminMenuEnabledValue)",
-            "authState: \(currentAuthStateText)",
-            "provider: \(currentSession?.user.provider.rawValue ?? "none")",
-            "userId: \(currentSession?.user.id ?? "none")",
-            "providerUserId: \(currentSession?.user.providerUserID ?? "none")",
-            "email: \(currentSession?.user.email ?? "none")",
-            "roles: \(currentSession?.roles.map(\.rawValue).joined(separator: ", ") ?? "none")",
-            "isAdmin: \(isAdmin)",
-            "adminCapabilities: \(currentSession?.adminCapabilities.map(\.rawValue).joined(separator: ", ") ?? "none")",
-            "lastAuthError: \(lastAuthErrorDescription ?? "none")"
-        ].joined(separator: "\n")
+        diagnosticsSnapshot.reportText
     }
 
     var accountStatusText: String {
