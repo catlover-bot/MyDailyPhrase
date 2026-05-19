@@ -173,6 +173,7 @@ final class AppAuthViewModel: ObservableObject {
             provider: currentSession?.user.provider.rawValue ?? "none",
             userID: currentSession?.user.id,
             providerUserID: currentSession?.user.providerUserID,
+            displayName: currentSession?.user.displayName,
             email: currentSession?.user.email,
             roles: currentSession?.roles.map(\.rawValue) ?? [],
             isAdmin: isAdmin,

@@ -10,6 +10,7 @@ struct AppLaunchRuntimeConfiguration: Sendable {
     let adminMenuEnabledConfigured: Bool
     let safeModeEnabled: Bool
     let authTestEntryEnabledConfigured: Bool
+    let manualAppleSignInEnabledConfigured: Bool
 
     var policy: LaunchSafetyPolicy {
         LaunchSafetyPolicy(
@@ -17,7 +18,8 @@ struct AppLaunchRuntimeConfiguration: Sendable {
             guestModeEnabled: guestModeEnabled,
             adminMenuEnabledConfigured: adminMenuEnabledConfigured,
             safeModeEnabled: safeModeEnabled,
-            authTestEntryEnabledConfigured: authTestEntryEnabledConfigured
+            authTestEntryEnabledConfigured: authTestEntryEnabledConfigured,
+            manualAppleSignInEnabledConfigured: manualAppleSignInEnabledConfigured
         )
     }
 
@@ -45,6 +47,14 @@ struct AppLaunchRuntimeConfiguration: Sendable {
 #endif
     }
 
+    var rootAuthGateEnabled: Bool {
+        policy.shouldConstructAuthFlow
+    }
+
+    var manualAppleSignInEnabled: Bool {
+        authTestEntryEnabled && manualAppleSignInEnabledConfigured
+    }
+
     static func load(from bundle: Bundle = .main) -> AppLaunchRuntimeConfiguration {
         AppLaunchRuntimeConfiguration(
             authEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_ENABLED") ?? false,
@@ -53,7 +63,8 @@ struct AppLaunchRuntimeConfiguration: Sendable {
             guestModeEnabled: bundle.boolValue(forInfoDictionaryKey: "AUTH_GUEST_MODE_ENABLED") ?? true,
             adminMenuEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_ADMIN_MENU_ENABLED") ?? false,
             safeModeEnabled: bundle.boolValue(forInfoDictionaryKey: "APP_SAFE_MODE") ?? false,
-            authTestEntryEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_TEST_ENTRY_ENABLED") ?? false
+            authTestEntryEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_TEST_ENTRY_ENABLED") ?? false,
+            manualAppleSignInEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "AUTH_MANUAL_APPLE_SIGN_IN_ENABLED") ?? false
         )
     }
 }
@@ -67,9 +78,13 @@ struct SettingsAuthContext {
     let supportsInteractiveAuth: Bool
     let isAuthEnabled: Bool
     let isSafeModeEnabled: Bool
+    let rootAuthGateEnabled: Bool
+    let manualAuthTestEntryEnabled: Bool
+    let manualAppleSignInEnabled: Bool
     let currentAuthStateText: String
     let userID: String?
     let providerUserID: String?
+    let displayName: String?
     let email: String?
     let roleLabels: [String]
     let isAdmin: Bool
@@ -83,7 +98,7 @@ struct SettingsAuthContext {
     let canAccessAdminMenu: Bool
     let adminCapabilities: Set<AdminCapability>
 
-    init(authViewModel: AppAuthViewModel, safeModeEnabled: Bool) {
+    init(authViewModel: AppAuthViewModel, launchConfiguration: AppLaunchRuntimeConfiguration) {
         self.accountStatusText = authViewModel.accountStatusText
         self.accountDetailText = authViewModel.accountDetailText
         self.providerDisplayName = authViewModel.currentSession?.user.provider.displayName ?? "未ログイン"
@@ -91,10 +106,14 @@ struct SettingsAuthContext {
         self.adminStatusLabel = authViewModel.currentFeatureAccess.adminStatusLabel
         self.supportsInteractiveAuth = authViewModel.supportsInteractiveAuth
         self.isAuthEnabled = authViewModel.isAuthEnabled
-        self.isSafeModeEnabled = safeModeEnabled
+        self.isSafeModeEnabled = launchConfiguration.safeModeEnabled
+        self.rootAuthGateEnabled = launchConfiguration.rootAuthGateEnabled
+        self.manualAuthTestEntryEnabled = launchConfiguration.authTestEntryEnabled
+        self.manualAppleSignInEnabled = launchConfiguration.manualAppleSignInEnabled
         self.currentAuthStateText = authViewModel.currentAuthStateText
         self.userID = authViewModel.currentSession?.user.id
         self.providerUserID = authViewModel.currentSession?.user.providerUserID
+        self.displayName = authViewModel.currentSession?.user.displayName
         self.email = authViewModel.currentSession?.user.email
         self.roleLabels = authViewModel.currentSession?.roles.map(\.label) ?? []
         self.isAdmin = authViewModel.isAdmin
@@ -115,6 +134,9 @@ struct SettingsAuthContext {
         let guestModeEnabled = launchConfiguration?.guestModeEnabled ?? true
         let adminMenuEnabled = launchConfiguration?.adminMenuEnabled ?? false
         let safeModeEnabled = launchConfiguration?.safeModeEnabled ?? true
+        let rootAuthGateEnabled = launchConfiguration?.rootAuthGateEnabled ?? false
+        let manualAuthTestEntryEnabled = launchConfiguration?.authTestEntryEnabled ?? false
+        let manualAppleSignInEnabled = launchConfiguration?.manualAppleSignInEnabled ?? false
         let snapshot = AuthDiagnosticsSnapshot(
             authEnabled: false,
             signInWithAppleEnabled: signInWithAppleEnabled,
@@ -122,10 +144,14 @@ struct SettingsAuthContext {
             guestModeEnabled: guestModeEnabled,
             adminMenuEnabled: adminMenuEnabled,
             safeModeEnabled: safeModeEnabled,
+            rootAuthGateEnabled: rootAuthGateEnabled,
+            manualAuthTestEntryEnabled: manualAuthTestEntryEnabled,
+            manualAppleSignInEnabled: manualAppleSignInEnabled,
             authState: "safeMode",
             provider: "none",
             userID: nil,
             providerUserID: nil,
+            displayName: nil,
             email: nil,
             roles: [],
             isAdmin: false,
@@ -141,9 +167,13 @@ struct SettingsAuthContext {
             supportsInteractiveAuth: false,
             isAuthEnabled: false,
             isSafeModeEnabled: safeModeEnabled,
+            rootAuthGateEnabled: rootAuthGateEnabled,
+            manualAuthTestEntryEnabled: manualAuthTestEntryEnabled,
+            manualAppleSignInEnabled: manualAppleSignInEnabled,
             currentAuthStateText: "safeMode",
             userID: nil,
             providerUserID: nil,
+            displayName: nil,
             email: nil,
             roleLabels: [],
             isAdmin: false,
@@ -168,9 +198,13 @@ struct SettingsAuthContext {
         supportsInteractiveAuth: Bool,
         isAuthEnabled: Bool,
         isSafeModeEnabled: Bool,
+        rootAuthGateEnabled: Bool,
+        manualAuthTestEntryEnabled: Bool,
+        manualAppleSignInEnabled: Bool,
         currentAuthStateText: String,
         userID: String?,
         providerUserID: String?,
+        displayName: String?,
         email: String?,
         roleLabels: [String],
         isAdmin: Bool,
@@ -192,9 +226,13 @@ struct SettingsAuthContext {
         self.supportsInteractiveAuth = supportsInteractiveAuth
         self.isAuthEnabled = isAuthEnabled
         self.isSafeModeEnabled = isSafeModeEnabled
+        self.rootAuthGateEnabled = rootAuthGateEnabled
+        self.manualAuthTestEntryEnabled = manualAuthTestEntryEnabled
+        self.manualAppleSignInEnabled = manualAppleSignInEnabled
         self.currentAuthStateText = currentAuthStateText
         self.userID = userID
         self.providerUserID = providerUserID
+        self.displayName = displayName
         self.email = email
         self.roleLabels = roleLabels
         self.isAdmin = isAdmin

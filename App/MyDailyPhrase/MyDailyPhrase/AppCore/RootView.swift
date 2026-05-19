@@ -120,7 +120,7 @@ private struct SafeModeLaunchRoot: View {
             settingsVM: settingsVM,
             settingsAuthContext: settingsAuthContext,
             authTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
-            makeAuthPreviewViewModel: { container.makeAuthViewModel() },
+            makeAuthPreviewViewModel: { container.makeManualAuthTestViewModel() },
             onAuthSignOut: {},
             onAuthRequestDeletionSupport: {}
         )
@@ -215,9 +215,9 @@ private struct AuthenticatedLaunchRoot: View {
             profileVM: profileVM,
             communityLiteVM: communityLiteVM,
             settingsVM: settingsVM,
-            settingsAuthContext: SettingsAuthContext(authViewModel: authVM, safeModeEnabled: launchConfiguration.safeModeEnabled),
+            settingsAuthContext: SettingsAuthContext(authViewModel: authVM, launchConfiguration: launchConfiguration),
             authTestEntryEnabled: launchConfiguration.authTestEntryEnabled,
-            makeAuthPreviewViewModel: { container.makeAuthViewModel() },
+            makeAuthPreviewViewModel: { container.makeManualAuthTestViewModel() },
             onAuthSignOut: { authVM.signOut() },
             onAuthRequestDeletionSupport: { authVM.requestAccountDeletionSupport() }
         )

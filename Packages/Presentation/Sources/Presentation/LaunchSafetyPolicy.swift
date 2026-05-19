@@ -6,19 +6,22 @@ public struct LaunchSafetyPolicy: Equatable, Sendable {
     public let adminMenuEnabledConfigured: Bool
     public let safeModeEnabled: Bool
     public let authTestEntryEnabledConfigured: Bool
+    public let manualAppleSignInEnabledConfigured: Bool
 
     public init(
         authEnabledConfigured: Bool,
         guestModeEnabled: Bool,
         adminMenuEnabledConfigured: Bool,
         safeModeEnabled: Bool,
-        authTestEntryEnabledConfigured: Bool = false
+        authTestEntryEnabledConfigured: Bool = false,
+        manualAppleSignInEnabledConfigured: Bool = false
     ) {
         self.authEnabledConfigured = authEnabledConfigured
         self.guestModeEnabled = guestModeEnabled
         self.adminMenuEnabledConfigured = adminMenuEnabledConfigured
         self.safeModeEnabled = safeModeEnabled
         self.authTestEntryEnabledConfigured = authTestEntryEnabledConfigured
+        self.manualAppleSignInEnabledConfigured = manualAppleSignInEnabledConfigured
     }
 
     public var effectiveAuthEnabled: Bool {
@@ -43,5 +46,9 @@ public struct LaunchSafetyPolicy: Equatable, Sendable {
 
     public func shouldShowAuthTestEntry(isDebugBuild: Bool) -> Bool {
         isDebugBuild || authTestEntryEnabledConfigured
+    }
+
+    public var manualAppleSignInTestEnabled: Bool {
+        authTestEntryEnabledConfigured && manualAppleSignInEnabledConfigured
     }
 }

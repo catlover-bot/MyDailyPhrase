@@ -29,6 +29,7 @@ enum FeatureFlags {
     static let adminMenuEnabled = launchConfiguration.adminMenuEnabled
     static let safeModeEnabled = launchConfiguration.safeModeEnabled
     static let authTestEntryEnabled = launchConfiguration.authTestEntryEnabled
+    static let manualAppleSignInEnabled = launchConfiguration.manualAppleSignInEnabled
 }
 
 struct CreatorEntitlementService {

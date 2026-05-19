@@ -9,7 +9,8 @@ struct LaunchSafetyPolicyTests {
             guestModeEnabled: true,
             adminMenuEnabledConfigured: true,
             safeModeEnabled: true,
-            authTestEntryEnabledConfigured: true
+            authTestEntryEnabledConfigured: true,
+            manualAppleSignInEnabledConfigured: true
         )
 
         #expect(policy.effectiveAuthEnabled == false)
@@ -18,6 +19,7 @@ struct LaunchSafetyPolicyTests {
         #expect(policy.effectiveAdminMenuEnabled == false)
         #expect(policy.socialPrototypesEnabled == false)
         #expect(policy.shouldShowAuthTestEntry(isDebugBuild: false) == true)
+        #expect(policy.manualAppleSignInTestEnabled)
     }
 
     @Test("auth disabled config still launches main shell safely")
@@ -43,12 +45,46 @@ struct LaunchSafetyPolicyTests {
             guestModeEnabled: true,
             adminMenuEnabledConfigured: false,
             safeModeEnabled: true,
-            authTestEntryEnabledConfigured: true
+            authTestEntryEnabledConfigured: true,
+            manualAppleSignInEnabledConfigured: true
         )
 
         #expect(policy.shouldShowAuthTestEntry(isDebugBuild: false))
+        #expect(policy.manualAppleSignInTestEnabled)
         #expect(policy.shouldConstructAuthFlow == false)
         #expect(policy.shouldShowMainShellImmediately == true)
+    }
+
+    @Test("manual Apple sign in flag is independent from root auth gate")
+    func manualAppleSignInDoesNotEnableRootAuthGate() {
+        let policy = LaunchSafetyPolicy(
+            authEnabledConfigured: false,
+            guestModeEnabled: true,
+            adminMenuEnabledConfigured: false,
+            safeModeEnabled: true,
+            authTestEntryEnabledConfigured: true,
+            manualAppleSignInEnabledConfigured: true
+        )
+
+        #expect(policy.manualAppleSignInTestEnabled)
+        #expect(policy.effectiveAuthEnabled == false)
+        #expect(policy.shouldConstructAuthFlow == false)
+        #expect(policy.effectiveAdminMenuEnabled == false)
+    }
+
+    @Test("manual Apple sign in stays disabled without test entry")
+    func manualAppleSignInRequiresTestEntry() {
+        let policy = LaunchSafetyPolicy(
+            authEnabledConfigured: false,
+            guestModeEnabled: true,
+            adminMenuEnabledConfigured: false,
+            safeModeEnabled: true,
+            authTestEntryEnabledConfigured: false,
+            manualAppleSignInEnabledConfigured: true
+        )
+
+        #expect(policy.manualAppleSignInTestEnabled == false)
+        #expect(policy.shouldConstructAuthFlow == false)
     }
 
     @Test("debug build can show auth test entry without runtime flag")

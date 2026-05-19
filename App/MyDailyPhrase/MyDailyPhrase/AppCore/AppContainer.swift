@@ -395,6 +395,33 @@ final class AppContainer {
         )
     }
 
+    func makeManualAuthTestViewModel() -> AppAuthViewModel {
+        let runtimeConfig = authRuntimeConfiguration
+        return AppAuthViewModel(
+            authRepository: makeAuthRepository(
+                runtimeConfig: runtimeConfig,
+                signInWithAppleEnabled: launchConfiguration.manualAppleSignInEnabled,
+                googleSignInEnabled: false,
+                guestModeEnabled: launchConfiguration.guestModeEnabled,
+                adminMenuEnabled: launchConfiguration.adminMenuEnabled
+            ),
+            getMyProfile: getMyProfile,
+            updateMyProfile: updateMyProfile,
+            authEnabled: launchConfiguration.authTestEntryEnabled,
+            signInWithAppleEnabled: launchConfiguration.manualAppleSignInEnabled,
+            googleSignInEnabled: false,
+            guestModeEnabled: launchConfiguration.guestModeEnabled,
+            adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+            safeModeEnabled: launchConfiguration.safeModeEnabled,
+            termsOfServiceURL: runtimeConfig.termsOfServiceURL ?? AppLinks.termsOfService,
+            privacyPolicyURL: runtimeConfig.privacyPolicyURL ?? AppLinks.privacyPolicy,
+            loadPersistedAuthError: { [suiteName = appGroupID] in
+                let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+                return defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
+            }
+        )
+    }
+
     func makeReviewViewModel() -> Presentation.ReviewViewModel {
         let listEntries = ListEntriesUseCase(entryRepo: entryRepo)
         return Presentation.ReviewViewModel(listEntries: listEntries, enrichEntry: enrichEntry, timeZone: timeZone)
@@ -586,16 +613,22 @@ final class AppContainer {
         )
     }
 
-    private func makeAuthRepository(runtimeConfig: ExternalAuthRuntimeConfiguration) -> AuthRepository {
+    private func makeAuthRepository(
+        runtimeConfig: ExternalAuthRuntimeConfiguration,
+        signInWithAppleEnabled: Bool? = nil,
+        googleSignInEnabled: Bool? = nil,
+        guestModeEnabled: Bool? = nil,
+        adminMenuEnabled: Bool? = nil
+    ) -> AuthRepository {
         LocalAuthRepository(
             defaults: appGroupDefaults,
             profileRepository: profileRepo,
             configuration: .init(
-                signInWithAppleEnabled: launchConfiguration.signInWithAppleEnabled,
-                googleOAuthEnabled: launchConfiguration.googleSignInEnabled
+                signInWithAppleEnabled: signInWithAppleEnabled ?? launchConfiguration.signInWithAppleEnabled,
+                googleOAuthEnabled: (googleSignInEnabled ?? launchConfiguration.googleSignInEnabled)
                     && runtimeConfig.googleOAuthStartURL != nil,
-                guestModeEnabled: launchConfiguration.guestModeEnabled,
-                adminMenuEnabled: launchConfiguration.adminMenuEnabled,
+                guestModeEnabled: guestModeEnabled ?? launchConfiguration.guestModeEnabled,
+                adminMenuEnabled: adminMenuEnabled ?? launchConfiguration.adminMenuEnabled,
                 adminAppleUserIDs: runtimeConfig.adminAppleUserIDs,
                 adminEmails: runtimeConfig.adminEmails
             )

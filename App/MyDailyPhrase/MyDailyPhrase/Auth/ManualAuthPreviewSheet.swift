@@ -175,7 +175,7 @@ struct ManualAuthPreviewSheet: View {
                 } else {
                     disabledProviderRow(
                         title: "Appleログインは現在準備中です",
-                        detail: "AUTH_SIGN_IN_WITH_APPLE_ENABLED が有効になるまで、ボタンは実行されません。",
+                        detail: "AUTH_MANUAL_APPLE_SIGN_IN_ENABLED と Apple capability が有効になるまで、ボタンは実行されません。",
                         systemImage: "apple.logo"
                     )
                 }
@@ -227,6 +227,7 @@ struct ManualAuthPreviewSheet: View {
             diagnosticRow(title: "provider", value: vm.currentSession?.user.provider.displayName ?? "なし")
             diagnosticRow(title: "AuthUser.id", value: vm.currentSession?.user.id ?? "なし")
             diagnosticRow(title: "Apple / Provider User ID", value: vm.currentSession?.user.providerUserID ?? "なし")
+            diagnosticRow(title: "displayName", value: vm.currentSession?.user.displayName ?? "なし")
             diagnosticRow(title: "email", value: vm.currentSession?.user.email ?? "なし")
             diagnosticRow(title: "roles", value: vm.currentSession?.roles.map(\.label).joined(separator: " / ") ?? "なし")
             diagnosticRow(title: "isAdmin", value: vm.isAdmin ? "true" : "false")

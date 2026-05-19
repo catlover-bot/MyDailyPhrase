@@ -102,6 +102,31 @@ struct LocalAuthRepositoryTests {
         #expect(session.adminCapabilities.contains(.viewDiagnostics))
     }
 
+    @Test("admin allowlist does not grant admin when admin menu is disabled")
+    func adminAllowlistRequiresAdminMenuFlag() throws {
+        let repo = makeRepository(
+            configuration: .init(
+                signInWithAppleEnabled: true,
+                googleOAuthEnabled: false,
+                guestModeEnabled: true,
+                adminMenuEnabled: false,
+                adminAppleUserIDs: ["apple-owner-id"],
+                adminEmails: ["dimension0122@gmail.com"]
+            )
+        )
+
+        let session = try repo.signInWithApple(
+            userID: "apple-owner-id",
+            email: "dimension0122@gmail.com",
+            givenName: "Owner",
+            familyName: nil
+        )
+
+        #expect(repo.isAdmin(session: session) == false)
+        #expect(session.roles.contains(.admin) == false)
+        #expect(session.adminCapabilities.isEmpty)
+    }
+
     @Test("google sign in requires safe configuration")
     func googleSignInRequiresConfiguration() {
         let repo = makeRepository(configuration: .init(googleOAuthEnabled: false))

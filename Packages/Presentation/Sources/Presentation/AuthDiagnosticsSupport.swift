@@ -8,10 +8,14 @@ public struct AuthDiagnosticsSnapshot: Equatable, Sendable {
     public let guestModeEnabled: Bool
     public let adminMenuEnabled: Bool
     public let safeModeEnabled: Bool
+    public let rootAuthGateEnabled: Bool
+    public let manualAuthTestEntryEnabled: Bool
+    public let manualAppleSignInEnabled: Bool
     public let authState: String
     public let provider: String
     public let userID: String?
     public let providerUserID: String?
+    public let displayName: String?
     public let email: String?
     public let roles: [String]
     public let isAdmin: Bool
@@ -25,10 +29,14 @@ public struct AuthDiagnosticsSnapshot: Equatable, Sendable {
         guestModeEnabled: Bool,
         adminMenuEnabled: Bool,
         safeModeEnabled: Bool,
+        rootAuthGateEnabled: Bool = false,
+        manualAuthTestEntryEnabled: Bool = false,
+        manualAppleSignInEnabled: Bool = false,
         authState: String,
         provider: String,
         userID: String?,
         providerUserID: String?,
+        displayName: String? = nil,
         email: String?,
         roles: [String],
         isAdmin: Bool,
@@ -41,10 +49,14 @@ public struct AuthDiagnosticsSnapshot: Equatable, Sendable {
         self.guestModeEnabled = guestModeEnabled
         self.adminMenuEnabled = adminMenuEnabled
         self.safeModeEnabled = safeModeEnabled
+        self.rootAuthGateEnabled = rootAuthGateEnabled
+        self.manualAuthTestEntryEnabled = manualAuthTestEntryEnabled
+        self.manualAppleSignInEnabled = manualAppleSignInEnabled
         self.authState = authState
         self.provider = provider
         self.userID = userID
         self.providerUserID = providerUserID
+        self.displayName = displayName
         self.email = email
         self.roles = roles
         self.isAdmin = isAdmin
@@ -60,10 +72,14 @@ public struct AuthDiagnosticsSnapshot: Equatable, Sendable {
             "guestModeEnabled: \(guestModeEnabled)",
             "adminMenuEnabled: \(adminMenuEnabled)",
             "safeModeEnabled: \(safeModeEnabled)",
+            "rootAuthGateEnabled: \(rootAuthGateEnabled)",
+            "manualAuthTestEntryEnabled: \(manualAuthTestEntryEnabled)",
+            "manualAppleSignInEnabled: \(manualAppleSignInEnabled)",
             "authState: \(authState)",
             "provider: \(provider)",
             "userId: \(userID ?? "none")",
             "providerUserId: \(providerUserID ?? "none")",
+            "displayName: \(displayName ?? "none")",
             "email: \(email ?? "none")",
             "roles: \(roles.isEmpty ? "none" : roles.joined(separator: ", "))",
             "isAdmin: \(isAdmin)",
