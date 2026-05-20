@@ -7,14 +7,26 @@ struct ProfileView: View {
     @ObservedObject var vm: ProfileViewModel
     @ObservedObject var gachaVM: GachaViewModel
     @ObservedObject var communityLiteVM: CommunityLiteViewModel
+    private let authTestEntryEnabled: Bool
+    private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
 
     @Environment(\.currentDecorationId) private var decorationId
     @EnvironmentObject private var iap: IAPStore
+    @State private var showsAuthSheet = false
+    @State private var manualAuthViewModel: AppAuthViewModel? = nil
 
-    init(vm: ProfileViewModel, gachaVM: GachaViewModel, communityLiteVM: CommunityLiteViewModel) {
+    init(
+        vm: ProfileViewModel,
+        gachaVM: GachaViewModel,
+        communityLiteVM: CommunityLiteViewModel,
+        authTestEntryEnabled: Bool = false,
+        makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil
+    ) {
         self.vm = vm
         self.gachaVM = gachaVM
         self.communityLiteVM = communityLiteVM
+        self.authTestEntryEnabled = authTestEntryEnabled
+        self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
     }
 
     private var equippedName: String {
@@ -150,6 +162,8 @@ struct ProfileView: View {
                     }
                 }
 
+                accountConnectionCard
+
                 AppSectionCard(
                     title: "ガチャと装備",
                     subtitle: "集めたアイテムはプロフィール、共有カード、コミュニティカードの見た目に使えます。"
@@ -245,16 +259,55 @@ struct ProfileView: View {
                 }
 
                 AppSectionCard(
-                    title: "表示名",
-                    subtitle: "プロフィールカードや共有カードに表示される名前です。"
+                    title: "プロフィール編集",
+                    subtitle: "表示名、ひとこと、アイコンはこの端末に保存されます。あとから共有するときだけ外に出ます。"
                 ) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("アイコン")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(vm.availableAvatarSymbols, id: \.self) { symbol in
+                                    Button {
+                                        vm.avatarSymbol = symbol
+                                    } label: {
+                                        Text(symbol)
+                                            .font(.title3)
+                                            .frame(width: 44, height: 44)
+                                            .background(
+                                                vm.normalizedAvatarSymbolPreview == symbol
+                                                    ? Color.accentColor.opacity(0.18)
+                                                    : Color(uiColor: .secondarySystemBackground),
+                                                in: Circle()
+                                            )
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(vm.normalizedAvatarSymbolPreview == symbol ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 2)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
                     TextField("表示名", text: $vm.displayName)
                         .textInputAutocapitalization(.words)
                         .textFieldStyle(.roundedBorder)
 
+                    TextField("ひとこと自己紹介", text: $vm.profileBio, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...4)
+
                     Text(vm.displayNameHelpText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    Text("自己紹介は最大\(UserProfile.maxBioLength)文字です。日記本文は自動では入りません。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if vm.normalizedDisplayNamePreview != vm.displayName.trimmingCharacters(in: .whitespacesAndNewlines) {
                         HStack {
@@ -269,7 +322,7 @@ struct ProfileView: View {
 
                     Button("保存") { vm.save() }
                         .buttonStyle(.borderedProminent)
-                        .disabled(!vm.isDisplayNameChanged)
+                        .disabled(!vm.isProfileIdentityChanged)
                 }
 
                 AppSectionCard(
@@ -363,6 +416,83 @@ struct ProfileView: View {
             gachaVM.load()
             communityLiteVM.load()
         }
+        .sheet(isPresented: $showsAuthSheet) {
+            if let manualAuthViewModel {
+                ManualAuthPreviewSheet(
+                    viewModel: manualAuthViewModel,
+                    isDiagnosticsMode: false,
+                    onAuthStateChanged: handleAuthStateChanged
+                )
+            } else {
+                AuthPreviewUnavailableSheet()
+            }
+        }
+    }
+
+    private var accountConnectionCard: some View {
+        let isLinked = vm.hasLinkedAuth
+        return AppSectionCard(
+            title: isLinked ? "アカウント" : "アカウントでつながる",
+            subtitle: isLinked
+                ? "ログイン済みのプロフィールとして、フォロー・DM・コミュニティ導線を使えます。"
+                : "ログインすると、プロフィール共有・フォロー・DM・コミュニティ参加を使いやすくできます。"
+        ) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.14))
+                    .frame(width: 54, height: 54)
+                    .overlay {
+                        Text(vm.normalizedAvatarSymbolPreview)
+                            .font(.title2)
+                    }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isLinked ? vm.linkedAuthProviderName : "未ログイン")
+                        .font(.subheadline.weight(.semibold))
+                    Text(isLinked ? vm.linkedAuthStatusText : "基本機能はログインなしでも使えます")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label("プロフィールを作れる", systemImage: "person.crop.circle")
+                Label("フォローできる", systemImage: "person.crop.circle.badge.plus")
+                Label("相互フォローでDMできる", systemImage: "message.badge")
+                Label("日記は自動公開されない", systemImage: "lock.fill")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if !isLinked, authTestEntryEnabled {
+                Button {
+                    openAuthSheet()
+                } label: {
+                    Label("ログイン / 新規登録", systemImage: "apple.logo")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(makeAuthPreviewViewModel == nil)
+            }
+        }
+    }
+
+    private func openAuthSheet() {
+        guard let makeAuthPreviewViewModel else {
+            showsAuthSheet = true
+            return
+        }
+        if manualAuthViewModel == nil {
+            manualAuthViewModel = makeAuthPreviewViewModel()
+        }
+        showsAuthSheet = true
+    }
+
+    private func handleAuthStateChanged(_ authViewModel: AppAuthViewModel) {
+        communityLiteVM.updateFeatureAccess(authViewModel.currentFeatureAccess)
+        vm.load()
+        communityLiteVM.load()
     }
 
     private func notificationABDashboardCard(

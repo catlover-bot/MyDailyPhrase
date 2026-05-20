@@ -245,6 +245,7 @@ public struct SocialUserProfileSummary: Codable, Equatable, Identifiable, Sendab
 
 public struct UserProfile: Codable, Equatable, Sendable {
     public static let maxDisplayNameLength = 24
+    public static let maxBioLength = 120
     public static let maxAuthAuditTrailCount = 50
     public static let maxSecurityAuditTrailCount = 180
     public static let maxOwnedDecorationCountPerId = 999
@@ -258,6 +259,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
     public let userId: String
     public var displayName: String
+    public var profileBio: String?
+    public var avatarSymbol: String?
     public var linkedAuthProvider: String?
     public var linkedAuthUserId: String?
     public var linkedAuthAt: Date?
@@ -299,6 +302,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     public init(
         userId: String,
         displayName: String,
+        profileBio: String? = nil,
+        avatarSymbol: String? = nil,
         linkedAuthProvider: String? = nil,
         linkedAuthUserId: String? = nil,
         linkedAuthAt: Date? = nil,
@@ -331,6 +336,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     ) {
         self.userId = userId
         self.displayName = displayName
+        self.profileBio = profileBio
+        self.avatarSymbol = avatarSymbol
         self.linkedAuthProvider = linkedAuthProvider
         self.linkedAuthUserId = linkedAuthUserId
         self.linkedAuthAt = linkedAuthAt
@@ -359,6 +366,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     // 既存保存データ互換
     private enum CodingKeys: String, CodingKey {
         case userId, displayName
+        case profileBio
+        case avatarSymbol
         case linkedAuthProvider
         case linkedAuthUserId
         case linkedAuthAt
@@ -387,6 +396,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
 
         self.userId = try c.decode(String.self, forKey: .userId)
         self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.profileBio = try c.decodeIfPresent(String.self, forKey: .profileBio)
+        self.avatarSymbol = try c.decodeIfPresent(String.self, forKey: .avatarSymbol)
         self.linkedAuthProvider = try c.decodeIfPresent(String.self, forKey: .linkedAuthProvider)
         self.linkedAuthUserId = try c.decodeIfPresent(String.self, forKey: .linkedAuthUserId)
         self.linkedAuthAt = try c.decodeIfPresent(Date.self, forKey: .linkedAuthAt)
@@ -436,6 +447,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     /// データ整合性を担保
     public mutating func normalize() {
         displayName = Self.normalizedDisplayName(displayName)
+        profileBio = Self.normalizedBio(profileBio)
+        avatarSymbol = Self.normalizedAvatarSymbol(avatarSymbol)
         linkedAuthProvider = Self.normalizedLinkedAuthProvider(linkedAuthProvider)
         linkedAuthUserId = Self.normalizedLinkedAuthUserId(linkedAuthUserId)
         if linkedAuthProvider == nil || linkedAuthUserId == nil {
@@ -602,6 +615,26 @@ public struct UserProfile: Codable, Equatable, Sendable {
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let clipped = String(collapsed.prefix(maxDisplayNameLength))
         return clipped.isEmpty ? "Me" : clipped
+    }
+
+    private static func normalizedBio(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let filteredScalars = raw.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) || $0 == "\n" }
+        let noControl = String(String.UnicodeScalarView(filteredScalars))
+        let collapsedLines = noControl
+            .split(whereSeparator: \.isNewline)
+            .map { $0.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ") }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let clipped = String(collapsedLines.prefix(maxBioLength))
+        return clipped.isEmpty ? nil : clipped
+    }
+
+    private static func normalizedAvatarSymbol(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return String(trimmed.prefix(2))
     }
 
     private static func normalizedLinkedAuthProvider(_ raw: String?) -> String? {

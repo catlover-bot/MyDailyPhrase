@@ -15,6 +15,8 @@ public struct UpdateMyProfileUseCase: Sendable {
     @discardableResult
     public func callAsFunction(
         displayName: String? = nil,
+        profileBio: String? = nil,
+        avatarSymbol: String? = nil,
         selectedDecorationId: String? = nil,
         linkedAuthProvider: String? = nil,
         linkedAuthUserId: String? = nil,
@@ -52,6 +54,8 @@ public struct UpdateMyProfileUseCase: Sendable {
         repo.mutateMyProfile(
             { p in
                 if let displayName { p.displayName = displayName }
+                if let profileBio { p.profileBio = profileBio }
+                if let avatarSymbol { p.avatarSymbol = avatarSymbol }
                 if let selectedDecorationId { p.selectedDecorationId = selectedDecorationId }
                 if let equippedDecorationSet { p.equippedDecorationSet = equippedDecorationSet }
                 if clearLinkedAuth {

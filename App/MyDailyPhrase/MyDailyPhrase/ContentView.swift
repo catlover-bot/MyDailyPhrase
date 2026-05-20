@@ -72,7 +72,11 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                CommunityLiteView(vm: communityLiteVM)
+                CommunityLiteView(
+                    vm: communityLiteVM,
+                    authTestEntryEnabled: authTestEntryEnabled,
+                    makeAuthPreviewViewModel: makeAuthPreviewViewModel
+                )
             }
             .tag(RootTab.community)
             .tabItem {
@@ -80,7 +84,13 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                ProfileView(vm: profileVM, gachaVM: gachaVM, communityLiteVM: communityLiteVM)
+                ProfileView(
+                    vm: profileVM,
+                    gachaVM: gachaVM,
+                    communityLiteVM: communityLiteVM,
+                    authTestEntryEnabled: authTestEntryEnabled,
+                    makeAuthPreviewViewModel: makeAuthPreviewViewModel
+                )
             }
             .tag(RootTab.profile)
             .tabItem {
@@ -93,6 +103,7 @@ struct ContentView: View {
                     authContext: settingsAuthContext,
                     authTestEntryEnabled: authTestEntryEnabled,
                     makeAuthPreviewViewModel: makeAuthPreviewViewModel,
+                    onManualAuthStateChanged: handleManualAuthStateChanged,
                     onSignOut: onAuthSignOut,
                     onRequestAccountDeletionSupport: onAuthRequestDeletionSupport
                 )
@@ -130,5 +141,11 @@ struct ContentView: View {
                 )
             )
         }
+    }
+
+    private func handleManualAuthStateChanged(_ authViewModel: AppAuthViewModel) {
+        communityLiteVM.updateFeatureAccess(authViewModel.currentFeatureAccess)
+        profileVM.load()
+        communityLiteVM.load()
     }
 }

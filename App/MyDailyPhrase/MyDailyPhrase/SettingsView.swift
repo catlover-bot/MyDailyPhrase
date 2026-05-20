@@ -9,6 +9,7 @@ struct SettingsView: View {
     private let authContext: SettingsAuthContext
     private let authTestEntryEnabled: Bool
     private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
+    private let onManualAuthStateChanged: (AppAuthViewModel) -> Void
     private let onSignOut: () -> Void
     private let onRequestAccountDeletionSupport: () -> Void
     @State private var showDeleteConfirmation = false
@@ -33,6 +34,7 @@ struct SettingsView: View {
         authContext: SettingsAuthContext,
         authTestEntryEnabled: Bool = false,
         makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
+        onManualAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in },
         onSignOut: @escaping () -> Void = {},
         onRequestAccountDeletionSupport: @escaping () -> Void = {}
     ) {
@@ -40,6 +42,7 @@ struct SettingsView: View {
         self.authContext = authContext
         self.authTestEntryEnabled = authTestEntryEnabled
         self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
+        self.onManualAuthStateChanged = onManualAuthStateChanged
         self.onSignOut = onSignOut
         self.onRequestAccountDeletionSupport = onRequestAccountDeletionSupport
     }
@@ -113,7 +116,7 @@ struct SettingsView: View {
                         }
                     }
 
-                    if authContext.supportsInteractiveAuth {
+                    if authContext.supportsInteractiveAuth, authContext.userID != nil {
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 10) {
                                 Button {
@@ -152,10 +155,21 @@ struct SettingsView: View {
                             }
                         }
                     } else {
-                        Text("認証は現在無効です。起動安定化のため、アプリはローカル体験モードでそのまま利用できます。")
+                        Text("基本機能はログインなしでも使えます。ログインするとプロフィール共有、フォロー、相互フォローDMを使いやすくできます。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+
+                        if authTestEntryEnabled {
+                            Button {
+                                openManualAuthPreview()
+                            } label: {
+                                Label("ログイン / 新規登録", systemImage: "person.crop.circle.badge.checkmark")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(makeAuthPreviewViewModel == nil)
+                        }
                     }
                 }
 
@@ -603,6 +617,7 @@ struct SettingsView: View {
         }
         .task {
             await vm.load()
+            await bootstrapManualAuthContextIfNeeded()
         }
         .sheet(item: $selectedArtworkPreviewItem) { item in
             GachaThemePreviewSheet(
@@ -647,6 +662,19 @@ struct SettingsView: View {
             manualAuthViewModel: authViewModel,
             fallback: authContext
         )
+        onManualAuthStateChanged(authViewModel)
+    }
+
+    private func bootstrapManualAuthContextIfNeeded() async {
+        guard authTestEntryEnabled,
+              manualAuthViewModel == nil,
+              let makeAuthPreviewViewModel else {
+            return
+        }
+        let authViewModel = makeAuthPreviewViewModel()
+        manualAuthViewModel = authViewModel
+        await authViewModel.load()
+        updateManualAuthContext(from: authViewModel)
     }
 
     private var reminderToggleBinding: Binding<Bool> {

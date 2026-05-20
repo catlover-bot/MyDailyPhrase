@@ -23,15 +23,18 @@ struct ManualAuthPreviewSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var vm: AppAuthViewModel
+    private let isDiagnosticsMode: Bool
     private let onAuthStateChanged: (AppAuthViewModel) -> Void
     @State private var previewMode: PreviewMode = .welcome
     @State private var copyFeedback: String? = nil
 
     init(
         viewModel: AppAuthViewModel,
+        isDiagnosticsMode: Bool = true,
         onAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in }
     ) {
         _vm = ObservedObject(wrappedValue: viewModel)
+        self.isDiagnosticsMode = isDiagnosticsMode
         self.onAuthStateChanged = onAuthStateChanged
     }
 
@@ -40,9 +43,11 @@ struct ManualAuthPreviewSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     PageHeroCard(
-                        eyebrow: "手動テスト",
-                        title: "ログイン機能プレビュー",
-                        subtitle: "この画面は設定から開いたときだけ認証ランタイムを作ります。アプリ起動時の安全モードには影響しません。",
+                        eyebrow: isDiagnosticsMode ? "手動テスト" : "アカウント",
+                        title: isDiagnosticsMode ? "ログイン機能プレビュー" : "ログイン / 新規登録",
+                        subtitle: isDiagnosticsMode
+                            ? "この画面は設定から開いたときだけ認証ランタイムを作ります。アプリ起動時の安全モードには影響しません。"
+                            : "Appleでログインすると、プロフィール共有・フォロー・相互フォローDMを使いやすくできます。日記は自動公開されません。",
                         accent: .blue
                     ) {
                         ViewThatFits(in: .horizontal) {
@@ -77,7 +82,9 @@ struct ManualAuthPreviewSheet: View {
                     }
 
                     previewContent
-                    authDiagnosticsCard
+                    if isDiagnosticsMode {
+                        authDiagnosticsCard
+                    }
                 }
                 .frame(maxWidth: AppChrome.standardPageMaxWidth)
                 .padding(.horizontal, AppChrome.screenHorizontalPadding)
@@ -115,12 +122,13 @@ struct ManualAuthPreviewSheet: View {
         case .welcome:
             AppSectionCard(
                 title: "Welcome",
-                subtitle: "初回表示で伝える内容をここで確認できます。"
+                subtitle: isDiagnosticsMode ? "初回表示で伝える内容をここで確認できます。" : "アカウントでできることを確認してから始められます。"
             ) {
                 guideRow("1日1つのお題に答えます", systemImage: "sun.max.fill")
+                guideRow("プロフィールを作って共有できます", systemImage: "person.crop.circle")
+                guideRow("フォローと相互フォローDMを使えます", systemImage: "person.2.badge.gearshape")
                 guideRow("日記の回答は自動で公開されません", systemImage: "lock.fill")
                 guideRow("共有は自分で選んだ内容だけです", systemImage: "square.and.arrow.up")
-                guideRow("DMは相互フォローのみです", systemImage: "message.badge.fill")
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) {
@@ -138,13 +146,13 @@ struct ManualAuthPreviewSheet: View {
         case .login:
             credentialsCard(
                 title: "ログイン",
-                subtitle: "Appleログインが有効な環境ではここから実際の認証を試せます。"
+                subtitle: "Sign in with Apple で安全に続けられます。Googleログインは設定完了まで準備中です。"
             )
 
         case .register:
             credentialsCard(
                 title: "新しくはじめる",
-                subtitle: "新規登録側のコピーとボタン状態を確認できます。"
+                subtitle: "新規登録でも日記は自動公開されません。共有やDMは自分で選んだ操作だけです。"
             )
 
         case .setup:

@@ -94,6 +94,8 @@ final class ProfileViewModel: ObservableObject {
 
     @Published private(set) var userId: String = ""
     @Published var displayName: String = ""
+    @Published var profileBio: String = ""
+    @Published var avatarSymbol: String = "🌱"
     @Published private(set) var linkedAuthProvider: String? = nil
     @Published private(set) var linkedAuthUserIdHint: String = "-"
     @Published private(set) var hasCompletedOnboarding: Bool = true
@@ -131,6 +133,8 @@ final class ProfileViewModel: ObservableObject {
 
     @Published var lastMessage: String? = nil
     @Published private(set) var displayNameSavedValue: String = defaultDisplayName
+    @Published private(set) var profileBioSavedValue: String = ""
+    @Published private(set) var avatarSymbolSavedValue: String = "🌱"
 
     struct OnboardingNotificationPlan: Equatable, Sendable {
         var isEnabled: Bool
@@ -359,13 +363,17 @@ final class ProfileViewModel: ObservableObject {
     func save() {
         let normalized = normalizedDisplayName(displayName)
         let shouldExplainNormalization = normalized != displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let p = update(displayName: normalized)
+        let p = update(
+            displayName: normalized,
+            profileBio: normalizedProfileBioPreview,
+            avatarSymbol: normalizedAvatarSymbolPreview
+        )
         applyProfile(p)
 
         if shouldExplainNormalization {
             lastMessage = "表示名を整形して保存しました: \(p.displayName)"
         } else {
-            lastMessage = "表示名を保存しました"
+            lastMessage = "プロフィールを保存しました"
         }
     }
 
@@ -814,8 +822,32 @@ final class ProfileViewModel: ObservableObject {
         normalizedDisplayName(displayName)
     }
 
+    var normalizedProfileBioPreview: String {
+        let collapsed = profileBio
+            .split(whereSeparator: \.isNewline)
+            .map { $0.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ") }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(collapsed.prefix(UserProfile.maxBioLength))
+    }
+
+    var normalizedAvatarSymbolPreview: String {
+        let trimmed = avatarSymbol.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "🌱" : String(trimmed.prefix(2))
+    }
+
     var isDisplayNameChanged: Bool {
         normalizedDisplayNamePreview != displayNameSavedValue
+    }
+
+    var isProfileIdentityChanged: Bool {
+        isDisplayNameChanged
+            || normalizedProfileBioPreview != profileBioSavedValue
+            || normalizedAvatarSymbolPreview != avatarSymbolSavedValue
+    }
+
+    var availableAvatarSymbols: [String] {
+        ["🌱", "🐱", "🎮", "🌙", "☕️", "📚", "✨", "🎧", "🕹️", "🍀"]
     }
 
     var displayNameHelpText: String {
@@ -841,6 +873,7 @@ final class ProfileViewModel: ObservableObject {
         """
         ひとこと日記
         \(displayNameSavedValue) のプロフィールカード
+        \(profileBioSavedValue.isEmpty ? "日記の内容は自動で公開されません。" : profileBioSavedValue)
         #ひとこと日記
         """
     }
@@ -1477,6 +1510,10 @@ final class ProfileViewModel: ObservableObject {
         userId = p.userId
         displayName = p.displayName
         displayNameSavedValue = p.displayName
+        profileBio = p.profileBio ?? ""
+        profileBioSavedValue = p.profileBio ?? ""
+        avatarSymbol = p.avatarSymbol ?? "🌱"
+        avatarSymbolSavedValue = p.avatarSymbol ?? "🌱"
         ownedDecorationIds = p.ownedDecorationIds
         selectedDecorationId = p.selectedDecorationId
         gachaTickets = p.gachaTickets

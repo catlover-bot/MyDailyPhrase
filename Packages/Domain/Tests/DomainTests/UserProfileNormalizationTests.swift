@@ -80,6 +80,38 @@ struct UserProfileNormalizationTests {
         #expect(repo.getMyProfile()?.displayName == "Me")
     }
 
+    @Test("profile bio and avatar normalize for local identity")
+    func profileIdentityFieldsNormalize() {
+        var p = UserProfile(
+            userId: "u-identity",
+            displayName: "Me",
+            profileBio: "  好きなゲーム\n\n  と 日記\u{0000}  ",
+            avatarSymbol: "  🎮✨extra  "
+        )
+
+        p.normalize()
+
+        #expect(p.profileBio == "好きなゲーム\nと 日記")
+        #expect(p.avatarSymbol == "🎮✨")
+    }
+
+    @Test("UpdateMyProfileUseCase persists local profile identity fields")
+    func updateUseCasePersistsProfileIdentityFields() {
+        let repo = InMemoryProfileRepo()
+        repo.saveMyProfile(UserProfile(userId: "u-profile-fields", displayName: "Old Name"))
+
+        let update = UpdateMyProfileUseCase(repo: repo, makeId: { "u-profile-fields" })
+        let updated = update(
+            displayName: "Local Player",
+            profileBio: "  日記は自動公開しません  ",
+            avatarSymbol: "🐱"
+        )
+
+        #expect(updated.displayName == "Local Player")
+        #expect(updated.profileBio == "日記は自動公開しません")
+        #expect(updated.avatarSymbol == "🐱")
+    }
+
     @Test("linked auth is cleared when provider/userId pair is incomplete")
     func linkedAuthNeedsProviderAndUserIdPair() {
         var p = UserProfile(

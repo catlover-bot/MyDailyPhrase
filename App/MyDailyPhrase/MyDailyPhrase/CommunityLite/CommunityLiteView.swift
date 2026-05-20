@@ -9,6 +9,7 @@ import Presentation
 final class CommunityLiteViewModel: ObservableObject {
     @Published private(set) var displayName: String = "Me"
     @Published private(set) var userId: String = ""
+    @Published private(set) var hasLinkedAccount: Bool = false
     @Published private(set) var selectedDecorationId: String = CardDecorationCatalog.classicId
     @Published private(set) var streak: Int = 0
     @Published private(set) var weeklyChallenge: CommunityLiteWeeklyChallenge
@@ -131,10 +132,18 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var socialHeaderText: String {
-        if featureAccess.isGuest {
+        if !canUseLocalSocialActions {
             return "フォローとDMはログイン後に使えます。ゲストでは、この端末で日記と見た目の流れだけを安全に試せます。"
         }
         return "公開フィードはまだありません。プロフィールカードとDMはこの端末で流れを試せる安全なローカル導線です。"
+    }
+
+    var canUseLocalSocialActions: Bool {
+        AuthPromptSupport.canUseSocialActions(
+            isAuthenticated: featureAccess.isAuthenticated,
+            isGuest: featureAccess.isGuest,
+            hasLinkedAccount: hasLinkedAccount
+        )
     }
 
     var joinedCommunities: [CommunityTemplate] {
@@ -274,6 +283,7 @@ final class CommunityLiteViewModel: ObservableObject {
         let profile = getMyProfile()
         displayName = profile.displayName
         userId = profile.userId
+        hasLinkedAccount = profile.linkedAuthProvider != nil
         selectedDecorationId = profile.selectedDecorationId
         streak = computeStreak.execute()
         dmConversations = profile.dmConversations
@@ -402,7 +412,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func canSendDM(to profile: SocialUserProfileSummary) -> Bool {
-        guard featureAccess.canUseDMPrototype else { return false }
+        guard canUseLocalSocialActions else { return false }
         return SocialSupport.canUseDirectMessage(
             with: profile,
             followingUserIDs: Set(getMyProfile().followingUserIDs),
@@ -416,7 +426,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func toggleFollow(_ profile: SocialUserProfileSummary) {
-        guard !featureAccess.isGuest else {
+        guard canUseLocalSocialActions else {
             lastMessage = "フォローはログイン後に利用できます"
             return
         }
@@ -428,7 +438,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func toggleBlock(_ profile: SocialUserProfileSummary) {
-        guard !featureAccess.isGuest else {
+        guard canUseLocalSocialActions else {
             lastMessage = "ブロックはログイン後に利用できます"
             return
         }
@@ -447,7 +457,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func report(_ profile: SocialUserProfileSummary) {
-        guard !featureAccess.isGuest else {
+        guard canUseLocalSocialActions else {
             lastMessage = "通報メモはログイン後に利用できます"
             return
         }
@@ -486,7 +496,7 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func deleteConversation(_ conversationID: String) {
-        guard !featureAccess.isGuest else {
+        guard canUseLocalSocialActions else {
             lastMessage = "DMはログイン後に利用できます"
             return
         }
@@ -794,11 +804,25 @@ fileprivate extension CommunityLiteViewModel {
 
 struct CommunityLiteView: View {
     @ObservedObject var vm: CommunityLiteViewModel
+    private let authTestEntryEnabled: Bool
+    private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     @EnvironmentObject private var iap: IAPStore
 
     @State private var shareSheetItems: [Any] = []
     @State private var isPresentingShareSheet = false
     @State private var selectedSection: HubSection = .joined
+    @State private var showsAuthSheet = false
+    @State private var manualAuthViewModel: AppAuthViewModel? = nil
+
+    init(
+        vm: CommunityLiteViewModel,
+        authTestEntryEnabled: Bool = false,
+        makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil
+    ) {
+        self.vm = vm
+        self.authTestEntryEnabled = authTestEntryEnabled
+        self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
+    }
 
     private enum HubSection: String, CaseIterable, Identifiable {
         case joined = "参加中"
@@ -866,6 +890,62 @@ struct CommunityLiteView: View {
         .sheet(isPresented: $isPresentingShareSheet) {
             ShareSheet(activityItems: shareSheetItems)
         }
+        .sheet(isPresented: $showsAuthSheet) {
+            if let manualAuthViewModel {
+                ManualAuthPreviewSheet(
+                    viewModel: manualAuthViewModel,
+                    isDiagnosticsMode: false,
+                    onAuthStateChanged: handleAuthStateChanged
+                )
+            } else {
+                AuthPreviewUnavailableSheet()
+            }
+        }
+    }
+
+    private func socialAuthPromptCard(surface: AuthPromptSurface) -> some View {
+        let prompt = AuthPromptSupport.prompt(
+            for: surface,
+            isSignedIn: vm.canUseLocalSocialActions,
+            isGuest: !vm.canUseLocalSocialActions
+        ) ?? AuthPromptModel(
+            title: surface.title,
+            message: surface.message
+        )
+
+        return AppSectionCard(title: prompt.title, subtitle: prompt.message) {
+            Text(prompt.privacyNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if authTestEntryEnabled {
+                Button {
+                    openAuthSheet()
+                } label: {
+                    Label(prompt.primaryActionTitle, systemImage: "person.crop.circle.badge.checkmark")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(makeAuthPreviewViewModel == nil)
+            }
+        }
+    }
+
+    private func openAuthSheet() {
+        guard let makeAuthPreviewViewModel else {
+            showsAuthSheet = true
+            return
+        }
+        if manualAuthViewModel == nil {
+            manualAuthViewModel = makeAuthPreviewViewModel()
+        }
+        showsAuthSheet = true
+    }
+
+    private func handleAuthStateChanged(_ authViewModel: AppAuthViewModel) {
+        vm.updateFeatureAccess(authViewModel.currentFeatureAccess)
+        vm.load()
     }
 
     private var heroCard: some View {
@@ -1167,12 +1247,8 @@ struct CommunityLiteView: View {
                 }
             }
 
-            if vm.featureAccess.isGuest {
-                EmptyStateCard(
-                    title: "フォローはログイン後に使えます",
-                    message: "ゲストでは公開検索なしの流れだけを案内しています。Appleでログインすると、フォローと相互フォローの導線を使えます。",
-                    systemImage: "person.crop.circle.badge.plus"
-                )
+            if !vm.canUseLocalSocialActions {
+                socialAuthPromptCard(surface: .follow)
             } else if vm.followingProfiles.isEmpty {
                 EmptyStateCard(
                     title: "まだフォローしている相手はいません",
@@ -1241,12 +1317,8 @@ struct CommunityLiteView: View {
                 }
             }
 
-            if vm.featureAccess.isGuest {
-                EmptyStateCard(
-                    title: "DMはログイン後に使えます",
-                    message: "日記の回答が自動でDMされることはありません。ログイン後も、相互フォローの相手とのみ安全に利用できます。",
-                    systemImage: "message"
-                )
+            if !vm.canUseLocalSocialActions {
+                socialAuthPromptCard(surface: .directMessage)
             } else if vm.dmConversations.isEmpty && selectedConversationProfile == nil {
                 EmptyStateCard(
                     title: "まだDMはありません",

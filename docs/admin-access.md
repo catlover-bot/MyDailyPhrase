@@ -28,8 +28,8 @@ AUTH_ADMIN_EMAILS = owner@example.com
 ```
 
 `AUTH_ADMIN_MENU_ENABLED = YES` のときだけ allowlist 判定が有効です。
-Release の既定値は `NO` で、認証を再有効化するまでは通常ユーザーに管理者導線を出しません。
-また `APP_SAFE_MODE = YES` のときは管理者メニュー自体を起動経路から外し、通常シェルだけを優先して起動します。
+Release では safe mode のまま、allowlist に一致した手動 Apple ログインユーザーだけに管理者メニューを表示します。
+`APP_SAFE_MODE = YES` でも root auth gate は起動せず、通常シェルだけを優先して起動します。
 
 ## 管理者権限の内容
 
@@ -64,6 +64,7 @@ Release の既定値は `NO` で、認証を再有効化するまでは通常ユ
 ## 安全性
 
 - 通常ユーザーを自動で管理者にはしません。
+- `AUTH_ADMIN_MENU_ENABLED = YES` だけでは管理者になりません。allowlist の Apple user identifier または email との一致が必要です。
 - public feed / comments / ranking は引き続き無効のままです。
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。
