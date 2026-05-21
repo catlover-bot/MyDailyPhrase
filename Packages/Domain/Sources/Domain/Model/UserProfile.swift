@@ -246,6 +246,8 @@ public struct SocialUserProfileSummary: Codable, Equatable, Identifiable, Sendab
 public struct UserProfile: Codable, Equatable, Sendable {
     public static let maxDisplayNameLength = 24
     public static let maxBioLength = 120
+    public static let maxInterestTagCount = 8
+    public static let maxInterestTagLength = 18
     public static let maxAuthAuditTrailCount = 50
     public static let maxSecurityAuditTrailCount = 180
     public static let maxOwnedDecorationCountPerId = 999
@@ -261,6 +263,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
     public var displayName: String
     public var profileBio: String?
     public var avatarSymbol: String?
+    public var interestTags: [String]
     public var linkedAuthProvider: String?
     public var linkedAuthUserId: String?
     public var linkedAuthAt: Date?
@@ -304,6 +307,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
         displayName: String,
         profileBio: String? = nil,
         avatarSymbol: String? = nil,
+        interestTags: [String] = [],
         linkedAuthProvider: String? = nil,
         linkedAuthUserId: String? = nil,
         linkedAuthAt: Date? = nil,
@@ -338,6 +342,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
         self.displayName = displayName
         self.profileBio = profileBio
         self.avatarSymbol = avatarSymbol
+        self.interestTags = interestTags
         self.linkedAuthProvider = linkedAuthProvider
         self.linkedAuthUserId = linkedAuthUserId
         self.linkedAuthAt = linkedAuthAt
@@ -368,6 +373,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
         case userId, displayName
         case profileBio
         case avatarSymbol
+        case interestTags
         case linkedAuthProvider
         case linkedAuthUserId
         case linkedAuthAt
@@ -398,6 +404,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
         self.displayName = try c.decode(String.self, forKey: .displayName)
         self.profileBio = try c.decodeIfPresent(String.self, forKey: .profileBio)
         self.avatarSymbol = try c.decodeIfPresent(String.self, forKey: .avatarSymbol)
+        self.interestTags = try c.decodeIfPresent([String].self, forKey: .interestTags) ?? []
         self.linkedAuthProvider = try c.decodeIfPresent(String.self, forKey: .linkedAuthProvider)
         self.linkedAuthUserId = try c.decodeIfPresent(String.self, forKey: .linkedAuthUserId)
         self.linkedAuthAt = try c.decodeIfPresent(Date.self, forKey: .linkedAuthAt)
@@ -449,6 +456,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
         displayName = Self.normalizedDisplayName(displayName)
         profileBio = Self.normalizedBio(profileBio)
         avatarSymbol = Self.normalizedAvatarSymbol(avatarSymbol)
+        interestTags = Self.normalizedInterestTags(interestTags)
         linkedAuthProvider = Self.normalizedLinkedAuthProvider(linkedAuthProvider)
         linkedAuthUserId = Self.normalizedLinkedAuthUserId(linkedAuthUserId)
         if linkedAuthProvider == nil || linkedAuthUserId == nil {
@@ -635,6 +643,29 @@ public struct UserProfile: Codable, Equatable, Sendable {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         return String(trimmed.prefix(2))
+    }
+
+    private static func normalizedInterestTags(_ raw: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in raw {
+            let filteredScalars = value.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }
+            let noControl = String(String.UnicodeScalarView(filteredScalars))
+            let collapsed = noControl
+                .replacingOccurrences(of: "#", with: "")
+                .split(whereSeparator: { $0.isWhitespace })
+                .joined(separator: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let clipped = String(collapsed.prefix(maxInterestTagLength))
+            let key = clipped.lowercased()
+            guard !clipped.isEmpty, !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(clipped)
+            if result.count >= maxInterestTagCount {
+                break
+            }
+        }
+        return result
     }
 
     private static func normalizedLinkedAuthProvider(_ raw: String?) -> String? {

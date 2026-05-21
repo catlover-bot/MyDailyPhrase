@@ -96,6 +96,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var displayName: String = ""
     @Published var profileBio: String = ""
     @Published var avatarSymbol: String = "🌱"
+    @Published var interestTagsText: String = ""
     @Published private(set) var linkedAuthProvider: String? = nil
     @Published private(set) var linkedAuthUserIdHint: String = "-"
     @Published private(set) var hasCompletedOnboarding: Bool = true
@@ -135,6 +136,7 @@ final class ProfileViewModel: ObservableObject {
     @Published private(set) var displayNameSavedValue: String = defaultDisplayName
     @Published private(set) var profileBioSavedValue: String = ""
     @Published private(set) var avatarSymbolSavedValue: String = "🌱"
+    @Published private(set) var interestTagsSavedValue: [String] = []
 
     struct OnboardingNotificationPlan: Equatable, Sendable {
         var isEnabled: Bool
@@ -366,7 +368,8 @@ final class ProfileViewModel: ObservableObject {
         let p = update(
             displayName: normalized,
             profileBio: normalizedProfileBioPreview,
-            avatarSymbol: normalizedAvatarSymbolPreview
+            avatarSymbol: normalizedAvatarSymbolPreview,
+            interestTags: normalizedInterestTagsPreview
         )
         applyProfile(p)
 
@@ -831,9 +834,37 @@ final class ProfileViewModel: ObservableObject {
         return String(collapsed.prefix(UserProfile.maxBioLength))
     }
 
+    private func normalizedInterestTags(from raw: String) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        let separators = CharacterSet(charactersIn: ",、\n")
+        for part in raw.components(separatedBy: separators) {
+            let clipped = String(
+                part
+                    .replacingOccurrences(of: "#", with: "")
+                    .split(whereSeparator: { $0.isWhitespace })
+                    .joined(separator: " ")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .prefix(UserProfile.maxInterestTagLength)
+            )
+            let key = clipped.lowercased()
+            guard !clipped.isEmpty, !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(clipped)
+            if result.count >= UserProfile.maxInterestTagCount {
+                break
+            }
+        }
+        return result
+    }
+
     var normalizedAvatarSymbolPreview: String {
         let trimmed = avatarSymbol.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "🌱" : String(trimmed.prefix(2))
+    }
+
+    var normalizedInterestTagsPreview: [String] {
+        normalizedInterestTags(from: interestTagsText)
     }
 
     var isDisplayNameChanged: Bool {
@@ -844,6 +875,7 @@ final class ProfileViewModel: ObservableObject {
         isDisplayNameChanged
             || normalizedProfileBioPreview != profileBioSavedValue
             || normalizedAvatarSymbolPreview != avatarSymbolSavedValue
+            || normalizedInterestTagsPreview != interestTagsSavedValue
     }
 
     var availableAvatarSymbols: [String] {
@@ -864,16 +896,47 @@ final class ProfileViewModel: ObservableObject {
         return "表示名は公開プロフィールとして使われます（最大\(max)文字）"
     }
 
+    var profileSetupProgressText: String {
+        let completed = [
+            hasLinkedAuth,
+            displayNameSavedValue != Self.defaultDisplayName,
+            !profileBioSavedValue.isEmpty,
+            !interestTagsSavedValue.isEmpty
+        ].filter { $0 }.count
+        return "\(completed)/4 完了"
+    }
+
+    var shouldShowProfileSetupCard: Bool {
+        hasLinkedAuth && (displayNameSavedValue == Self.defaultDisplayName || profileBioSavedValue.isEmpty || interestTagsSavedValue.isEmpty)
+    }
+
+    var interestTagSuggestions: [String] {
+        ["ゲーム", "RPG", "FPS", "インディー", "音ゲー", "読書", "音楽", "日記", "朝活", "カフェ"]
+    }
+
+    func toggleInterestTag(_ tag: String) {
+        var tags = normalizedInterestTagsPreview
+        if tags.contains(tag) {
+            tags.removeAll { $0 == tag }
+        } else {
+            tags.append(tag)
+        }
+        interestTagsText = tags.joined(separator: ", ")
+    }
+
     var profileSummaryText: String {
         let shortId = userId.isEmpty ? "-" : String(userId.suffix(8))
         return "\(displayNameSavedValue) / ID: \(shortId)"
     }
 
     var shareProfileText: String {
-        """
+        let tags = interestTagsSavedValue.isEmpty
+            ? ""
+            : "\n好きなこと: " + interestTagsSavedValue.map { "#\($0)" }.joined(separator: " ")
+        return """
         ひとこと日記
         \(displayNameSavedValue) のプロフィールカード
-        \(profileBioSavedValue.isEmpty ? "日記の内容は自動で公開されません。" : profileBioSavedValue)
+        \(profileBioSavedValue.isEmpty ? "日記の内容は自動で公開されません。" : profileBioSavedValue)\(tags)
         #ひとこと日記
         """
     }
@@ -1514,6 +1577,8 @@ final class ProfileViewModel: ObservableObject {
         profileBioSavedValue = p.profileBio ?? ""
         avatarSymbol = p.avatarSymbol ?? "🌱"
         avatarSymbolSavedValue = p.avatarSymbol ?? "🌱"
+        interestTagsText = p.interestTags.joined(separator: ", ")
+        interestTagsSavedValue = p.interestTags
         ownedDecorationIds = p.ownedDecorationIds
         selectedDecorationId = p.selectedDecorationId
         gachaTickets = p.gachaTickets

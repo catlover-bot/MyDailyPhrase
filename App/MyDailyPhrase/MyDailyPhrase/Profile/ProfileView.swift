@@ -164,6 +164,12 @@ struct ProfileView: View {
 
                 accountConnectionCard
 
+                if vm.shouldShowProfileSetupCard {
+                    profileSetupCard
+                }
+
+                socialStatsCard
+
                 AppSectionCard(
                     title: "ガチャと装備",
                     subtitle: "集めたアイテムはプロフィール、共有カード、コミュニティカードの見た目に使えます。"
@@ -309,6 +315,42 @@ struct ProfileView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("興味タグ")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        TextField("例: ゲーム, RPG, 読書", text: $vm.interestTagsText, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(1...3)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(vm.interestTagSuggestions, id: \.self) { tag in
+                                    let isSelected = vm.normalizedInterestTagsPreview.contains(tag)
+                                    Button {
+                                        vm.toggleInterestTag(tag)
+                                    } label: {
+                                        Label(tag, systemImage: isSelected ? "checkmark.circle.fill" : "plus.circle")
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                isSelected ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground),
+                                                in: Capsule()
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+
+                        Text("興味タグはおすすめコミュニティやローカルなプロフィールカードの説明に使います。日記本文は含まれません。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     if vm.normalizedDisplayNamePreview != vm.displayName.trimmingCharacters(in: .whitespacesAndNewlines) {
                         HStack {
                             Text("保存後")
@@ -336,15 +378,6 @@ struct ProfileView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
-
-                            Button {
-                                UIPasteboard.general.string = vm.userId
-                                vm.lastMessage = "プロフィールIDをコピーしました"
-                            } label: {
-                                Label("IDをコピー", systemImage: "doc.on.doc")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
                         }
 
                         VStack(spacing: 10) {
@@ -353,23 +386,23 @@ struct ProfileView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
+                        }
+                    }
 
+                    DisclosureGroup("診断用プロフィールID") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(vm.userId)
+                                .font(.footnote.monospaced())
+                                .textSelection(.enabled)
                             Button {
                                 UIPasteboard.general.string = vm.userId
                                 vm.lastMessage = "プロフィールIDをコピーしました"
                             } label: {
-                                Label("IDをコピー", systemImage: "doc.on.doc")
-                                    .frame(maxWidth: .infinity)
+                                Label("診断用IDをコピー", systemImage: "doc.on.doc")
                             }
                             .buttonStyle(.bordered)
                         }
-                    }
-
-                    DisclosureGroup("プロフィールIDを表示") {
-                        Text(vm.userId)
-                            .font(.footnote.monospaced())
-                            .textSelection(.enabled)
-                            .padding(.top, 8)
+                        .padding(.top, 8)
                     }
                 }
 
@@ -475,6 +508,88 @@ struct ProfileView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(makeAuthPreviewViewModel == nil)
             }
+        }
+    }
+
+    private var profileSetupCard: some View {
+        AppSectionCard(
+            title: "プロフィールを整えましょう",
+            subtitle: "ログイン後に表示名・自己紹介・アイコン・興味タグを入れると、フォローやコミュニティで相手に伝わりやすくなります。"
+        ) {
+            HStack {
+                Label(vm.profileSetupProgressText, systemImage: "checklist")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                InfoBadge(title: "日記は非公開のまま", systemImage: "lock.fill", tint: .indigo)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                setupRow(title: "表示名", isDone: vm.displayNameSavedValue != "Me")
+                setupRow(title: "自己紹介", isDone: !vm.profileBioSavedValue.isEmpty)
+                setupRow(title: "アイコン", isDone: !vm.avatarSymbolSavedValue.isEmpty)
+                setupRow(title: "興味タグ", isDone: !vm.interestTagsSavedValue.isEmpty)
+            }
+
+            Text("プロフィールに出るのは表示名・自己紹介・アイコン・興味タグです。日記本文や今日の回答が自動で共有されることはありません。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func setupRow(title: String, isDone: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isDone ? Color.green : Color.secondary)
+            Text(title)
+                .font(.caption.weight(.semibold))
+            Spacer()
+            Text(isDone ? "設定済み" : "未設定")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isDone ? Color.green : Color.secondary)
+        }
+    }
+
+    private var socialStatsCard: some View {
+        AppSectionCard(
+            title: "つながり",
+            subtitle: "公開検索はまだ使いません。フォロー、フォロワープレビュー、相互フォロー、参加コミュニティを安全に確認できます。"
+        ) {
+            LazyVGrid(columns: [.init(.adaptive(minimum: 132), spacing: 10)], spacing: 10) {
+                SummaryMetricTile(
+                    title: "フォロー中",
+                    value: "\(communityLiteVM.followingProfiles.count)",
+                    detail: vm.hasLinkedAuth ? "あなたが選んだ相手" : "ログイン後に利用",
+                    systemImage: "person.crop.circle.badge.checkmark",
+                    tint: .purple
+                )
+                SummaryMetricTile(
+                    title: "フォロワー",
+                    value: "\(communityLiteVM.followerPreviewProfiles.count)",
+                    detail: "この端末のプレビュー",
+                    systemImage: "person.2.wave.2",
+                    tint: .blue
+                )
+                SummaryMetricTile(
+                    title: "相互",
+                    value: "\(communityLiteVM.mutualFollowProfiles.count)",
+                    detail: "DM可能な相手",
+                    systemImage: "message.badge",
+                    tint: .green
+                )
+                SummaryMetricTile(
+                    title: "参加中",
+                    value: "\(communityLiteVM.joinedCommunities.count)",
+                    detail: "無料参加の部屋",
+                    systemImage: "person.2.fill",
+                    tint: .orange
+                )
+            }
+
+            Text("DMは相互フォローの相手とのみ利用できます。ブロック中の相手はおすすめやDM候補に表示しません。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

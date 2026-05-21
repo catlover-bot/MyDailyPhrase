@@ -36,11 +36,14 @@ Profile now supports local identity fields:
 - Display name
 - Short bio
 - Simple avatar symbol
+- Interest tags
 - Joined community summary
 - Follow/follower/mutual follow counts
 - Profile share card
 
 Raw internal IDs should stay in diagnostics, not prominent user-facing cards.
+
+After a user signs in, Profile shows a lightweight setup card until the core identity fields are filled. The card explains that diary text remains private and that only the chosen profile fields are used for social surfaces.
 
 ## Follow Safety
 
@@ -60,6 +63,7 @@ DM remains mutual-follow only.
 - No anonymous public DM.
 - Block/report/delete controls remain available.
 - Diary answers are not sent automatically.
+- Disabled DM buttons should explain the reason: not followed yet, not followed back yet, blocked, or unsupported.
 
 ## Communities
 
@@ -69,6 +73,11 @@ Community participation remains free. Creator/community creation is gated:
 - Admin can preview creation through admin capability.
 - Normal unpaid users can join but cannot create premium communities.
 - Admin bypass does not modify StoreKit entitlement.
+- The `みんな` tab is organized around joined communities, recommended communities, recommended users, following, mutual follows, DM, and invite/share.
+
+## Repository Boundary
+
+Social connection behavior is still local/mock, but the domain now has a `SocialConnectionRepository` protocol so a backend implementation can later provide recommended profiles, following/follower lists, mutual follow state, and DM eligibility without changing the UI contract.
 
 ## Sharing
 

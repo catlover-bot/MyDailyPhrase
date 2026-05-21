@@ -65,6 +65,7 @@ Release では safe mode のまま、allowlist に一致した手動 Apple ロ�
 
 - 通常ユーザーを自動で管理者にはしません。
 - `AUTH_ADMIN_MENU_ENABLED = YES` だけでは管理者になりません。allowlist の Apple user identifier または email との一致が必要です。
+- 一般ユーザー向けのログイン導線や SNS カードを追加しても、管理者メニューは allowlist 一致後の手動ログインセッションにだけ表示します。
 - public feed / comments / ranking は引き続き無効のままです。
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。

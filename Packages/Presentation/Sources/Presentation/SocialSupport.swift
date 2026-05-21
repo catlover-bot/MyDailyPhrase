@@ -155,6 +155,53 @@ public enum SocialSupport {
         return profile.supportsMutualDM
     }
 
+    public static func directMessageUnavailableReason(
+        with profile: SocialUserProfileSummary,
+        followingUserIDs: Set<String>,
+        followerUserIDs: Set<String>,
+        blockedUserIDs: Set<String>
+    ) -> String? {
+        guard ReleaseFeatureAvailability.dmEnabled else {
+            return "DM機能は現在準備中です"
+        }
+        if blockedUserIDs.contains(profile.id) {
+            return "ブロック中の相手にはDMできません"
+        }
+        guard profile.supportsMutualDM else {
+            return "このプロフィールはDMプレビュー対象外です"
+        }
+        if !followingUserIDs.contains(profile.id) {
+            return "DMはフォロー後、相互フォローになると使えます"
+        }
+        if !followerUserIDs.contains(profile.id) {
+            return "相手からもフォローされるとDM可能になります"
+        }
+        return nil
+    }
+
+    public static func relationshipLabel(
+        profileID: String,
+        followingUserIDs: Set<String>,
+        followerUserIDs: Set<String>,
+        blockedUserIDs: Set<String>
+    ) -> String {
+        if blockedUserIDs.contains(profileID) {
+            return "ブロック中"
+        }
+        let isFollowing = followingUserIDs.contains(profileID)
+        let isFollower = followerUserIDs.contains(profileID)
+        if isFollowing && isFollower {
+            return "相互フォロー"
+        }
+        if isFollowing {
+            return "フォロー中"
+        }
+        if isFollower {
+            return "フォロワー"
+        }
+        return "おすすめ"
+    }
+
     public static func sanitizedMessageBody(_ raw: String) -> String {
         let collapsed = raw
             .split(whereSeparator: \.isNewline)

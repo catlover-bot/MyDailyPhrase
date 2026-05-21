@@ -86,13 +86,15 @@ struct UserProfileNormalizationTests {
             userId: "u-identity",
             displayName: "Me",
             profileBio: "  好きなゲーム\n\n  と 日記\u{0000}  ",
-            avatarSymbol: "  🎮✨extra  "
+            avatarSymbol: "  🎮✨extra  ",
+            interestTags: [" #RPG ", "RPG", "FPS\n", "", "  インディーゲームが好きすぎるタグ  "]
         )
 
         p.normalize()
 
         #expect(p.profileBio == "好きなゲーム\nと 日記")
         #expect(p.avatarSymbol == "🎮✨")
+        #expect(p.interestTags.prefix(3) == ["RPG", "FPS", "インディーゲームが好きすぎるタグ"])
     }
 
     @Test("UpdateMyProfileUseCase persists local profile identity fields")
@@ -104,12 +106,14 @@ struct UserProfileNormalizationTests {
         let updated = update(
             displayName: "Local Player",
             profileBio: "  日記は自動公開しません  ",
-            avatarSymbol: "🐱"
+            avatarSymbol: "🐱",
+            interestTags: ["ゲーム", "#RPG", "ゲーム"]
         )
 
         #expect(updated.displayName == "Local Player")
         #expect(updated.profileBio == "日記は自動公開しません")
         #expect(updated.avatarSymbol == "🐱")
+        #expect(updated.interestTags == ["ゲーム", "RPG"])
     }
 
     @Test("linked auth is cleared when provider/userId pair is incomplete")

@@ -17,6 +17,7 @@ public struct UpdateMyProfileUseCase: Sendable {
         displayName: String? = nil,
         profileBio: String? = nil,
         avatarSymbol: String? = nil,
+        interestTags: [String]? = nil,
         selectedDecorationId: String? = nil,
         linkedAuthProvider: String? = nil,
         linkedAuthUserId: String? = nil,
@@ -56,6 +57,7 @@ public struct UpdateMyProfileUseCase: Sendable {
                 if let displayName { p.displayName = displayName }
                 if let profileBio { p.profileBio = profileBio }
                 if let avatarSymbol { p.avatarSymbol = avatarSymbol }
+                if let interestTags { p.interestTags = interestTags }
                 if let selectedDecorationId { p.selectedDecorationId = selectedDecorationId }
                 if let equippedDecorationSet { p.equippedDecorationSet = equippedDecorationSet }
                 if clearLinkedAuth {

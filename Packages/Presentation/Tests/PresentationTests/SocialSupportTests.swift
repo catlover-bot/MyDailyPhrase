@@ -54,6 +54,62 @@ struct SocialSupportTests {
         #expect(enabled == true)
     }
 
+    @Test("DM unavailable reason explains non mutual state")
+    func dmUnavailableReasonExplainsState() {
+        let profile = SocialSupport.demoProfiles().first { $0.id == "local.profile.minato" }!
+
+        let notFollowing = SocialSupport.directMessageUnavailableReason(
+            with: profile,
+            followingUserIDs: [],
+            followerUserIDs: ["local.profile.minato"],
+            blockedUserIDs: []
+        )
+        let notFollower = SocialSupport.directMessageUnavailableReason(
+            with: profile,
+            followingUserIDs: ["local.profile.minato"],
+            followerUserIDs: [],
+            blockedUserIDs: []
+        )
+        let blocked = SocialSupport.directMessageUnavailableReason(
+            with: profile,
+            followingUserIDs: ["local.profile.minato"],
+            followerUserIDs: ["local.profile.minato"],
+            blockedUserIDs: ["local.profile.minato"]
+        )
+
+        #expect(notFollowing?.contains("フォロー後") == true)
+        #expect(notFollower?.contains("相手からも") == true)
+        #expect(blocked?.contains("ブロック中") == true)
+    }
+
+    @Test("relationship labels expose follow mutual and blocked states")
+    func relationshipLabels() {
+        #expect(SocialSupport.relationshipLabel(
+            profileID: "local.profile.minato",
+            followingUserIDs: [],
+            followerUserIDs: [],
+            blockedUserIDs: []
+        ) == "おすすめ")
+        #expect(SocialSupport.relationshipLabel(
+            profileID: "local.profile.minato",
+            followingUserIDs: ["local.profile.minato"],
+            followerUserIDs: [],
+            blockedUserIDs: []
+        ) == "フォロー中")
+        #expect(SocialSupport.relationshipLabel(
+            profileID: "local.profile.minato",
+            followingUserIDs: ["local.profile.minato"],
+            followerUserIDs: ["local.profile.minato"],
+            blockedUserIDs: []
+        ) == "相互フォロー")
+        #expect(SocialSupport.relationshipLabel(
+            profileID: "local.profile.minato",
+            followingUserIDs: ["local.profile.minato"],
+            followerUserIDs: ["local.profile.minato"],
+            blockedUserIDs: ["local.profile.minato"]
+        ) == "ブロック中")
+    }
+
     @Test("blocked user cannot be DM target")
     func blockedUserCannotMessage() {
         let profile = SocialSupport.demoProfiles().first { $0.id == "local.profile.minato" }!
