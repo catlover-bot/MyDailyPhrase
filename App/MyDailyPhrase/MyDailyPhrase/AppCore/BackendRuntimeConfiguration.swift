@@ -1,0 +1,91 @@
+import Foundation
+import Data
+import Domain
+
+struct BackendRuntimeConfiguration: Sendable {
+    let supabaseConfiguration: SupabaseBackendConfiguration
+
+    var diagnostics: SettingsBackendContext {
+        SettingsBackendContext(snapshot: BackendDiagnosticsSnapshot(configuration: supabaseConfiguration))
+    }
+
+    static func load(from bundle: Bundle = .main) -> BackendRuntimeConfiguration {
+        BackendRuntimeConfiguration(
+            supabaseConfiguration: SupabaseBackendConfiguration.make(
+                isEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "SUPABASE_BACKEND_ENABLED") ?? false,
+                projectURLString: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_URL"),
+                anonKey: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_ANON_KEY"),
+                schemaVersion: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_SCHEMA_VERSION") ?? "2026-05-21"
+            )
+        )
+    }
+}
+
+struct SettingsBackendContext: Sendable {
+    let provider: String
+    let statusText: String
+    let activeModeText: String
+    let projectURLHost: String
+    let anonKeyConfigured: Bool
+    let schemaVersion: String
+    let localFallbackEnabled: Bool
+    let publicFeedEnabled: Bool
+    let commentsEnabled: Bool
+    let rankingEnabled: Bool
+    let dmPolicy: String
+    let secretsInRepository: Bool
+    let diagnosticsReportText: String
+
+    init(snapshot: BackendDiagnosticsSnapshot) {
+        self.provider = snapshot.provider
+        self.statusText = snapshot.status.label
+        self.activeModeText = snapshot.activeMode.rawValue
+        self.projectURLHost = snapshot.projectURLHost ?? "未設定"
+        self.anonKeyConfigured = snapshot.anonKeyConfigured
+        self.schemaVersion = snapshot.schemaVersion
+        self.localFallbackEnabled = snapshot.localFallbackEnabled
+        self.publicFeedEnabled = snapshot.publicFeedEnabled
+        self.commentsEnabled = snapshot.commentsEnabled
+        self.rankingEnabled = snapshot.rankingEnabled
+        self.dmPolicy = snapshot.dmPolicy
+        self.secretsInRepository = snapshot.secretsInRepository
+        self.diagnosticsReportText = snapshot.reportText
+    }
+
+    static let localFallback = SettingsBackendContext(
+        snapshot: BackendDiagnosticsSnapshot(
+            configuration: SupabaseBackendConfiguration(
+                isEnabledConfigured: false,
+                projectURL: nil,
+                anonKey: nil
+            )
+        )
+    )
+}
+
+private extension Bundle {
+    func stringValue(forInfoDictionaryKey key: String) -> String? {
+        if let value = object(forInfoDictionaryKey: key) as? String {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return nil
+    }
+
+    func boolValue(forInfoDictionaryKey key: String) -> Bool? {
+        if let number = object(forInfoDictionaryKey: key) as? NSNumber {
+            return number.boolValue
+        }
+        guard let raw = stringValue(forInfoDictionaryKey: key)?.lowercased() else {
+            return nil
+        }
+        switch raw {
+        case "1", "true", "yes", "y", "on":
+            return true
+        case "0", "false", "no", "n", "off":
+            return false
+        default:
+            return nil
+        }
+    }
+}

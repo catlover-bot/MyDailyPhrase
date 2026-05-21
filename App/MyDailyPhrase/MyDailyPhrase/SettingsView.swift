@@ -7,6 +7,7 @@ struct SettingsView: View {
     @StateObject private var vm: SettingsViewModel
     @EnvironmentObject private var iap: IAPStore
     private let authContext: SettingsAuthContext
+    private let backendContext: SettingsBackendContext
     private let authTestEntryEnabled: Bool
     private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     private let onManualAuthStateChanged: (AppAuthViewModel) -> Void
@@ -19,6 +20,7 @@ struct SettingsView: View {
     @State private var versionTapCount = 0
     @State private var diagnosticsCopyFeedback: String? = nil
     @State private var authDiagnosticsCopyFeedback: String? = nil
+    @State private var backendDiagnosticsCopyFeedback: String? = nil
     @State private var manualAuthViewModel: AppAuthViewModel? = nil
     @State private var manualAuthContext: SettingsAuthContext? = nil
     @State private var artworkCopyFeedback: String? = nil
@@ -32,6 +34,7 @@ struct SettingsView: View {
     init(
         viewModel: SettingsViewModel,
         authContext: SettingsAuthContext,
+        backendContext: SettingsBackendContext = .localFallback,
         authTestEntryEnabled: Bool = false,
         makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
         onManualAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in },
@@ -40,6 +43,7 @@ struct SettingsView: View {
     ) {
         _vm = StateObject(wrappedValue: viewModel)
         self.authContext = authContext
+        self.backendContext = backendContext
         self.authTestEntryEnabled = authTestEntryEnabled
         self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
         self.onManualAuthStateChanged = onManualAuthStateChanged
@@ -579,6 +583,8 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+
+                    backendDiagnosticsSection
                 }
 
                 AppSectionCard(
@@ -789,6 +795,48 @@ struct SettingsView: View {
                     diagnosticRow(title: "isAdmin", value: authContext.isAdmin ? "true" : "false")
                     diagnosticRow(title: "Capabilities", value: authContext.capabilityLabels.isEmpty ? "なし" : authContext.capabilityLabels.joined(separator: " / "))
                     diagnosticRow(title: "最後の認証エラー", value: authContext.lastAuthErrorDescription ?? "なし")
+                }
+            }
+        }
+    }
+
+    private var backendDiagnosticsSection: some View {
+        AppSectionCard(
+            title: "Backend診断",
+            subtitle: "Supabase 接続準備と local fallback の状態を確認します。未設定でも起動やQAは継続できます。"
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                diagnosticRow(title: "Provider", value: backendContext.provider)
+                diagnosticRow(title: "Status", value: backendContext.statusText)
+                diagnosticRow(title: "Active mode", value: backendContext.activeModeText)
+                diagnosticRow(title: "Project host", value: backendContext.projectURLHost)
+                diagnosticRow(title: "Anon key configured", value: backendContext.anonKeyConfigured ? "true" : "false")
+                diagnosticRow(title: "Schema version", value: backendContext.schemaVersion)
+                diagnosticRow(title: "Local fallback", value: backendContext.localFallbackEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Public feed", value: backendContext.publicFeedEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Comments", value: backendContext.commentsEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Ranking", value: backendContext.rankingEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "DM policy", value: backendContext.dmPolicy)
+                diagnosticRow(title: "Secrets in repo", value: backendContext.secretsInRepository ? "true" : "false")
+
+                Text("管理者は Supabase 未接続でも、既存のローカルQA、ガチャアート確認、購入診断、コミュニティ作成テストを継続できます。DMは相互フォロー限定、日記本文は自動共有されません。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    UIPasteboard.general.string = backendContext.diagnosticsReportText
+                    backendDiagnosticsCopyFeedback = "Backend診断をコピーしました"
+                } label: {
+                    Label("Backend診断をコピー", systemImage: "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                if let backendDiagnosticsCopyFeedback {
+                    Text(backendDiagnosticsCopyFeedback)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

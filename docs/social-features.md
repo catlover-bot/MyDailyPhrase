@@ -77,7 +77,15 @@ Community participation remains free. Creator/community creation is gated:
 
 ## Repository Boundary
 
-Social connection behavior is still local/mock, but the domain now has a `SocialConnectionRepository` protocol so a backend implementation can later provide recommended profiles, following/follower lists, mutual follow state, and DM eligibility without changing the UI contract.
+Social connection behavior is still local/mock, but the domain now has backend-ready repository protocols so a Supabase implementation can later provide data without changing the UI contract:
+
+- `ProfileRepository`
+- `CommunityRepository`
+- `SocialConnectionRepository`
+- `DMRepository`
+- `ReportRepository`
+
+Build 34 adds a Supabase plan and schema while keeping local fallback active. If Supabase config is empty, diagnostics show `disabled` / `localFallback` and the app continues to launch safely.
 
 ## Sharing
 

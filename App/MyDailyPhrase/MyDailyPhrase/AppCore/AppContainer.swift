@@ -74,6 +74,7 @@ final class AppContainer {
     // ===== Import Challenge → Entry =====
     private let importChallengeToEntry: ImportChallengeToEntryUseCase
     let launchConfiguration: AppLaunchRuntimeConfiguration
+    let backendRuntimeConfiguration: BackendRuntimeConfiguration
     private lazy var authRuntimeConfiguration: ExternalAuthRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
 
     init(appGroupID: String = AppContainer.preferredAppGroupID) {
@@ -87,6 +88,7 @@ final class AppContainer {
         let resolvedDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
         self.appGroupDefaults = resolvedDefaults
         self.launchConfiguration = AppLaunchRuntimeConfiguration.load()
+        self.backendRuntimeConfiguration = BackendRuntimeConfiguration.load()
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -176,7 +178,8 @@ final class AppContainer {
         Self.debugLaunchLog(
             "[Launch] AppContainer init end",
             "safeMode=\(launchConfiguration.safeModeEnabled)",
-            "auth=\(launchConfiguration.effectiveAuthEnabled)"
+            "auth=\(launchConfiguration.effectiveAuthEnabled)",
+            "backend=\(backendRuntimeConfiguration.diagnostics.statusText)"
         )
     }
 

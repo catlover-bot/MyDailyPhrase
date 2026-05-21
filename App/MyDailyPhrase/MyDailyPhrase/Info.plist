@@ -49,6 +49,14 @@
 	<string>$(AUTH_OAUTH_CALLBACK_SCHEME)</string>
 	<key>AUTH_ALLOW_MANUAL_TOKEN_INPUT</key>
 	<string>$(AUTH_ALLOW_MANUAL_TOKEN_INPUT)</string>
+	<key>SUPABASE_BACKEND_ENABLED</key>
+	<string>$(SUPABASE_BACKEND_ENABLED)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_SCHEMA_VERSION</key>
+	<string>$(SUPABASE_SCHEMA_VERSION)</string>
 	<key>LEGAL_TERMS_URL</key>
 	<string>$(LEGAL_TERMS_URL)</string>
 	<key>LEGAL_PRIVACY_POLICY_URL</key>

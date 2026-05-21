@@ -69,4 +69,5 @@ Release では safe mode のまま、allowlist に一致した手動 Apple ロ�
 - public feed / comments / ranking は引き続き無効のままです。
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。
+- Backend 診断は管理者メニュー内にだけ表示します。Supabase 未設定でも `localFallback` としてローカル QA を継続できます。
 - allowlist が空でもクラッシュせず、単に非管理者として扱います。

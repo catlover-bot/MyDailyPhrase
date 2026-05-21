@@ -47,6 +47,7 @@ struct ContentView: View {
     let communityLiteVM: CommunityLiteViewModel
     let settingsVM: SettingsViewModel
     let settingsAuthContext: SettingsAuthContext
+    let settingsBackendContext: SettingsBackendContext
     let authTestEntryEnabled: Bool
     let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     let onAuthSignOut: () -> Void
@@ -101,6 +102,7 @@ struct ContentView: View {
                 SettingsView(
                     viewModel: settingsVM,
                     authContext: settingsAuthContext,
+                    backendContext: settingsBackendContext,
                     authTestEntryEnabled: authTestEntryEnabled,
                     makeAuthPreviewViewModel: makeAuthPreviewViewModel,
                     onManualAuthStateChanged: handleManualAuthStateChanged,

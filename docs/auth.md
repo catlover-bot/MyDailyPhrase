@@ -44,6 +44,7 @@ Profile には初回ログイン後のセットアップカードを表示し、
 ## 注意
 
 - OAuth secret や client secret はリポジトリに置いていません。
+- Supabase の service role key や DB password もリポジトリに置きません。Build 34 では backend config が空なら safe に disabled となり、local fallback で起動します。
 - Google の実運用ログインを有効にする場合は、開始 URL・callback scheme・サーバー検証の設定確認が必要です。
 - 既存の StoreKit / Creator Pass 判定はそのまま維持し、認証だけでは課金状態を変更しません。
 - 保存済み認証情報が壊れていた場合は安全に破棄し、クラッシュせずに signed out / ローカル起動へ戻します。
