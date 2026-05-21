@@ -82,6 +82,7 @@ final class CommunityLiteViewModel: ObservableObject {
     private let defaults: UserDefaults
     private let timeZone: TimeZone
     private let creatorEntitlementService: CreatorEntitlementService
+    private let socialConnectionRepository: SocialConnectionRepository
     private let calendar: Calendar
     private let promptEngine: CommunityPromptEngine
 
@@ -99,7 +100,8 @@ final class CommunityLiteViewModel: ObservableObject {
         saveCommunityResponse: SaveCommunityResponseUseCase,
         defaults: UserDefaults,
         timeZone: TimeZone,
-        creatorEntitlementService: CreatorEntitlementService
+        creatorEntitlementService: CreatorEntitlementService,
+        socialConnectionRepository: SocialConnectionRepository
     ) {
         self.getMyProfile = getMyProfile
         self.updateMyProfile = updateMyProfile
@@ -113,6 +115,7 @@ final class CommunityLiteViewModel: ObservableObject {
         self.defaults = defaults
         self.timeZone = timeZone
         self.creatorEntitlementService = creatorEntitlementService
+        self.socialConnectionRepository = socialConnectionRepository
 
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
@@ -155,31 +158,19 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     var followingProfiles: [SocialUserProfileSummary] {
-        let following = Set(getMyProfile().followingUserIDs)
-        return socialProfiles.filter { following.contains($0.id) }
+        socialConnectionRepository.listFollowingProfiles(for: getMyProfile())
     }
 
     var followerPreviewProfiles: [SocialUserProfileSummary] {
-        SocialSupport.followerPreviewProfiles(
-            profiles: socialProfiles,
-            blockedUserIDs: Set(getMyProfile().blockedUserIDs)
-        )
+        socialConnectionRepository.listFollowerPreviewProfiles(for: getMyProfile())
     }
 
     var mutualFollowProfiles: [SocialUserProfileSummary] {
-        let following = Set(getMyProfile().followingUserIDs)
-        let followers = Set(followerPreviewProfiles.map(\.id))
-        let ids = SocialSupport.mutualFollowUserIDs(
-            followingUserIDs: following,
-            followerUserIDs: followers
-        )
-        return socialProfiles.filter { ids.contains($0.id) }
+        socialConnectionRepository.listMutualFollowProfiles(for: getMyProfile())
     }
 
     var recommendedProfiles: [SocialUserProfileSummary] {
-        let following = Set(getMyProfile().followingUserIDs)
-        let followerPreview = Set(followerPreviewProfiles.map(\.id))
-        return socialProfiles.filter { !following.contains($0.id) && !followerPreview.contains($0.id) }
+        socialConnectionRepository.listRecommendedProfiles(for: getMyProfile())
     }
 
     var recommendedCommunities: [CommunityTemplate] {
@@ -321,6 +312,7 @@ final class CommunityLiteViewModel: ObservableObject {
         bootstrapOfficialCommunities()
         reloadCommunities()
         reloadSocialProfiles(profile: profile)
+        refreshRemoteSocialStateIfPossible()
         ensureSelectedCommunity()
         refreshSelectedCommunityContext()
     }
@@ -417,12 +409,7 @@ final class CommunityLiteViewModel: ObservableObject {
 
     func canSendDM(to profile: SocialUserProfileSummary) -> Bool {
         guard canUseLocalSocialActions else { return false }
-        return SocialSupport.canUseDirectMessage(
-            with: profile,
-            followingUserIDs: Set(getMyProfile().followingUserIDs),
-            followerUserIDs: Set(followerPreviewProfiles.map(\.id)),
-            blockedUserIDs: Set(getMyProfile().blockedUserIDs)
-        )
+        return socialConnectionRepository.canStartDirectMessage(from: getMyProfile(), to: profile)
     }
 
     func dmUnavailableReason(for profile: SocialUserProfileSummary) -> String? {
@@ -456,10 +443,17 @@ final class CommunityLiteViewModel: ObservableObject {
             return
         }
         let me = getMyProfile()
+        let wasFollowing = me.followingUserIDs.contains(profile.id)
         let updated = SocialSupport.toggledFollowIDs(current: me.followingUserIDs, targetUserID: profile.id)
         _ = updateMyProfile(followingUserIDs: updated)
         reloadSocialProfiles(profile: getMyProfile())
         lastMessage = updated.contains(profile.id) ? "フォローしました" : "フォローを解除しました"
+        syncSocialOperation {
+            if wasFollowing {
+                return try await self.socialConnectionRepository.unfollow(targetUserID: profile.id, for: self.getMyProfile())
+            }
+            return try await self.socialConnectionRepository.follow(targetUserID: profile.id, for: self.getMyProfile())
+        }
     }
 
     func toggleBlock(_ profile: SocialUserProfileSummary) {
@@ -468,6 +462,7 @@ final class CommunityLiteViewModel: ObservableObject {
             return
         }
         let me = getMyProfile()
+        let wasBlocked = me.blockedUserIDs.contains(profile.id)
         let updatedBlocked = SocialSupport.blockedIDsAfterBlocking(current: me.blockedUserIDs, targetUserID: profile.id)
         let updatedFollowing = me.followingUserIDs.filter { $0 != profile.id }
         let updatedConversations = me.dmConversations.filter { $0.participantUserID != profile.id }
@@ -479,6 +474,12 @@ final class CommunityLiteViewModel: ObservableObject {
         reloadSocialProfiles(profile: getMyProfile())
         dmConversations = getMyProfile().dmConversations
         lastMessage = updatedBlocked.contains(profile.id) ? "ブロックしました" : "ブロックを解除しました"
+        syncSocialOperation {
+            if wasBlocked {
+                return try await self.socialConnectionRepository.unblock(targetUserID: profile.id, for: self.getMyProfile())
+            }
+            return try await self.socialConnectionRepository.block(targetUserID: profile.id, for: self.getMyProfile())
+        }
     }
 
     func report(_ profile: SocialUserProfileSummary) {
@@ -491,6 +492,14 @@ final class CommunityLiteViewModel: ObservableObject {
         _ = updateMyProfile(reportedUserIDs: updated)
         reloadSocialProfiles(profile: getMyProfile())
         lastMessage = "通報メモをこの端末に保存しました"
+        syncSocialOperation {
+            try await self.socialConnectionRepository.report(
+                targetUserID: profile.id,
+                reason: .other,
+                note: "reported from community-lite",
+                for: self.getMyProfile()
+            )
+        }
     }
 
     func sendDraftMessage(to profile: SocialUserProfileSummary) {
@@ -708,16 +717,51 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     private func reloadSocialProfiles(profile: UserProfile) {
-        socialProfiles = SocialSupport.applyRelationshipState(
+        let localProfiles = SocialSupport.applyRelationshipState(
             profiles: SocialSupport.demoProfiles(),
             followingUserIDs: Set(profile.followingUserIDs),
             blockedUserIDs: Set(profile.blockedUserIDs),
             reportedUserIDs: Set(profile.reportedUserIDs)
         )
+        let repositoryProfiles = socialConnectionRepository
+            .listRecommendedProfiles(for: profile)
+            + socialConnectionRepository.listFollowingProfiles(for: profile)
+            + socialConnectionRepository.listFollowerPreviewProfiles(for: profile)
+            + socialConnectionRepository.listMutualFollowProfiles(for: profile)
+        let merged = Dictionary(grouping: localProfiles + repositoryProfiles, by: \.id)
+            .compactMap { $0.value.first }
+            .filter { !profile.blockedUserIDs.contains($0.id) }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        socialProfiles = merged
         dmConversations = profile.dmConversations
             .sorted { $0.updatedAt > $1.updatedAt }
         if selectedConversationId == nil {
             selectedConversationId = dmConversations.first?.participantUserID
+        }
+    }
+
+    private func refreshRemoteSocialStateIfPossible() {
+        guard canUseLocalSocialActions else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await self.socialConnectionRepository.refreshRemoteState(for: self.getMyProfile())
+                self.reloadSocialProfiles(profile: self.getMyProfile())
+            } catch {
+                // Local fallback remains the visible source of truth; diagnostics capture backend details.
+            }
+        }
+    }
+
+    private func syncSocialOperation(_ operation: @escaping @MainActor () async throws -> SocialSyncDiagnostics) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await operation()
+                self.reloadSocialProfiles(profile: self.getMyProfile())
+            } catch {
+                // Keep the immediate local UX. Backend diagnostics explain any RLS/network issue.
+            }
         }
     }
 

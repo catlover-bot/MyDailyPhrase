@@ -47,12 +47,12 @@ After a user signs in, Profile shows a lightweight setup card until the core ide
 
 ## Follow Safety
 
-Follow is local/mock until a safe backend is available.
+Follow, block, and report can sync to Supabase when a Supabase Auth session exists. Local/mock behavior remains the fallback for signed-out users, missing backend config, failed backend requests, and seeded local preview profiles.
 
 - States: `フォローする`, `フォロー中`, `相互フォロー`, `ブロック中`.
 - Blocked users are excluded from recommendations.
 - Report and block controls stay visible before public discovery is enabled.
-- Recommendations are local preview cards and should not imply live remote activity.
+- Recommendations can include backend discoverable profiles when available. Seeded local preview cards should still avoid implying live remote activity.
 
 ## DM Safety
 
@@ -77,7 +77,7 @@ Community participation remains free. Creator/community creation is gated:
 
 ## Repository Boundary
 
-Social connection behavior is still local/mock, but the domain now has backend-ready repository protocols so a Supabase implementation can later provide data without changing the UI contract:
+Social connection behavior is backend-ready through repository protocols. Local implementations remain available as fallback so screens do not need separate code paths:
 
 - `ProfileRepository`
 - `CommunityRepository`
@@ -104,10 +104,17 @@ Build 38 adds the Supabase Auth bridge for manual Sign in with Apple:
 - Access tokens and refresh tokens are never shown in diagnostics or share payloads.
 - If Supabase Auth is missing, profile edits remain local and admin diagnostics show `ローカル保存済み / Supabase認証待ち`.
 
-Still local/fallback in Build 35:
+Build 39 adds Supabase-backed social connection sync:
 
-- Follow graph
-- Blocks/reports
+- Follow/unfollow writes to `follows` when the actor is signed in with Supabase Auth and the target is a Supabase user id.
+- Block/unblock writes to `blocks` and removes blocked users from recommendations.
+- User reports write to `reports` as the authenticated reporter.
+- Backend failures preserve local UI state and show details only in admin Backend診断.
+- Apple `providerUserId` is not used for remote social rows; it remains for Apple identity and admin allowlist only.
+- Supabase Auth user id is used for `follower_user_id`, `blocker_user_id`, and `reporter_user_id`.
+
+Still local/fallback in Build 39:
+
 - Community membership
 - DM threads/messages
 - Invite/share state

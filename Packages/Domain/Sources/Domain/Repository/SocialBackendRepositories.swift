@@ -17,6 +17,15 @@ public enum ProfileSyncStatus: String, Codable, CaseIterable, Sendable {
     case failed
 }
 
+public enum SocialSyncStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case skippedSignedOut
+    case configured
+    case syncing
+    case synced
+    case failed
+}
+
 public enum BackendConnectionStatus: String, Codable, CaseIterable, Sendable {
     case localFallback
     case configured
@@ -103,6 +112,39 @@ public struct BackendConnectionDiagnostics: Codable, Equatable, Sendable {
     }
 
     public static let localFallback = BackendConnectionDiagnostics()
+}
+
+public struct SocialSyncDiagnostics: Codable, Equatable, Sendable {
+    public var status: SocialSyncStatus
+    public var lastErrorMessage: String?
+    public var lastSyncAt: Date?
+    public var lastAttemptAt: Date?
+    public var followingCount: Int?
+    public var followerCount: Int?
+    public var blockedCount: Int?
+    public var lastReportedTargetID: String?
+
+    public init(
+        status: SocialSyncStatus = .localFallback,
+        lastErrorMessage: String? = nil,
+        lastSyncAt: Date? = nil,
+        lastAttemptAt: Date? = nil,
+        followingCount: Int? = nil,
+        followerCount: Int? = nil,
+        blockedCount: Int? = nil,
+        lastReportedTargetID: String? = nil
+    ) {
+        self.status = status
+        self.lastErrorMessage = lastErrorMessage
+        self.lastSyncAt = lastSyncAt
+        self.lastAttemptAt = lastAttemptAt
+        self.followingCount = followingCount
+        self.followerCount = followerCount
+        self.blockedCount = blockedCount
+        self.lastReportedTargetID = lastReportedTargetID
+    }
+
+    public static let localFallback = SocialSyncDiagnostics()
 }
 
 public enum SocialReportTargetKind: String, Codable, CaseIterable, Sendable {

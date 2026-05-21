@@ -1,17 +1,17 @@
 # Backend Plan
 
-Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync. Build 38 bridges manual Sign in with Apple to Supabase Auth so profile writes can satisfy RLS.
+Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync. Build 38 bridges manual Sign in with Apple to Supabase Auth so profile writes can satisfy RLS. Build 39 adds Supabase-backed follow, block, and report sync while keeping local fallback and public feed/comment/ranking disabled.
 
 ## Current Runtime Policy
 
 - Release launch remains safe with `APP_SAFE_MODE = YES`.
 - Root `AuthGate` is still bypassed.
 - StoreKit product IDs, entitlement state, and purchase flow are unchanged.
-- Supabase is the first backend candidate, but `SUPABASE_BACKEND_ENABLED = NO` and empty config keep it disabled.
+- Supabase is the first backend candidate. Empty or invalid config keeps the app in local fallback.
 - Missing backend config must never crash the app.
 - Local Apple sign-in alone is not enough for RLS writes. Profile sync requires a Supabase Auth session.
 - Admin can continue local QA when backend is disconnected.
-- StoreKit/IAP and Creator Pass entitlement are not connected to backend profile sync.
+- StoreKit/IAP and Creator Pass entitlement are not connected to backend profile or social sync.
 
 ## Supabase Configuration
 
@@ -73,7 +73,7 @@ If the user is signed out, the app does not attempt backend profile writes. If S
 Current limitations:
 
 - Diary answers are not synced.
-- Follow/DM/community data still uses local fallback.
+- DM/community membership still uses local fallback.
 - Public feed/comments/ranking remain disabled.
 - Profile sync depends on safe Supabase policies being installed before production use.
 
@@ -87,6 +87,51 @@ Expected statuses:
 - `skippedSupabaseAuthMissing`: profile was saved locally, but no Supabase Auth access token is available yet.
 - `synced`: profile upsert/fetch completed.
 - `failed`: local profile was preserved, but backend write/read failed.
+
+## Build 39 Social Connection Sync
+
+Follow, block, and report now use Supabase when all of these are true:
+
+- Supabase backend config is valid.
+- A Supabase Auth session exists.
+- The target user id is a Supabase UUID.
+
+Remote identity mapping:
+
+- Apple `providerUserId`: still used only for Apple identity and admin allowlist checks.
+- Supabase Auth user id: used as `follower_user_id`, `blocker_user_id`, and `reporter_user_id`.
+- Target remote user id: must reference another Supabase `users.id`.
+
+If a user is signed out, Supabase Auth is missing, or the target is a local preview profile, the app keeps the local/mock UX and records `localFallback` or `skippedSignedOut` in diagnostics. Backend failures should not erase local UI state.
+
+Synced tables:
+
+- `follows`: follow/unfollow and follower/following/mutual counts.
+- `blocks`: block/unblock and recommendation filtering.
+- `reports`: authenticated user reports against user targets.
+
+Still not enabled:
+
+- public feed
+- public comments
+- ranking
+- remote DM messages
+- diary answer sync
+
+Social sync statuses:
+
+- `localFallback`: Supabase is disabled, incomplete, or the target is local-only.
+- `skippedSignedOut`: no Supabase Auth session is available, so remote social sync is skipped.
+- `configured`: Supabase is configured but social sync has not completed.
+- `syncing`: a follow/block/report or refresh operation is running.
+- `synced`: remote social state was refreshed or a social write succeeded.
+- `failed`: remote sync failed and local state was preserved.
+
+Common social sync errors:
+
+- `401` / `403` / `42501`: check that the app has a Supabase Auth access token and that `auth.uid()` equals the actor column (`follower_user_id`, `blocker_user_id`, or `reporter_user_id`).
+- Local preview target: the target profile is a seeded/local card and cannot be written to Supabase.
+- `404`: check that `follows`, `blocks`, and `reports` tables exist and schema was applied.
 
 Common errors:
 
@@ -161,6 +206,10 @@ Settings > Admin shows Backend diagnostics for the allowlisted owner:
 - last Supabase Auth error
 - profile sync status
 - last profile sync time
+- social sync status
+- social following/follower/blocked counts
+- last social sync time
+- last social sync error
 - last backend error
 - local fallback state
 - public feed/comment/ranking disabled state

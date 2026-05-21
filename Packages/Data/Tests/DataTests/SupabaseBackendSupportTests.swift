@@ -336,6 +336,158 @@ struct SupabaseBackendSupportTests {
         #expect(repository.canStartDirectMessage(from: profile, to: sora) == false)
     }
 
+    @Test("Supabase social follow uses Supabase auth user id")
+    func supabaseSocialFollowUsesAuthUserID() async throws {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let targetID = "33333333-3333-4333-8333-333333333333"
+        let followingBody = """
+        [
+          { "follower_user_id": "\(authUserID)", "followed_user_id": "\(targetID)" }
+        ]
+        """
+        let profileBody = """
+        [
+          {
+            "user_id": "\(targetID)",
+            "display_name": "Remote Friend",
+            "bio": "Supabase profile",
+            "equipped_theme_id": "classic",
+            "profile_title": "同期テスト"
+          }
+        ]
+        """
+        let httpClient = SequenceSupabaseHTTPClient(responses: [
+            (201, ""),
+            (200, followingBody),
+            (200, "[]"),
+            (200, "[]"),
+            (200, profileBody)
+        ])
+        let repository = makeSupabaseSocialRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: "refresh-token-secret",
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let profile = UserProfile(userId: "local-user", displayName: "Me")
+
+        let diagnostics = try await repository.repository.follow(targetUserID: targetID, for: profile)
+        let firstRequestBody = httpClient.requestBodies.first ?? nil
+
+        #expect(diagnostics.status == .synced)
+        #expect(diagnostics.followingCount == 1)
+        #expect(httpClient.requests.first?.url?.absoluteString.contains("/rest/v1/follows") == true)
+        #expect(firstRequestBody?.contains(authUserID) == true)
+        #expect(firstRequestBody?.contains(targetID) == true)
+        #expect(httpClient.requests.first?.value(forHTTPHeaderField: "Authorization") == "Bearer access-token-secret")
+        #expect(BackendDiagnosticsSnapshot(configuration: repository.config, socialSyncDiagnostics: diagnostics).reportText.contains("access-token-secret") == false)
+    }
+
+    @Test("Supabase social skips remote write without auth session")
+    func supabaseSocialMissingAuthSkipsRemoteWrite() async {
+        let httpClient = SequenceSupabaseHTTPClient(responses: [])
+        let repository = makeSupabaseSocialRepository(httpClient: httpClient, authSession: nil)
+
+        do {
+            _ = try await repository.repository.follow(
+                targetUserID: "33333333-3333-4333-8333-333333333333",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("follow should wait for Supabase Auth")
+        } catch {
+            #expect(error as? SupabaseSocialConnectionError == .supabaseAuthSessionMissing)
+            #expect(httpClient.requests.isEmpty)
+            #expect(repository.repository.socialSyncDiagnostics().status == .skippedSignedOut)
+        }
+    }
+
+    @Test("Supabase social blocked users are excluded from recommendations")
+    func supabaseSocialBlockedUsersExcludedFromRecommendations() async throws {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let blockedID = "33333333-3333-4333-8333-333333333333"
+        let visibleID = "44444444-4444-4444-8444-444444444444"
+        let blockedBody = """
+        [
+          { "blocker_user_id": "\(authUserID)", "blocked_user_id": "\(blockedID)" }
+        ]
+        """
+        let profileBody = """
+        [
+          {
+            "user_id": "\(blockedID)",
+            "display_name": "Blocked",
+            "bio": null,
+            "equipped_theme_id": "classic",
+            "profile_title": null
+          },
+          {
+            "user_id": "\(visibleID)",
+            "display_name": "Visible",
+            "bio": null,
+            "equipped_theme_id": "classic",
+            "profile_title": null
+          }
+        ]
+        """
+        let httpClient = SequenceSupabaseHTTPClient(responses: [
+            (200, "[]"),
+            (200, "[]"),
+            (200, blockedBody),
+            (200, profileBody)
+        ])
+        let repository = makeSupabaseSocialRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let profile = UserProfile(userId: "local-user", displayName: "Me")
+
+        _ = try await repository.repository.refreshRemoteState(for: profile)
+
+        let recommendations = repository.repository.listRecommendedProfiles(for: profile).map { $0.id }
+        #expect(recommendations.contains(visibleID))
+        #expect(recommendations.contains(blockedID) == false)
+        #expect(repository.repository.socialSyncDiagnostics().blockedCount == 1)
+    }
+
+    @Test("Supabase social report failure keeps diagnostics safe")
+    func supabaseSocialReportFailureIsSafe() async {
+        let httpClient = SequenceSupabaseHTTPClient(responses: [
+            (403, #"{"message":"new row violates row-level security policy"}"#)
+        ])
+        let repository = makeSupabaseSocialRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: "22222222-2222-4222-8222-222222222222",
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+
+        do {
+            _ = try await repository.repository.report(
+                targetUserID: "33333333-3333-4333-8333-333333333333",
+                reason: .harassment,
+                note: "unsafe",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("report should fail with RLS guidance")
+        } catch {
+            let diagnostics = repository.repository.socialSyncDiagnostics()
+            #expect(diagnostics.status == .failed)
+            #expect(diagnostics.lastErrorMessage?.contains("RLS") == true)
+            #expect(BackendDiagnosticsSnapshot(configuration: repository.config, socialSyncDiagnostics: diagnostics).reportText.contains("access-token-secret") == false)
+        }
+    }
+
     private func makeSupabaseProfileRepository() -> (
         repository: SupabaseProfileRepository,
         fallback: AppGroupUserProfileRepository,
@@ -366,6 +518,33 @@ struct SupabaseBackendSupportTests {
             authSessionProvider: { authSession }
         )
         return (repository, fallback, client)
+    }
+
+    private func makeSupabaseSocialRepository(
+        httpClient: SupabaseHTTPClient,
+        authSession: SupabaseAuthSession?
+    ) -> (
+        repository: SupabaseSocialConnectionRepository,
+        config: SupabaseBackendConfiguration
+    ) {
+        let suiteName = "group.MyDailyPhrase.supabase.social.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test"
+        )
+        let fallback = LocalSocialConnectionRepository {
+            []
+        }
+        let repository = SupabaseSocialConnectionRepository(
+            configuration: config,
+            fallback: fallback,
+            httpClient: httpClient,
+            diagnosticsStore: SupabaseSocialSyncDiagnosticsStore(defaults: defaults),
+            authSessionProvider: { authSession }
+        )
+        return (repository, config)
     }
 }
 
@@ -436,5 +615,33 @@ private final class MockSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Senda
             headerFields: nil
         )!
         return (Data(body.utf8), response)
+    }
+}
+
+private final class SequenceSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "SequenceSupabaseHTTPClient")
+    private var responses: [(statusCode: Int, body: String)]
+    private(set) var requests: [URLRequest] = []
+    private(set) var requestBodies: [String?] = []
+
+    init(responses: [(Int, String)]) {
+        self.responses = responses.map { ($0.0, $0.1) }
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let response = queue.sync { () -> (statusCode: Int, body: String) in
+            let response = responses.isEmpty ? (200, "[]") : responses.removeFirst()
+            requests.append(request)
+            requestBodies.append(request.httpBody.flatMap { String(data: $0, encoding: .utf8) })
+            return response
+        }
+
+        let httpResponse = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.supabase.co")!,
+            statusCode: response.0,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(response.1.utf8), httpResponse)
     }
 }

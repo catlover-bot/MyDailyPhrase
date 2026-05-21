@@ -18,6 +18,7 @@ final class AppContainer {
     private let profileSyncDiagnosticsStore: SupabaseProfileSyncDiagnosticsStore
     private let backendConnectionDiagnosticsStore: SupabaseConnectionDiagnosticsStore
     private let supabaseAuthSessionStore: SupabaseAuthSessionStore
+    private let socialSyncDiagnosticsStore: SupabaseSocialSyncDiagnosticsStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -28,6 +29,7 @@ final class AppContainer {
 
     // ===== Profile / Challenge / Reaction =====
     private let profileRepo: UserProfileRepository
+    private let socialConnectionRepo: SocialConnectionRepository
     private let communityTemplateRepo: CommunityTemplateRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
@@ -84,7 +86,8 @@ final class AppContainer {
         backendRuntimeConfiguration.diagnostics(
             profileSyncDiagnostics: profileSyncDiagnosticsStore.load(),
             connectionDiagnostics: backendConnectionDiagnosticsStore.load(),
-            authDiagnostics: supabaseAuthSessionStore.loadDiagnostics()
+            authDiagnostics: supabaseAuthSessionStore.loadDiagnostics(),
+            socialSyncDiagnostics: socialSyncDiagnosticsStore.load()
         )
     }
 
@@ -103,6 +106,7 @@ final class AppContainer {
         self.profileSyncDiagnosticsStore = SupabaseProfileSyncDiagnosticsStore(defaults: resolvedDefaults)
         self.backendConnectionDiagnosticsStore = SupabaseConnectionDiagnosticsStore(defaults: resolvedDefaults)
         self.supabaseAuthSessionStore = SupabaseAuthSessionStore(defaults: resolvedDefaults)
+        self.socialSyncDiagnosticsStore = SupabaseSocialSyncDiagnosticsStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -119,12 +123,18 @@ final class AppContainer {
 
         // Profile / events repos
         let localProfileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
+        let localSocialRepo = LocalSocialConnectionRepository {
+            SocialSupport.demoProfiles()
+        }
         if backendRuntimeConfiguration.supabaseConfiguration.canUseSupabase {
             if backendConnectionDiagnosticsStore.load().status == .localFallback {
                 backendConnectionDiagnosticsStore.record(status: .configured)
             }
             if profileSyncDiagnosticsStore.load().status == .localFallback {
                 profileSyncDiagnosticsStore.record(status: .configured)
+            }
+            if socialSyncDiagnosticsStore.load().status == .localFallback {
+                socialSyncDiagnosticsStore.record(status: .configured)
             }
             if backendRuntimeConfiguration.supabaseConfiguration.canUseAppleAuthBridge {
                 if supabaseAuthSessionStore.loadSession() == nil,
@@ -142,11 +152,21 @@ final class AppContainer {
                     supabaseAuthSessionStore.loadSession()
                 }
             )
+            self.socialConnectionRepo = SupabaseSocialConnectionRepository(
+                configuration: backendRuntimeConfiguration.supabaseConfiguration,
+                fallback: localSocialRepo,
+                diagnosticsStore: socialSyncDiagnosticsStore,
+                authSessionProvider: { [supabaseAuthSessionStore] in
+                    supabaseAuthSessionStore.loadSession()
+                }
+            )
         } else {
             backendConnectionDiagnosticsStore.record(status: .localFallback)
             profileSyncDiagnosticsStore.record(status: .localFallback)
             supabaseAuthSessionStore.record(status: .disabled)
+            socialSyncDiagnosticsStore.record(status: .localFallback)
             self.profileRepo = localProfileRepo
+            self.socialConnectionRepo = localSocialRepo
         }
         self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
@@ -527,7 +547,8 @@ final class AppContainer {
             saveCommunityResponse: saveCommunityResponse,
             defaults: appGroupDefaults,
             timeZone: timeZone,
-            creatorEntitlementService: CreatorEntitlementService(defaults: appGroupDefaults)
+            creatorEntitlementService: CreatorEntitlementService(defaults: appGroupDefaults),
+            socialConnectionRepository: socialConnectionRepo
         )
     }
 

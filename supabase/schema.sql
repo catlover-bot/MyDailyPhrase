@@ -145,6 +145,14 @@ drop policy if exists "users_owner_update" on public.users;
 drop policy if exists "profiles_read_safe" on public.profiles;
 drop policy if exists "profiles_owner_insert" on public.profiles;
 drop policy if exists "profiles_owner_update" on public.profiles;
+drop policy if exists "follows_owner_select" on public.follows;
+drop policy if exists "follows_owner_insert" on public.follows;
+drop policy if exists "follows_owner_delete" on public.follows;
+drop policy if exists "blocks_owner_select" on public.blocks;
+drop policy if exists "blocks_owner_insert" on public.blocks;
+drop policy if exists "blocks_owner_delete" on public.blocks;
+drop policy if exists "reports_owner_select" on public.reports;
+drop policy if exists "reports_owner_insert" on public.reports;
 
 create policy "users_owner_select" on public.users
   for select to authenticated
@@ -181,9 +189,44 @@ create policy "profiles_owner_update" on public.profiles
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- Backend-backed follow/block/report sync.
+-- actor ids always come from Supabase Auth auth.uid(); Apple providerUserId is only an admin allowlist identifier.
+create policy "follows_owner_select" on public.follows
+  for select to authenticated
+  using (
+    follower_user_id = auth.uid()
+    or followed_user_id = auth.uid()
+  );
+
+create policy "follows_owner_insert" on public.follows
+  for insert to authenticated
+  with check (follower_user_id = auth.uid());
+
+create policy "follows_owner_delete" on public.follows
+  for delete to authenticated
+  using (follower_user_id = auth.uid());
+
+create policy "blocks_owner_select" on public.blocks
+  for select to authenticated
+  using (blocker_user_id = auth.uid());
+
+create policy "blocks_owner_insert" on public.blocks
+  for insert to authenticated
+  with check (blocker_user_id = auth.uid());
+
+create policy "blocks_owner_delete" on public.blocks
+  for delete to authenticated
+  using (blocker_user_id = auth.uid());
+
+create policy "reports_owner_select" on public.reports
+  for select to authenticated
+  using (reporter_user_id = auth.uid());
+
+create policy "reports_owner_insert" on public.reports
+  for insert to authenticated
+  with check (reporter_user_id = auth.uid());
+
 -- Future policies, still intentionally not broad-enabled:
--- create policy "follows_owner_read_write" on public.follows for all using (follower_user_id = auth.uid());
--- create policy "blocks_owner_read_write" on public.blocks for all using (blocker_user_id = auth.uid());
 -- create policy "dm_thread_members_only" on public.dm_threads for select using (auth.uid() in (user_a_id, user_b_id));
 -- create policy "dm_messages_members_only" on public.dm_messages for select using (
 --   exists (

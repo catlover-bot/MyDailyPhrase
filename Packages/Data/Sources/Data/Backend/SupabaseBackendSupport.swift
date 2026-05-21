@@ -190,12 +190,20 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let supabaseRefreshTokenPresent: Bool
     public let supabaseTokenExpiresAt: Date?
     public let lastSupabaseAuthError: String?
+    public let socialSyncStatus: SocialSyncStatus
+    public let lastSocialSyncError: String?
+    public let lastSocialSyncAt: Date?
+    public let socialFollowingCount: Int?
+    public let socialFollowerCount: Int?
+    public let socialBlockedCount: Int?
+    public let lastSocialReportedTargetID: String?
 
     public init(
         configuration: SupabaseBackendConfiguration,
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
-        authDiagnostics: SupabaseAuthDiagnostics = .disabled
+        authDiagnostics: SupabaseAuthDiagnostics = .disabled,
+        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback
     ) {
         self.provider = "supabase"
         self.status = configuration.status
@@ -224,6 +232,13 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         self.supabaseRefreshTokenPresent = authDiagnostics.refreshTokenPresent
         self.supabaseTokenExpiresAt = authDiagnostics.tokenExpiresAt
         self.lastSupabaseAuthError = authDiagnostics.lastErrorMessage
+        self.socialSyncStatus = socialSyncDiagnostics.status
+        self.lastSocialSyncError = socialSyncDiagnostics.lastErrorMessage
+        self.lastSocialSyncAt = socialSyncDiagnostics.lastSyncAt
+        self.socialFollowingCount = socialSyncDiagnostics.followingCount
+        self.socialFollowerCount = socialSyncDiagnostics.followerCount
+        self.socialBlockedCount = socialSyncDiagnostics.blockedCount
+        self.lastSocialReportedTargetID = socialSyncDiagnostics.lastReportedTargetID
         if activeMode == .localFallback {
             self.backendModeLabel = "localFallback"
         } else {
@@ -269,7 +284,14 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "secretsInRepository: \(secretsInRepository)",
             "profileSyncStatus: \(profileSyncStatus.rawValue)",
             "lastBackendError: \(lastBackendError ?? "なし")",
-            "lastProfileSyncAt: \(lastProfileSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")"
+            "lastProfileSyncAt: \(lastProfileSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "socialSyncStatus: \(socialSyncStatus.rawValue)",
+            "lastSocialSyncError: \(lastSocialSyncError ?? "なし")",
+            "lastSocialSyncAt: \(lastSocialSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "socialFollowingCount: \(socialFollowingCount.map(String.init) ?? "なし")",
+            "socialFollowerCount: \(socialFollowerCount.map(String.init) ?? "なし")",
+            "socialBlockedCount: \(socialBlockedCount.map(String.init) ?? "なし")",
+            "lastSocialReportedTargetID: \(lastSocialReportedTargetID ?? "なし")"
         ].joined(separator: "\n")
     }
 }

@@ -8,14 +8,16 @@ struct BackendRuntimeConfiguration: Sendable {
     func diagnostics(
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
-        authDiagnostics: SupabaseAuthDiagnostics = .disabled
+        authDiagnostics: SupabaseAuthDiagnostics = .disabled,
+        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback
     ) -> SettingsBackendContext {
         SettingsBackendContext(
             snapshot: BackendDiagnosticsSnapshot(
                 configuration: supabaseConfiguration,
                 profileSyncDiagnostics: profileSyncDiagnostics,
                 connectionDiagnostics: connectionDiagnostics,
-                authDiagnostics: authDiagnostics
+                authDiagnostics: authDiagnostics,
+                socialSyncDiagnostics: socialSyncDiagnostics
             )
         )
     }
@@ -63,6 +65,13 @@ struct SettingsBackendContext: Sendable {
     let profileSyncStatus: String
     let lastBackendError: String
     let lastProfileSyncAt: String
+    let socialSyncStatus: String
+    let lastSocialSyncError: String
+    let lastSocialSyncAt: String
+    let socialFollowingCount: String
+    let socialFollowerCount: String
+    let socialBlockedCount: String
+    let lastSocialReportedTargetID: String
     let diagnosticsReportText: String
 
     init(snapshot: BackendDiagnosticsSnapshot) {
@@ -94,6 +103,13 @@ struct SettingsBackendContext: Sendable {
         self.profileSyncStatus = snapshot.profileSyncStatus.rawValue
         self.lastBackendError = snapshot.lastBackendError ?? "なし"
         self.lastProfileSyncAt = snapshot.lastProfileSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.socialSyncStatus = snapshot.socialSyncStatus.rawValue
+        self.lastSocialSyncError = snapshot.lastSocialSyncError ?? "なし"
+        self.lastSocialSyncAt = snapshot.lastSocialSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.socialFollowingCount = snapshot.socialFollowingCount.map(String.init) ?? "なし"
+        self.socialFollowerCount = snapshot.socialFollowerCount.map(String.init) ?? "なし"
+        self.socialBlockedCount = snapshot.socialBlockedCount.map(String.init) ?? "なし"
+        self.lastSocialReportedTargetID = snapshot.lastSocialReportedTargetID ?? "なし"
         self.diagnosticsReportText = snapshot.reportText
     }
 
