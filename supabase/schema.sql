@@ -3,6 +3,7 @@
 -- - Public feed, public comments, and ranking are intentionally not modeled/enabled here.
 -- - Diary entries are private/local by default and are not synced by this schema.
 -- - DM is text-only and mutual-follow-gated at application and RLS policy layers.
+-- - iOS uses the publishable key plus a Supabase Auth session. Never embed service_role in the app.
 
 create extension if not exists pgcrypto;
 
@@ -17,6 +18,8 @@ create table if not exists public.users (
   unique (auth_provider, provider_user_id)
 );
 
+comment on table public.users is 'App-level profile owner row. For client writes, id must match auth.uid() from Supabase Auth. The iOS app uses publishable key + Supabase Auth access token; service_role is never embedded.';
+
 create table if not exists public.profiles (
   user_id uuid primary key references public.users(id) on delete cascade,
   display_name text not null check (char_length(display_name) between 1 and 24),
@@ -30,8 +33,8 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
-comment on table public.profiles is 'Build 35 profile sync target. The iOS client maps local display name, bio, avatar symbol, interest tags, and updated_at here. Diary answers are intentionally not synced.';
-comment on column public.profiles.user_id is 'Matches public.users.id. The client first upserts users by auth_provider/provider_user_id, then upserts this profile row.';
+comment on table public.profiles is 'Build 35+ profile sync target. The iOS client maps local display name, bio, avatar symbol, interest tags, and updated_at here. Diary answers are intentionally not synced.';
+comment on column public.profiles.user_id is 'Matches public.users.id and must equal auth.uid() for client writes. Local Apple sign-in alone is not sufficient; the client must also bridge to Supabase Auth.';
 
 create table if not exists public.follows (
   follower_user_id uuid not null references public.users(id) on delete cascade,
@@ -133,9 +136,52 @@ alter table public.dm_messages enable row level security;
 alter table public.reports enable row level security;
 alter table public.admin_roles enable row level security;
 
--- Placeholder policies. Replace app_user_id() with the production auth.uid() mapping.
--- create policy "profiles_read_safe" on public.profiles for select using (is_discoverable = true or user_id = auth.uid());
--- create policy "profiles_owner_update" on public.profiles for update using (user_id = auth.uid());
+-- Client-safe profile sync policies.
+-- These policies intentionally do not allow anonymous broad writes.
+-- If profile sync returns 401/403 or 42501, verify that the iOS app has a Supabase Auth session and that user_id equals auth.uid().
+drop policy if exists "users_owner_select" on public.users;
+drop policy if exists "users_owner_insert" on public.users;
+drop policy if exists "users_owner_update" on public.users;
+drop policy if exists "profiles_read_safe" on public.profiles;
+drop policy if exists "profiles_owner_insert" on public.profiles;
+drop policy if exists "profiles_owner_update" on public.profiles;
+
+create policy "users_owner_select" on public.users
+  for select to authenticated
+  using (id = auth.uid());
+
+create policy "users_owner_insert" on public.users
+  for insert to authenticated
+  with check (
+    id = auth.uid()
+    and role = 'user'
+  );
+
+create policy "users_owner_update" on public.users
+  for update to authenticated
+  using (id = auth.uid())
+  with check (
+    id = auth.uid()
+    and role = 'user'
+  );
+
+create policy "profiles_read_safe" on public.profiles
+  for select
+  using (
+    is_discoverable = true
+    or user_id = auth.uid()
+  );
+
+create policy "profiles_owner_insert" on public.profiles
+  for insert to authenticated
+  with check (user_id = auth.uid());
+
+create policy "profiles_owner_update" on public.profiles
+  for update to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Future policies, still intentionally not broad-enabled:
 -- create policy "follows_owner_read_write" on public.follows for all using (follower_user_id = auth.uid());
 -- create policy "blocks_owner_read_write" on public.blocks for all using (blocker_user_id = auth.uid());
 -- create policy "dm_thread_members_only" on public.dm_threads for select using (auth.uid() in (user_a_id, user_b_id));

@@ -454,6 +454,8 @@ final class ProfileViewModel: ObservableObject {
             return "接続確認中"
         case .idle:
             return "同期待ち"
+        case .skippedSupabaseAuthMissing:
+            return "Supabase認証待ち"
         case .syncing:
             return "同期中"
         case .synced:
@@ -478,6 +480,8 @@ final class ProfileViewModel: ObservableObject {
             return "プロフィールをSupabaseへ反映しています。"
         case .idle:
             return "次回保存時にSupabaseへ反映します。"
+        case .skippedSupabaseAuthMissing:
+            return "ローカル保存済みです。Supabase Auth連携後に同期を試せます。"
         case .skippedSignedOut:
             return "ログインするとプロフィール同期を試せます。"
         case .localFallback:

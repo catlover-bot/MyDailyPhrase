@@ -1,6 +1,6 @@
 # Backend Plan
 
-Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync.
+Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync. Build 38 bridges manual Sign in with Apple to Supabase Auth so profile writes can satisfy RLS.
 
 ## Current Runtime Policy
 
@@ -9,6 +9,7 @@ Build 34 prepared the app to move local/mock social features toward Supabase wit
 - StoreKit product IDs, entitlement state, and purchase flow are unchanged.
 - Supabase is the first backend candidate, but `SUPABASE_BACKEND_ENABLED = NO` and empty config keep it disabled.
 - Missing backend config must never crash the app.
+- Local Apple sign-in alone is not enough for RLS writes. Profile sync requires a Supabase Auth session.
 - Admin can continue local QA when backend is disconnected.
 - StoreKit/IAP and Creator Pass entitlement are not connected to backend profile sync.
 
@@ -19,6 +20,8 @@ The app reads these optional Info.plist values:
 - `SUPABASE_BACKEND_ENABLED`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
+- `SUPABASE_AUTH_ENABLED`
+- `SUPABASE_APPLE_AUTH_ENABLED`
 - `SUPABASE_SCHEMA_VERSION`
 
 The iOS client uses Supabase's publishable client key through the existing `SUPABASE_ANON_KEY` config name. Service role keys, OAuth secrets, and database passwords must never be committed or placed in the app bundle.
@@ -30,19 +33,31 @@ Build 36 configures the test Supabase project host:
 
 Diagnostics may show whether a key is present, its type, and the safe prefix. They must never show the full key value.
 
+Build 38 enables Supabase Auth bridging only after the user manually completes Sign in with Apple. The app exchanges Apple's `identityToken` with Supabase Auth and stores only the minimum session data needed for REST requests. Diagnostics may show Supabase Auth status, Supabase user id, token-present booleans, and token expiry, but never access tokens or refresh tokens.
+
 Local setup:
 
 1. Create a Supabase project.
 2. Open SQL Editor and run `supabase/schema.sql`.
 3. Put `SUPABASE_URL` and `SUPABASE_ANON_KEY` in xcconfig or local build settings. Use the publishable key for iOS client tests.
 4. Set `SUPABASE_BACKEND_ENABLED = YES` only for a backend test build or TestFlight verification build.
-5. Never commit `service_role`, database password, OAuth client secrets, or private JWT signing secrets.
+5. Enable `SUPABASE_AUTH_ENABLED = YES` and `SUPABASE_APPLE_AUTH_ENABLED = YES` only after the Supabase Apple provider is configured.
+6. Never commit `service_role`, database password, OAuth client secrets, or private JWT signing secrets.
 
-Production note: the current iOS client uses the public anon key only. Before broad production rollout, replace the draft RLS comments with a server-authoritative Supabase Auth / Edge Function policy so users cannot spoof ownership.
+Production note: the iOS client uses the publishable key and a Supabase Auth user token. The app must never write profiles with anonymous broad policies or a service role key.
 
 ## Build 35 Profile Sync
 
-The first real Supabase-backed feature is profile sync. When Supabase is configured and the user has linked Apple login, profile saves are written locally first and then upserted to Supabase in the background.
+The first real Supabase-backed feature is profile sync. When Supabase is configured and the user has linked Apple login, profile saves are written locally first. Remote upsert runs only when a Supabase Auth session is available.
+
+Identity mapping:
+
+- Apple `providerUserId`: Apple subject identifier from Sign in with Apple.
+- Local `AuthUser.id`: existing local app profile id used by local diary/gacha data.
+- Supabase Auth user id: `auth.uid()` from Supabase Auth.
+- `profiles.user_id`: Supabase Auth user id. This must match `auth.uid()` for RLS.
+
+The client still preserves the local profile id for local data. Remote profile rows use the Supabase Auth user id.
 
 Mapped fields:
 
@@ -69,12 +84,13 @@ Expected statuses:
 - `supabaseAvailable`: connection/profile sync succeeded.
 - `supabaseError`: connection/profile sync failed.
 - `connecting` / `syncing`: a manual admin test is running.
+- `skippedSupabaseAuthMissing`: profile was saved locally, but no Supabase Auth access token is available yet.
 - `synced`: profile upsert/fetch completed.
 - `failed`: local profile was preserved, but backend write/read failed.
 
 Common errors:
 
-- `401` / `403`: check RLS policies, the owner `user_id`, and that the client is using the publishable key, not `service_role`.
+- `401` / `403` / `42501`: check that Supabase Auth is configured, the Apple provider accepted the identity token, `profiles.user_id = auth.uid()`, and the client is using the publishable key plus Supabase access token, not `service_role`.
 - `404`: check that the schema was applied and that the table name is `profiles`.
 - Invalid URL: use the HTTPS Supabase project URL.
 - Network failure: check device connectivity and Supabase project status.
@@ -138,6 +154,11 @@ Settings > Admin shows Backend diagnostics for the allowlisted owner:
 - schema version
 - table name (`profiles`)
 - connection test status and last checked time
+- Supabase Auth status
+- Supabase user id
+- access/refresh token present flags
+- token expiry
+- last Supabase Auth error
 - profile sync status
 - last profile sync time
 - last backend error
@@ -150,4 +171,6 @@ Normal users do not see admin diagnostics.
 Manual admin tests:
 
 - `Supabase接続テスト`: reads the `profiles` table metadata path without writing data.
-- `プロフィール同期テスト`: requires a Sign in with Apple linked profile, upserts the local profile, then fetches it back when possible.
+- `プロフィール同期テスト`: requires a Sign in with Apple linked profile and Supabase Auth session, upserts the local profile, then fetches it back when possible.
+
+If `プロフィール同期テスト` shows `ローカル保存済み / Supabase認証待ち`, run the manual Apple login again and confirm Supabase Auth status becomes `signedIn`.

@@ -96,6 +96,14 @@ Build 36 configures the Supabase project URL for profile sync testing and adds a
 
 Diagnostics show key presence, key type `publishable`, and safe prefix `sb_publishable`; they do not show the full key.
 
+Build 38 adds the Supabase Auth bridge for manual Sign in with Apple:
+
+- Apple local sign-in can still succeed even if Supabase Auth fails.
+- Remote profile sync requires a Supabase Auth session so RLS can use `auth.uid()`.
+- `profiles.user_id` uses the Supabase Auth user id, while local diary/gacha data keeps the local profile id.
+- Access tokens and refresh tokens are never shown in diagnostics or share payloads.
+- If Supabase Auth is missing, profile edits remain local and admin diagnostics show `ローカル保存済み / Supabase認証待ち`.
+
 Still local/fallback in Build 35:
 
 - Follow graph

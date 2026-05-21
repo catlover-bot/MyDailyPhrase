@@ -7,13 +7,15 @@ struct BackendRuntimeConfiguration: Sendable {
 
     func diagnostics(
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
-        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback
+        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
+        authDiagnostics: SupabaseAuthDiagnostics = .disabled
     ) -> SettingsBackendContext {
         SettingsBackendContext(
             snapshot: BackendDiagnosticsSnapshot(
                 configuration: supabaseConfiguration,
                 profileSyncDiagnostics: profileSyncDiagnostics,
-                connectionDiagnostics: connectionDiagnostics
+                connectionDiagnostics: connectionDiagnostics,
+                authDiagnostics: authDiagnostics
             )
         )
     }
@@ -24,6 +26,8 @@ struct BackendRuntimeConfiguration: Sendable {
                 isEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "SUPABASE_BACKEND_ENABLED") ?? false,
                 projectURLString: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_URL"),
                 anonKey: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_ANON_KEY"),
+                authEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "SUPABASE_AUTH_ENABLED") ?? false,
+                appleAuthEnabledConfigured: bundle.boolValue(forInfoDictionaryKey: "SUPABASE_APPLE_AUTH_ENABLED") ?? false,
                 schemaVersion: bundle.stringValue(forInfoDictionaryKey: "SUPABASE_SCHEMA_VERSION") ?? "2026-05-21"
             )
         )
@@ -44,6 +48,12 @@ struct SettingsBackendContext: Sendable {
     let connectionStatus: String
     let lastConnectionError: String
     let lastConnectionCheckedAt: String
+    let supabaseAuthStatus: String
+    let supabaseUserID: String
+    let supabaseAccessTokenPresent: Bool
+    let supabaseRefreshTokenPresent: Bool
+    let supabaseTokenExpiresAt: String
+    let lastSupabaseAuthError: String
     let localFallbackEnabled: Bool
     let publicFeedEnabled: Bool
     let commentsEnabled: Bool
@@ -69,6 +79,12 @@ struct SettingsBackendContext: Sendable {
         self.connectionStatus = snapshot.connectionStatus.rawValue
         self.lastConnectionError = snapshot.lastConnectionError ?? "なし"
         self.lastConnectionCheckedAt = snapshot.lastConnectionCheckedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.supabaseAuthStatus = snapshot.supabaseAuthStatus.rawValue
+        self.supabaseUserID = snapshot.supabaseUserID ?? "なし"
+        self.supabaseAccessTokenPresent = snapshot.supabaseAccessTokenPresent
+        self.supabaseRefreshTokenPresent = snapshot.supabaseRefreshTokenPresent
+        self.supabaseTokenExpiresAt = snapshot.supabaseTokenExpiresAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.lastSupabaseAuthError = snapshot.lastSupabaseAuthError ?? "なし"
         self.localFallbackEnabled = snapshot.localFallbackEnabled
         self.publicFeedEnabled = snapshot.publicFeedEnabled
         self.commentsEnabled = snapshot.commentsEnabled

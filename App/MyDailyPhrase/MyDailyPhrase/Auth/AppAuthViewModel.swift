@@ -3,6 +3,12 @@ import Combine
 import Domain
 import Presentation
 
+struct SupabaseAuthBridgeOutcome: Sendable {
+    var didCreateSession: Bool
+    var message: String
+    var supabaseUserID: String?
+}
+
 @MainActor
 final class AppAuthViewModel: ObservableObject {
     enum EntryScreen {
@@ -35,6 +41,8 @@ final class AppAuthViewModel: ObservableObject {
     private let termsOfServiceURLValue: URL?
     private let privacyPolicyURLValue: URL?
     private let loadPersistedAuthError: @Sendable () -> String?
+    private let bridgeAppleSignInToSupabase: ((_ identityToken: String?, _ nonce: String?) async -> SupabaseAuthBridgeOutcome)?
+    private let clearSupabaseAuthSession: (() -> Void)?
     private var creatorPassEntitled: Bool = false
 
     init(
@@ -52,7 +60,9 @@ final class AppAuthViewModel: ObservableObject {
         manualAppleSignInEnabled: Bool = false,
         termsOfServiceURL: URL?,
         privacyPolicyURL: URL?,
-        loadPersistedAuthError: @escaping @Sendable () -> String?
+        loadPersistedAuthError: @escaping @Sendable () -> String?,
+        bridgeAppleSignInToSupabase: ((_ identityToken: String?, _ nonce: String?) async -> SupabaseAuthBridgeOutcome)? = nil,
+        clearSupabaseAuthSession: (() -> Void)? = nil
     ) {
         self.authRepository = authRepository
         self.getMyProfile = getMyProfile
@@ -69,6 +79,8 @@ final class AppAuthViewModel: ObservableObject {
         self.termsOfServiceURLValue = termsOfServiceURL
         self.privacyPolicyURLValue = privacyPolicyURL
         self.loadPersistedAuthError = loadPersistedAuthError
+        self.bridgeAppleSignInToSupabase = bridgeAppleSignInToSupabase
+        self.clearSupabaseAuthSession = clearSupabaseAuthSession
 
         if !authEnabled {
             let fallbackSession = makeLocalPreviewSession()
@@ -265,7 +277,9 @@ final class AppAuthViewModel: ObservableObject {
         userID: String,
         email: String?,
         givenName: String?,
-        familyName: String?
+        familyName: String?,
+        identityToken: String? = nil,
+        nonce: String? = nil
     ) {
         guard canUseAppleSignIn else {
             let error = AuthError.providerUnavailable(.signInWithApple)
@@ -275,30 +289,44 @@ final class AppAuthViewModel: ObservableObject {
             return
         }
         isBusy = true
-        defer { isBusy = false }
 
-        do {
-            let session = try authRepository.signInWithApple(
-                userID: userID,
-                email: email,
-                givenName: givenName,
-                familyName: familyName
-            )
-            applySession(session)
-            lastAuthErrorDescription = nil
-            inlineMessage = session.requiresProfileSetup
-                ? "表示名を整えると、プロフィールや共有カードが分かりやすくなります。"
-                : "Appleでログインしました"
-        } catch let error as AuthError {
-            authState = .failed(error)
-            inlineMessage = error.localizedDescription
-            lastAuthErrorDescription = error.localizedDescription
-            entryScreen = .login
-        } catch {
-            authState = .failed(.unknown(error.localizedDescription))
-            inlineMessage = error.localizedDescription
-            lastAuthErrorDescription = error.localizedDescription
-            entryScreen = .login
+        Task {
+            defer { isBusy = false }
+
+            do {
+                let session = try authRepository.signInWithApple(
+                    userID: userID,
+                    email: email,
+                    givenName: givenName,
+                    familyName: familyName
+                )
+                applySession(session)
+                lastAuthErrorDescription = nil
+                var message = session.requiresProfileSetup
+                    ? "表示名を整えると、プロフィールや共有カードが分かりやすくなります。"
+                    : "Appleでログインしました"
+
+                if let bridgeAppleSignInToSupabase {
+                    let outcome = await bridgeAppleSignInToSupabase(identityToken, nonce)
+                    message += outcome.didCreateSession
+                        ? "。Supabase Auth連携も完了しました。"
+                        : "。\(outcome.message)"
+                    if !outcome.didCreateSession {
+                        lastAuthErrorDescription = outcome.message
+                    }
+                }
+                inlineMessage = message
+            } catch let error as AuthError {
+                authState = .failed(error)
+                inlineMessage = error.localizedDescription
+                lastAuthErrorDescription = error.localizedDescription
+                entryScreen = .login
+            } catch {
+                authState = .failed(.unknown(error.localizedDescription))
+                inlineMessage = error.localizedDescription
+                lastAuthErrorDescription = error.localizedDescription
+                entryScreen = .login
+            }
         }
     }
 
@@ -349,6 +377,7 @@ final class AppAuthViewModel: ObservableObject {
             return
         }
         authRepository.signOut()
+        clearSupabaseAuthSession?()
         creatorPassEntitled = false
         currentFeatureAccess = .signedOutDefault
         authState = .signedOut

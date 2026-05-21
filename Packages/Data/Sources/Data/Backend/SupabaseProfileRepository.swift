@@ -97,6 +97,7 @@ public struct SupabaseProfileRow: Codable, Equatable, Sendable {
 public enum SupabaseProfileError: Error, Equatable, Sendable {
     case unavailable(SupabaseBackendStatus)
     case signedOut
+    case supabaseAuthSessionMissing
     case invalidOwner
     case invalidResponse(Int, String)
     case emptyResponse
@@ -111,15 +112,18 @@ public protocol SupabaseProfileClient: Sendable {
 public struct SupabaseProfileRESTClient: SupabaseProfileClient {
     private let configuration: SupabaseBackendConfiguration
     private let httpClient: SupabaseHTTPClient
+    private let accessTokenProvider: @Sendable () -> String?
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
     public init(
         configuration: SupabaseBackendConfiguration,
-        httpClient: SupabaseHTTPClient = URLSessionSupabaseHTTPClient()
+        httpClient: SupabaseHTTPClient = URLSessionSupabaseHTTPClient(),
+        accessTokenProvider: @escaping @Sendable () -> String? = { nil }
     ) {
         self.configuration = configuration
         self.httpClient = httpClient
+        self.accessTokenProvider = accessTokenProvider
         self.encoder = SupabaseProfileRESTClient.makeJSONEncoder()
         self.decoder = SupabaseProfileRESTClient.makeJSONDecoder()
     }
@@ -219,7 +223,7 @@ public struct SupabaseProfileRESTClient: SupabaseProfileClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(accessTokenProvider() ?? anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let prefer {
             request.setValue(prefer, forHTTPHeaderField: "Prefer")
@@ -333,17 +337,23 @@ public final class SupabaseProfileRepository: ProfileRepository, @unchecked Send
     private let fallback: ProfileRepository
     private let client: SupabaseProfileClient
     private let diagnosticsStore: SupabaseProfileSyncDiagnosticsStore
+    private let authSessionProvider: @Sendable () -> SupabaseAuthSession?
 
     public init(
         configuration: SupabaseBackendConfiguration,
         fallback: ProfileRepository,
         client: SupabaseProfileClient? = nil,
-        diagnosticsStore: SupabaseProfileSyncDiagnosticsStore
+        diagnosticsStore: SupabaseProfileSyncDiagnosticsStore,
+        authSessionProvider: @escaping @Sendable () -> SupabaseAuthSession? = { nil }
     ) {
         self.configuration = configuration
         self.fallback = fallback
-        self.client = client ?? SupabaseProfileRESTClient(configuration: configuration)
+        self.client = client ?? SupabaseProfileRESTClient(
+            configuration: configuration,
+            accessTokenProvider: { authSessionProvider()?.accessToken }
+        )
         self.diagnosticsStore = diagnosticsStore
+        self.authSessionProvider = authSessionProvider
     }
 
     public var mode: SocialBackendMode {
@@ -386,20 +396,27 @@ public final class SupabaseProfileRepository: ProfileRepository, @unchecked Send
             diagnosticsStore.record(status: .skippedSignedOut)
             throw SupabaseProfileError.signedOut
         }
+        guard let remoteOwner = authenticatedRemoteOwner(from: owner) else {
+            diagnosticsStore.record(
+                status: .skippedSupabaseAuthMissing,
+                error: "ローカル保存済み / Supabase認証待ち"
+            )
+            return fallback.getMyProfile()
+        }
 
-        diagnosticsStore.record(status: .syncing, userID: owner.userID)
+        diagnosticsStore.record(status: .syncing, userID: remoteOwner.userID)
         do {
-            _ = try await client.upsertUser(owner: owner)
-            guard let remote = try await client.fetchProfile(owner: owner) else {
-                diagnosticsStore.record(status: .idle, userID: owner.userID)
+            _ = try await client.upsertUser(owner: remoteOwner)
+            guard let remote = try await client.fetchProfile(owner: remoteOwner) else {
+                diagnosticsStore.record(status: .idle, userID: remoteOwner.userID)
                 return fallback.getMyProfile()
             }
             let merged = remote.merged(into: fallback.getMyProfile() ?? UserProfile(userId: owner.userID, displayName: remote.displayName))
             fallback.saveMyProfile(merged)
-            diagnosticsStore.record(status: .synced, userID: owner.userID)
+            diagnosticsStore.record(status: .synced, userID: remoteOwner.userID)
             return merged
         } catch {
-            diagnosticsStore.record(status: .failed, error: safeErrorMessage(error), userID: owner.userID)
+            diagnosticsStore.record(status: .failed, error: safeErrorMessage(error), userID: remoteOwner.userID)
             throw error
         }
     }
@@ -415,19 +432,27 @@ public final class SupabaseProfileRepository: ProfileRepository, @unchecked Send
             diagnosticsStore.record(status: .skippedSignedOut)
             throw SupabaseProfileError.signedOut
         }
+        guard let remoteOwner = authenticatedRemoteOwner(from: owner) else {
+            fallback.saveMyProfile(profile)
+            diagnosticsStore.record(
+                status: .skippedSupabaseAuthMissing,
+                error: "ローカル保存済み / Supabase認証待ち"
+            )
+            throw SupabaseProfileError.supabaseAuthSessionMissing
+        }
 
-        diagnosticsStore.record(status: .syncing, userID: owner.userID)
+        diagnosticsStore.record(status: .syncing, userID: remoteOwner.userID)
         do {
-            _ = try await client.upsertUser(owner: owner)
-            let payload = SupabaseProfilePayload.make(from: profile, owner: owner)
+            _ = try await client.upsertUser(owner: remoteOwner)
+            let payload = SupabaseProfilePayload.make(from: profile, owner: remoteOwner)
             let row = try await client.upsertProfile(payload)
             let merged = row.merged(into: profile)
             fallback.saveMyProfile(merged)
-            diagnosticsStore.record(status: .synced, userID: owner.userID)
+            diagnosticsStore.record(status: .synced, userID: remoteOwner.userID)
             return merged
         } catch {
             fallback.saveMyProfile(profile)
-            diagnosticsStore.record(status: .failed, error: safeErrorMessage(error), userID: owner.userID)
+            diagnosticsStore.record(status: .failed, error: safeErrorMessage(error), userID: remoteOwner.userID)
             throw error
         }
     }
@@ -488,8 +513,23 @@ public final class SupabaseProfileRepository: ProfileRepository, @unchecked Send
         switch error {
         case let SupabaseProfileError.invalidResponse(statusCode, message):
             return "HTTP \(statusCode): \(String(message.prefix(180)))"
+        case SupabaseProfileError.supabaseAuthSessionMissing:
+            return "ローカル保存済み / Supabase認証待ち"
         default:
             return String(error.localizedDescription.prefix(180))
         }
+    }
+
+    private func authenticatedRemoteOwner(from owner: ProfileOwnerIdentity) -> ProfileOwnerIdentity? {
+        guard let session = authSessionProvider(),
+              session.hasUsableAccessToken() else {
+            return nil
+        }
+        return ProfileOwnerIdentity(
+            userID: session.userID,
+            provider: owner.provider,
+            providerUserID: owner.providerUserID,
+            email: owner.email
+        )
     }
 }

@@ -55,6 +55,10 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_AUTH_ENABLED</key>
+	<string>$(SUPABASE_AUTH_ENABLED)</string>
+	<key>SUPABASE_APPLE_AUTH_ENABLED</key>
+	<string>$(SUPABASE_APPLE_AUTH_ENABLED)</string>
 	<key>SUPABASE_SCHEMA_VERSION</key>
 	<string>$(SUPABASE_SCHEMA_VERSION)</string>
 	<key>LEGAL_TERMS_URL</key>

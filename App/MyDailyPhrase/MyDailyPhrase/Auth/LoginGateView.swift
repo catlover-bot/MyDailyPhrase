@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct LoginGateView: View {
     @ObservedObject var vm: AppAuthViewModel
+    @State private var appleSignInNonce: String? = nil
 
     var body: some View {
         ZStack {
@@ -147,6 +148,9 @@ struct LoginGateView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if vm.canUseAppleSignIn {
                         SignInWithAppleButton(.continue) { request in
+                            let nonce = AppleSignInNonce.make()
+                            appleSignInNonce = nonce
+                            request.nonce = AppleSignInNonce.sha256(nonce)
                             request.requestedScopes = [.fullName, .email]
                         } onCompletion: { result in
                             switch result {
@@ -159,9 +163,13 @@ struct LoginGateView: View {
                                     userID: credential.user,
                                     email: credential.email,
                                     givenName: credential.fullName?.givenName,
-                                    familyName: credential.fullName?.familyName
+                                    familyName: credential.fullName?.familyName,
+                                    identityToken: credential.identityToken.flatMap { String(data: $0, encoding: .utf8) },
+                                    nonce: appleSignInNonce
                                 )
+                                appleSignInNonce = nil
                             case .failure(let error):
+                                appleSignInNonce = nil
                                 if let authError = error as? ASAuthorizationError,
                                    authError.code == .canceled {
                                     vm.inlineMessage = "Appleログインをキャンセルしました"

@@ -28,6 +28,8 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
     public let projectURL: URL?
     public let isProjectURLValid: Bool
     public let anonKey: String?
+    public let authEnabledConfigured: Bool
+    public let appleAuthEnabledConfigured: Bool
     public let schemaVersion: String
 
     public init(
@@ -35,6 +37,8 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
         projectURL: URL?,
         isProjectURLValid: Bool? = nil,
         anonKey: String?,
+        authEnabledConfigured: Bool = false,
+        appleAuthEnabledConfigured: Bool = false,
         schemaVersion: String = "2026-05-21"
     ) {
         self.isEnabledConfigured = isEnabledConfigured
@@ -42,6 +46,8 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
         self.isProjectURLValid = isProjectURLValid ?? Self.isValidProjectURL(projectURL)
         let trimmedKey = anonKey?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.anonKey = (trimmedKey?.isEmpty == false) ? trimmedKey : nil
+        self.authEnabledConfigured = authEnabledConfigured
+        self.appleAuthEnabledConfigured = appleAuthEnabledConfigured
         self.schemaVersion = schemaVersion
     }
 
@@ -49,6 +55,8 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
         isEnabledConfigured: Bool,
         projectURLString: String?,
         anonKey: String?,
+        authEnabledConfigured: Bool = false,
+        appleAuthEnabledConfigured: Bool = false,
         schemaVersion: String = "2026-05-21"
     ) -> SupabaseBackendConfiguration {
         let trimmedURL = projectURLString?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -59,6 +67,8 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
             projectURL: url,
             isProjectURLValid: trimmedURL == nil || trimmedURL?.isEmpty == true || Self.isValidProjectURL(parsedURL),
             anonKey: anonKey,
+            authEnabledConfigured: authEnabledConfigured,
+            appleAuthEnabledConfigured: appleAuthEnabledConfigured,
             schemaVersion: schemaVersion
         )
     }
@@ -72,6 +82,10 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
 
     public var canUseSupabase: Bool {
         status == .configured
+    }
+
+    public var canUseAppleAuthBridge: Bool {
+        canUseSupabase && authEnabledConfigured && appleAuthEnabledConfigured
     }
 
     public var keyTypeLabel: String {
@@ -108,6 +122,45 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
     }
 }
 
+public enum SupabaseAuthStatus: String, Codable, Equatable, CaseIterable, Sendable {
+    case disabled
+    case missingConfiguration
+    case signedOut
+    case signingIn
+    case signedIn
+    case failed
+}
+
+public struct SupabaseAuthDiagnostics: Codable, Equatable, Sendable {
+    public var status: SupabaseAuthStatus
+    public var supabaseUserID: String?
+    public var accessTokenPresent: Bool
+    public var refreshTokenPresent: Bool
+    public var tokenExpiresAt: Date?
+    public var lastErrorMessage: String?
+    public var lastAuthAt: Date?
+
+    public init(
+        status: SupabaseAuthStatus = .disabled,
+        supabaseUserID: String? = nil,
+        accessTokenPresent: Bool = false,
+        refreshTokenPresent: Bool = false,
+        tokenExpiresAt: Date? = nil,
+        lastErrorMessage: String? = nil,
+        lastAuthAt: Date? = nil
+    ) {
+        self.status = status
+        self.supabaseUserID = supabaseUserID
+        self.accessTokenPresent = accessTokenPresent
+        self.refreshTokenPresent = refreshTokenPresent
+        self.tokenExpiresAt = tokenExpiresAt
+        self.lastErrorMessage = lastErrorMessage
+        self.lastAuthAt = lastAuthAt
+    }
+
+    public static let disabled = SupabaseAuthDiagnostics()
+}
+
 public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let provider: String
     public let status: SupabaseBackendStatus
@@ -131,11 +184,18 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let connectionStatus: BackendConnectionStatus
     public let lastConnectionError: String?
     public let lastConnectionCheckedAt: Date?
+    public let supabaseAuthStatus: SupabaseAuthStatus
+    public let supabaseUserID: String?
+    public let supabaseAccessTokenPresent: Bool
+    public let supabaseRefreshTokenPresent: Bool
+    public let supabaseTokenExpiresAt: Date?
+    public let lastSupabaseAuthError: String?
 
     public init(
         configuration: SupabaseBackendConfiguration,
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
-        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback
+        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
+        authDiagnostics: SupabaseAuthDiagnostics = .disabled
     ) {
         self.provider = "supabase"
         self.status = configuration.status
@@ -158,6 +218,12 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         self.connectionStatus = connectionDiagnostics.status
         self.lastConnectionError = connectionDiagnostics.lastErrorMessage
         self.lastConnectionCheckedAt = connectionDiagnostics.lastCheckedAt
+        self.supabaseAuthStatus = authDiagnostics.status
+        self.supabaseUserID = authDiagnostics.supabaseUserID
+        self.supabaseAccessTokenPresent = authDiagnostics.accessTokenPresent
+        self.supabaseRefreshTokenPresent = authDiagnostics.refreshTokenPresent
+        self.supabaseTokenExpiresAt = authDiagnostics.tokenExpiresAt
+        self.lastSupabaseAuthError = authDiagnostics.lastErrorMessage
         if activeMode == .localFallback {
             self.backendModeLabel = "localFallback"
         } else {
@@ -189,6 +255,12 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "connectionStatus: \(connectionStatus.rawValue)",
             "lastConnectionError: \(lastConnectionError ?? "なし")",
             "lastConnectionCheckedAt: \(lastConnectionCheckedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "supabaseAuthStatus: \(supabaseAuthStatus.rawValue)",
+            "supabaseUserId: \(supabaseUserID ?? "なし")",
+            "supabaseAccessTokenPresent: \(supabaseAccessTokenPresent)",
+            "supabaseRefreshTokenPresent: \(supabaseRefreshTokenPresent)",
+            "supabaseTokenExpiresAt: \(supabaseTokenExpiresAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "lastSupabaseAuthError: \(lastSupabaseAuthError ?? "なし")",
             "localFallbackEnabled: \(localFallbackEnabled)",
             "publicFeedEnabled: \(publicFeedEnabled)",
             "commentsEnabled: \(commentsEnabled)",

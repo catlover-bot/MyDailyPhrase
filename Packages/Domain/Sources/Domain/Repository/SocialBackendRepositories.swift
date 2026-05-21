@@ -11,6 +11,7 @@ public enum ProfileSyncStatus: String, Codable, CaseIterable, Sendable {
     case configured
     case connecting
     case idle
+    case skippedSupabaseAuthMissing
     case syncing
     case synced
     case failed

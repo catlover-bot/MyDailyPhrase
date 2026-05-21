@@ -63,6 +63,7 @@ struct SupabaseBackendSupportTests {
         let snapshot = BackendDiagnosticsSnapshot(configuration: config)
 
         #expect(config.status == .configured)
+        #expect(config.canUseAppleAuthBridge == false)
         #expect(snapshot.activeMode == .supabase)
         #expect(snapshot.backendModeLabel == "supabaseConfigured")
         #expect(snapshot.projectURLHost == "example.supabase.co")
@@ -71,6 +72,64 @@ struct SupabaseBackendSupportTests {
         #expect(snapshot.keySafePrefix == "sb_publishable")
         #expect(snapshot.secretsInRepository == false)
         #expect(snapshot.reportText.contains(publishableKey) == false)
+    }
+
+    @Test("configured Supabase Auth bridge reports safe diagnostics")
+    func configuredSupabaseAuthBridgeReportsSafeDiagnostics() {
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test",
+            authEnabledConfigured: true,
+            appleAuthEnabledConfigured: true
+        )
+        let diagnostics = SupabaseAuthDiagnostics(
+            status: .signedIn,
+            supabaseUserID: "22222222-2222-4222-8222-222222222222",
+            accessTokenPresent: true,
+            refreshTokenPresent: true,
+            tokenExpiresAt: Date(timeIntervalSince1970: 1_800_000_000),
+            lastErrorMessage: nil,
+            lastAuthAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let snapshot = BackendDiagnosticsSnapshot(configuration: config, authDiagnostics: diagnostics)
+
+        #expect(config.canUseAppleAuthBridge)
+        #expect(snapshot.supabaseAuthStatus == .signedIn)
+        #expect(snapshot.supabaseAccessTokenPresent)
+        #expect(snapshot.supabaseRefreshTokenPresent)
+        #expect(snapshot.reportText.contains("access-token") == false)
+        #expect(snapshot.reportText.contains("refresh-token") == false)
+    }
+
+    @Test("Apple identity token can create Supabase Auth session without exposing tokens")
+    func appleIdentityTokenCreatesSupabaseSession() async throws {
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test",
+            authEnabledConfigured: true,
+            appleAuthEnabledConfigured: true
+        )
+        let body = """
+        {
+          "access_token": "access-token-secret",
+          "refresh_token": "refresh-token-secret",
+          "expires_in": 3600,
+          "user": { "id": "22222222-2222-4222-8222-222222222222" }
+        }
+        """
+        let httpClient = MockSupabaseHTTPClient(statusCode: 200, body: body)
+        let client = SupabaseAuthRESTClient(configuration: config, httpClient: httpClient)
+
+        let session = try await client.signInWithAppleIdentityToken(idToken: "apple-id-token", nonce: "raw-nonce")
+
+        #expect(session.userID == "22222222-2222-4222-8222-222222222222")
+        #expect(session.hasAccessToken)
+        #expect(httpClient.lastRequest?.url?.absoluteString.contains("/auth/v1/token?grant_type=id_token") == true)
+        #expect(httpClient.lastRequestBodyString?.contains("\"provider\":\"apple\"") == true)
+        #expect(httpClient.lastRequestBodyString?.contains("\"id_token\":\"apple-id-token\"") == true)
+        #expect(httpClient.lastRequestBodyString?.contains("\"nonce\":\"raw-nonce\"") == true)
     }
 
     @Test("profile table mapping matches schema")
@@ -155,7 +214,14 @@ struct SupabaseBackendSupportTests {
 
     @Test("backend failure preserves local profile and records safe error")
     func backendFailurePreservesLocalProfile() async {
-        let repository = makeSupabaseProfileRepository()
+        let repository = makeSupabaseProfileRepository(
+            authSession: SupabaseAuthSession(
+                userID: "22222222-2222-4222-8222-222222222222",
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
         repository.client.shouldFailProfileUpsert = true
         let profile = UserProfile(
             userId: "11111111-1111-4111-8111-111111111111",
@@ -174,6 +240,54 @@ struct SupabaseBackendSupportTests {
             #expect(repository.repository.profileSyncDiagnostics().status == .failed)
             #expect(repository.repository.profileSyncDiagnostics().lastErrorMessage?.contains("HTTP 500") == true)
         }
+    }
+
+    @Test("Supabase reachable but no Supabase Auth session does not attempt remote profile write")
+    func noSupabaseAuthSessionSkipsRemoteWrite() async {
+        let repository = makeSupabaseProfileRepository()
+        let profile = UserProfile(
+            userId: "11111111-1111-4111-8111-111111111111",
+            displayName: "同期テスト",
+            linkedAuthProvider: "apple",
+            linkedAuthUserId: "apple-subject"
+        )
+        let owner = ProfileOwnerIdentity(profile: profile)!
+
+        do {
+            _ = try await repository.repository.upsertCurrentUserProfile(profile, owner: owner)
+            Issue.record("upsert should wait for Supabase Auth")
+        } catch {
+            #expect(error as? SupabaseProfileError == .supabaseAuthSessionMissing)
+            #expect(repository.client.upsertUserCallCount == 0)
+            #expect(repository.client.upsertProfileCallCount == 0)
+            #expect(repository.fallback.getMyProfile()?.displayName == "同期テスト")
+            #expect(repository.repository.profileSyncDiagnostics().status == .skippedSupabaseAuthMissing)
+        }
+    }
+
+    @Test("Supabase authenticated user id is used for users and profiles")
+    func supabaseAuthenticatedUserIDIsUsedForProfileRows() async throws {
+        let repository = makeSupabaseProfileRepository(
+            authSession: SupabaseAuthSession(
+                userID: "22222222-2222-4222-8222-222222222222",
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let profile = UserProfile(
+            userId: "11111111-1111-4111-8111-111111111111",
+            displayName: "同期テスト",
+            linkedAuthProvider: "apple",
+            linkedAuthUserId: "apple-subject"
+        )
+        let owner = ProfileOwnerIdentity(profile: profile)!
+
+        _ = try await repository.repository.upsertCurrentUserProfile(profile, owner: owner)
+
+        #expect(repository.client.lastUpsertUserOwner?.userID == "22222222-2222-4222-8222-222222222222")
+        #expect(repository.client.lastUpsertProfilePayload?.userID == "22222222-2222-4222-8222-222222222222")
+        #expect(repository.client.lastUpsertUserOwner?.providerUserID == "apple-subject")
     }
 
     @Test("backend diagnostics never exposes anon key value")
@@ -227,6 +341,14 @@ struct SupabaseBackendSupportTests {
         fallback: AppGroupUserProfileRepository,
         client: MockSupabaseProfileClient
     ) {
+        makeSupabaseProfileRepository(authSession: nil)
+    }
+
+    private func makeSupabaseProfileRepository(authSession: SupabaseAuthSession?) -> (
+        repository: SupabaseProfileRepository,
+        fallback: AppGroupUserProfileRepository,
+        client: MockSupabaseProfileClient
+    ) {
         let suiteName = "group.MyDailyPhrase.supabase.profile.tests.\(UUID().uuidString)"
         let fallback = AppGroupUserProfileRepository(appGroupID: suiteName)
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
@@ -240,7 +362,8 @@ struct SupabaseBackendSupportTests {
             configuration: config,
             fallback: fallback,
             client: client,
-            diagnosticsStore: SupabaseProfileSyncDiagnosticsStore(defaults: defaults)
+            diagnosticsStore: SupabaseProfileSyncDiagnosticsStore(defaults: defaults),
+            authSessionProvider: { authSession }
         )
         return (repository, fallback, client)
     }
@@ -250,9 +373,12 @@ private final class MockSupabaseProfileClient: SupabaseProfileClient, @unchecked
     var upsertUserCallCount = 0
     var upsertProfileCallCount = 0
     var shouldFailProfileUpsert = false
+    private(set) var lastUpsertUserOwner: ProfileOwnerIdentity?
+    private(set) var lastUpsertProfilePayload: SupabaseProfilePayload?
 
     func upsertUser(owner: ProfileOwnerIdentity) async throws -> SupabaseProfileUserRow {
         upsertUserCallCount += 1
+        lastUpsertUserOwner = owner
         return SupabaseProfileUserRow(
             id: owner.userID,
             authProvider: owner.provider,
@@ -274,6 +400,7 @@ private final class MockSupabaseProfileClient: SupabaseProfileClient, @unchecked
 
     func upsertProfile(_ payload: SupabaseProfilePayload) async throws -> SupabaseProfileRow {
         upsertProfileCallCount += 1
+        lastUpsertProfilePayload = payload
         if shouldFailProfileUpsert {
             throw SupabaseProfileError.invalidResponse(500, "server failed without secrets")
         }
@@ -292,6 +419,7 @@ private final class MockSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Senda
     let statusCode: Int
     let body: String
     private(set) var lastRequest: URLRequest?
+    private(set) var lastRequestBodyString: String?
 
     init(statusCode: Int, body: String) {
         self.statusCode = statusCode
@@ -300,6 +428,7 @@ private final class MockSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Senda
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         lastRequest = request
+        lastRequestBodyString = request.httpBody.flatMap { String(data: $0, encoding: .utf8) }
         let response = HTTPURLResponse(
             url: request.url ?? URL(string: "https://example.supabase.co")!,
             statusCode: statusCode,

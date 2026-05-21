@@ -17,6 +17,7 @@ final class AppContainer {
     private let appGroupDefaults: UserDefaults
     private let profileSyncDiagnosticsStore: SupabaseProfileSyncDiagnosticsStore
     private let backendConnectionDiagnosticsStore: SupabaseConnectionDiagnosticsStore
+    private let supabaseAuthSessionStore: SupabaseAuthSessionStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -82,7 +83,8 @@ final class AppContainer {
     var settingsBackendContext: SettingsBackendContext {
         backendRuntimeConfiguration.diagnostics(
             profileSyncDiagnostics: profileSyncDiagnosticsStore.load(),
-            connectionDiagnostics: backendConnectionDiagnosticsStore.load()
+            connectionDiagnostics: backendConnectionDiagnosticsStore.load(),
+            authDiagnostics: supabaseAuthSessionStore.loadDiagnostics()
         )
     }
 
@@ -100,6 +102,7 @@ final class AppContainer {
         self.backendRuntimeConfiguration = BackendRuntimeConfiguration.load()
         self.profileSyncDiagnosticsStore = SupabaseProfileSyncDiagnosticsStore(defaults: resolvedDefaults)
         self.backendConnectionDiagnosticsStore = SupabaseConnectionDiagnosticsStore(defaults: resolvedDefaults)
+        self.supabaseAuthSessionStore = SupabaseAuthSessionStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -123,14 +126,26 @@ final class AppContainer {
             if profileSyncDiagnosticsStore.load().status == .localFallback {
                 profileSyncDiagnosticsStore.record(status: .configured)
             }
+            if backendRuntimeConfiguration.supabaseConfiguration.canUseAppleAuthBridge {
+                if supabaseAuthSessionStore.loadSession() == nil,
+                   supabaseAuthSessionStore.loadDiagnostics().status == .disabled {
+                    supabaseAuthSessionStore.record(status: .signedOut)
+                }
+            } else if supabaseAuthSessionStore.loadDiagnostics().status == .disabled {
+                supabaseAuthSessionStore.record(status: .missingConfiguration, error: "Supabase Auth bridge is disabled or incomplete")
+            }
             self.profileRepo = SupabaseProfileRepository(
                 configuration: backendRuntimeConfiguration.supabaseConfiguration,
                 fallback: localProfileRepo,
-                diagnosticsStore: profileSyncDiagnosticsStore
+                diagnosticsStore: profileSyncDiagnosticsStore,
+                authSessionProvider: { [supabaseAuthSessionStore] in
+                    supabaseAuthSessionStore.loadSession()
+                }
             )
         } else {
             backendConnectionDiagnosticsStore.record(status: .localFallback)
             profileSyncDiagnosticsStore.record(status: .localFallback)
+            supabaseAuthSessionStore.record(status: .disabled)
             self.profileRepo = localProfileRepo
         }
         self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
@@ -425,6 +440,9 @@ final class AppContainer {
             loadPersistedAuthError: { [suiteName = appGroupID] in
                 let defaults = UserDefaults(suiteName: suiteName) ?? .standard
                 return defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
+            },
+            clearSupabaseAuthSession: { [supabaseAuthSessionStore] in
+                supabaseAuthSessionStore.clearSession()
             }
         )
     }
@@ -455,6 +473,19 @@ final class AppContainer {
             loadPersistedAuthError: { [suiteName = appGroupID] in
                 let defaults = UserDefaults(suiteName: suiteName) ?? .standard
                 return defaults.string(forKey: LocalAuthRepository.lastDiagnosticsErrorKey)
+            },
+            bridgeAppleSignInToSupabase: { [weak self] identityToken, nonce in
+                guard let self else {
+                    return SupabaseAuthBridgeOutcome(
+                        didCreateSession: false,
+                        message: "Supabase Auth連携を開始できませんでした",
+                        supabaseUserID: nil
+                    )
+                }
+                return await self.bridgeAppleSignInToSupabase(identityToken: identityToken, nonce: nonce)
+            },
+            clearSupabaseAuthSession: { [supabaseAuthSessionStore] in
+                supabaseAuthSessionStore.clearSession()
             }
         )
     }
@@ -684,6 +715,74 @@ final class AppContainer {
         return settingsBackendContext
     }
 
+    func bridgeAppleSignInToSupabase(identityToken: String?, nonce: String?) async -> SupabaseAuthBridgeOutcome {
+        let configuration = backendRuntimeConfiguration.supabaseConfiguration
+        guard configuration.canUseAppleAuthBridge else {
+            let message = configuration.canUseSupabase
+                ? "Supabase Auth連携は設定で無効です。"
+                : "Supabase URLまたはpublishable keyが未設定です。"
+            supabaseAuthSessionStore.record(
+                status: configuration.canUseSupabase ? .disabled : .missingConfiguration,
+                error: message
+            )
+            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+        }
+
+        guard let identityToken,
+              !identityToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let message = "Apple identityTokenを取得できなかったため、Supabase Auth連携をスキップしました。"
+            supabaseAuthSessionStore.record(status: .failed, error: message)
+            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+        }
+
+        supabaseAuthSessionStore.record(status: .signingIn)
+        let client = SupabaseAuthRESTClient(configuration: configuration)
+        do {
+            let session = try await client.signInWithAppleIdentityToken(
+                idToken: identityToken,
+                nonce: nonce
+            )
+            supabaseAuthSessionStore.saveSession(session)
+            await syncProfileAfterSupabaseAuthIfPossible(supabaseUserID: session.userID)
+            return SupabaseAuthBridgeOutcome(
+                didCreateSession: true,
+                message: "Supabase Auth連携が完了しました",
+                supabaseUserID: session.userID
+            )
+        } catch {
+            let message = Self.supabaseAuthGuidanceMessage(for: error)
+            supabaseAuthSessionStore.record(status: .failed, error: message)
+            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+        }
+    }
+
+    private func syncProfileAfterSupabaseAuthIfPossible(supabaseUserID: String) async {
+        guard let repository = profileRepo as? any ProfileRepository else { return }
+        let profile = getMyProfile()
+        guard let owner = ProfileOwnerIdentity(profile: profile),
+              owner.provider == LinkedAuthProvider.apple.rawValue else {
+            profileSyncDiagnosticsStore.record(
+                status: .skippedSignedOut,
+                error: "Appleログイン済みプロフィールが見つかりません",
+                userID: supabaseUserID
+            )
+            return
+        }
+
+        do {
+            _ = try await repository.upsertCurrentUserProfile(profile, owner: owner)
+        } catch {
+            let status: ProfileSyncStatus = (error as? SupabaseProfileError) == .supabaseAuthSessionMissing
+                ? .skippedSupabaseAuthMissing
+                : .failed
+            profileSyncDiagnosticsStore.record(
+                status: status,
+                error: Self.backendGuidanceMessage(for: error),
+                userID: supabaseUserID
+            )
+        }
+    }
+
     func runProfileSyncTest() async -> SettingsBackendContext {
         guard let repository = profileRepo as? any ProfileRepository else {
             profileSyncDiagnosticsStore.record(status: .failed, error: "ProfileRepository がSupabase同期に未対応です")
@@ -708,6 +807,14 @@ final class AppContainer {
                 profileSyncDiagnosticsStore.record(status: .synced, userID: owner.userID)
             }
         } catch {
+            if (error as? SupabaseProfileError) == .supabaseAuthSessionMissing {
+                profileSyncDiagnosticsStore.record(
+                    status: .skippedSupabaseAuthMissing,
+                    error: Self.backendGuidanceMessage(for: error),
+                    userID: owner.userID
+                )
+                return settingsBackendContext
+            }
             profileSyncDiagnosticsStore.record(
                 status: .failed,
                 error: Self.backendGuidanceMessage(for: error),
@@ -721,7 +828,7 @@ final class AppContainer {
         if case let SupabaseProfileError.invalidResponse(statusCode, message) = error {
             switch statusCode {
             case 401, 403:
-                return "HTTP \(statusCode): 認証/RLSで拒否されました。RLS policy、user_id、publishable key、profiles テーブル名を確認してください。\(String(message.prefix(160)))"
+                return "HTTP \(statusCode): Supabase Auth セッションがない、または auth.uid() と user_id が一致していない可能性があります。Supabase Auth連携とRLS policyを確認してください。\(String(message.prefix(160)))"
             case 404:
                 return "HTTP 404: profiles テーブルが見つかりません。schema.sql が適用済みか確認してください。\(String(message.prefix(160)))"
             default:
@@ -730,6 +837,30 @@ final class AppContainer {
         }
         if case let SupabaseProfileError.unavailable(status) = error {
             return "Supabase が利用できません: \(status.label)"
+        }
+        if case SupabaseProfileError.supabaseAuthSessionMissing = error {
+            return "ローカル保存済み / Supabase認証待ち"
+        }
+        return String(error.localizedDescription.prefix(180))
+    }
+
+    private static func supabaseAuthGuidanceMessage(for error: Error) -> String {
+        if case let SupabaseAuthBridgeError.invalidResponse(statusCode, message) = error {
+            switch statusCode {
+            case 400, 401, 403:
+                return "HTTP \(statusCode): Supabase AuthでApple tokenを確認できませんでした。SupabaseのApple Provider設定、Service ID/Bundle ID、nonce設定を確認してください。\(String(message.prefix(140)))"
+            default:
+                return "HTTP \(statusCode): Supabase Auth連携に失敗しました。\(String(message.prefix(140)))"
+            }
+        }
+        if case SupabaseAuthBridgeError.missingAppleIdentityToken = error {
+            return "Apple identityTokenを取得できませんでした。Appleログインをもう一度試してください。"
+        }
+        if case SupabaseAuthBridgeError.missingConfiguration = error {
+            return "Supabase URLまたはpublishable keyが未設定です。"
+        }
+        if case SupabaseAuthBridgeError.disabled = error {
+            return "Supabase Auth連携は設定で無効です。"
         }
         return String(error.localizedDescription.prefix(180))
     }
