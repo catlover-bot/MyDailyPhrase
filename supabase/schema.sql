@@ -30,6 +30,9 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+comment on table public.profiles is 'Build 35 profile sync target. The iOS client maps local display name, bio, avatar symbol, interest tags, and updated_at here. Diary answers are intentionally not synced.';
+comment on column public.profiles.user_id is 'Matches public.users.id. The client first upserts users by auth_provider/provider_user_id, then upserts this profile row.';
+
 create table if not exists public.follows (
   follower_user_id uuid not null references public.users(id) on delete cascade,
   followed_user_id uuid not null references public.users(id) on delete cascade,

@@ -1,6 +1,6 @@
 # Backend Plan
 
-Build 34 prepares the app to move local/mock social features toward Supabase without enabling unsafe public UGC.
+Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync.
 
 ## Current Runtime Policy
 
@@ -10,6 +10,7 @@ Build 34 prepares the app to move local/mock social features toward Supabase wit
 - Supabase is the first backend candidate, but `SUPABASE_BACKEND_ENABLED = NO` and empty config keep it disabled.
 - Missing backend config must never crash the app.
 - Admin can continue local QA when backend is disconnected.
+- StoreKit/IAP and Creator Pass entitlement are not connected to backend profile sync.
 
 ## Supabase Configuration
 
@@ -21,6 +22,38 @@ The app reads these optional Info.plist values:
 - `SUPABASE_SCHEMA_VERSION`
 
 The anon key is a public client key, but we still keep all backend values empty in committed Release config until the project is ready. Service role keys, OAuth secrets, and database passwords must never be committed.
+
+Local setup:
+
+1. Create a Supabase project.
+2. Open SQL Editor and run `supabase/schema.sql`.
+3. Put `SUPABASE_URL` and `SUPABASE_ANON_KEY` in a local xcconfig override or local build settings.
+4. Set `SUPABASE_BACKEND_ENABLED = YES` only for a backend test build.
+5. Never commit `service_role`, database password, OAuth client secrets, or private JWT signing secrets.
+
+Production note: the current iOS client uses the public anon key only. Before broad production rollout, replace the draft RLS comments with a server-authoritative Supabase Auth / Edge Function policy so users cannot spoof ownership.
+
+## Build 35 Profile Sync
+
+The first real Supabase-backed feature is profile sync. When Supabase is configured and the user has linked Apple login, profile saves are written locally first and then upserted to Supabase in the background.
+
+Mapped fields:
+
+- `user_id`
+- `display_name`
+- `bio`
+- `avatar_symbol`
+- `interest_tags`
+- `updated_at`
+
+If the user is signed out, the app does not attempt backend profile writes. If Supabase is unavailable or a request fails, the local profile remains saved and diagnostics record the error.
+
+Current limitations:
+
+- Diary answers are not synced.
+- Follow/DM/community data still uses local fallback.
+- Public feed/comments/ranking remain disabled.
+- Profile sync depends on safe Supabase policies being installed before production use.
 
 ## Schema
 
@@ -78,6 +111,9 @@ Settings > Admin shows Backend diagnostics for the allowlisted owner:
 - Supabase project host
 - anon key configured or not
 - schema version
+- profile sync status
+- last profile sync time
+- last backend error
 - local fallback state
 - public feed/comment/ranking disabled state
 - DM policy

@@ -137,6 +137,7 @@ final class ProfileViewModel: ObservableObject {
     @Published private(set) var profileBioSavedValue: String = ""
     @Published private(set) var avatarSymbolSavedValue: String = "🌱"
     @Published private(set) var interestTagsSavedValue: [String] = []
+    @Published private(set) var profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback
 
     struct OnboardingNotificationPlan: Equatable, Sendable {
         var isEnabled: Bool
@@ -223,6 +224,8 @@ final class ProfileViewModel: ObservableObject {
     private let appDefaults: UserDefaults
     private let userNotificationCenter: UNUserNotificationCenter
     private let notificationCenter: NotificationCenter
+    private let loadProfileSyncDiagnostics: @Sendable () -> ProfileSyncDiagnostics
+    private let syncProfileToBackend: (@Sendable (UserProfile) async -> ProfileSyncDiagnostics)?
     private let profileRecoveryMarkerKey = "MyDailyPhrase.profile.recoveredAt.v1"
     private let profileCorruptStoreKey = "MyDailyPhrase.profile.corrupt.v1"
     private var linkedAuthUserIdRaw: String? = nil
@@ -248,7 +251,9 @@ final class ProfileViewModel: ObservableObject {
         isLoginBypassEnabled: Bool = false,
         appDefaults: UserDefaults = .standard,
         userNotificationCenter: UNUserNotificationCenter = .current(),
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        loadProfileSyncDiagnostics: @escaping @Sendable () -> ProfileSyncDiagnostics = { .localFallback },
+        syncProfileToBackend: (@Sendable (UserProfile) async -> ProfileSyncDiagnostics)? = nil
     ) {
         self.get = get
         self.update = update
@@ -270,6 +275,8 @@ final class ProfileViewModel: ObservableObject {
         self.appDefaults = appDefaults
         self.userNotificationCenter = userNotificationCenter
         self.notificationCenter = notificationCenter
+        self.loadProfileSyncDiagnostics = loadProfileSyncDiagnostics
+        self.syncProfileToBackend = syncProfileToBackend
 
         configureNotificationPreferenceBindings()
         configureExternalObservers()
@@ -356,7 +363,10 @@ final class ProfileViewModel: ObservableObject {
     // MARK: - Load / Save
 
     func load() {
-        applyProfile(get())
+        let profile = get()
+        applyProfile(profile)
+        refreshProfileSyncDiagnostics()
+        syncLinkedProfileIfPossible(profile)
         reloadReferralState()
         loadNotificationPreferencesFromDefaults()
         refreshPushNotificationAuthorizationStatus()
@@ -372,11 +382,35 @@ final class ProfileViewModel: ObservableObject {
             interestTags: normalizedInterestTagsPreview
         )
         applyProfile(p)
+        refreshProfileSyncDiagnostics()
+        syncLinkedProfileIfPossible(p)
 
         if shouldExplainNormalization {
             lastMessage = "表示名を整形して保存しました: \(p.displayName)"
         } else {
             lastMessage = "プロフィールを保存しました"
+        }
+    }
+
+    func refreshProfileSyncDiagnostics() {
+        profileSyncDiagnostics = loadProfileSyncDiagnostics()
+    }
+
+    private func syncLinkedProfileIfPossible(_ profile: UserProfile) {
+        guard hasLinkedAuth, let syncProfileToBackend else { return }
+        Task { @MainActor in
+            profileSyncDiagnostics = ProfileSyncDiagnostics(
+                status: .syncing,
+                lastErrorMessage: profileSyncDiagnostics.lastErrorMessage,
+                lastSyncAt: profileSyncDiagnostics.lastSyncAt,
+                lastAttemptAt: Date(),
+                lastSyncedUserID: profileSyncDiagnostics.lastSyncedUserID
+            )
+            let diagnostics = await syncProfileToBackend(profile)
+            profileSyncDiagnostics = diagnostics
+            if diagnostics.status == .failed {
+                lastMessage = "プロフィール同期に失敗しました。ローカル変更は保存済みです。"
+            }
         }
     }
 
@@ -402,6 +436,49 @@ final class ProfileViewModel: ObservableObject {
 
     var hasLinkedAuth: Bool {
         linkedAuthProvider != nil
+    }
+
+    var shouldShowProfileSyncStatusCard: Bool {
+        hasLinkedAuth && profileSyncDiagnostics.status != .localFallback
+    }
+
+    var profileSyncStatusText: String {
+        switch profileSyncDiagnostics.status {
+        case .localFallback:
+            return "ローカル保存"
+        case .skippedSignedOut:
+            return "未ログインのため未同期"
+        case .idle:
+            return "同期待ち"
+        case .syncing:
+            return "同期中"
+        case .synced:
+            return "同期済み"
+        case .failed:
+            return "同期エラー"
+        }
+    }
+
+    var profileSyncDetailText: String {
+        switch profileSyncDiagnostics.status {
+        case .synced:
+            let at = profileSyncDiagnostics.lastSyncAt.map(formattedAuditDate) ?? "時刻不明"
+            return "Supabase プロフィールと同期しました（\(at)）。"
+        case .failed:
+            return "同期に失敗しました。ローカルのプロフィール変更は保存されています。"
+        case .syncing:
+            return "プロフィールをSupabaseへ反映しています。"
+        case .idle:
+            return "次回保存時にSupabaseへ反映します。"
+        case .skippedSignedOut:
+            return "ログインするとプロフィール同期を試せます。"
+        case .localFallback:
+            return "バックエンド未設定のため、この端末に保存しています。"
+        }
+    }
+
+    var profileSyncLastErrorText: String? {
+        profileSyncDiagnostics.lastErrorMessage
     }
 
     var requiresInitialOnboarding: Bool {

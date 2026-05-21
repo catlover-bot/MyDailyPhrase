@@ -15,6 +15,7 @@ final class AppContainer {
 
     // ✅ AppGroup UserDefaults を一箇所で確定（保険で standard fallback）
     private let appGroupDefaults: UserDefaults
+    private let profileSyncDiagnosticsStore: SupabaseProfileSyncDiagnosticsStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -77,6 +78,12 @@ final class AppContainer {
     let backendRuntimeConfiguration: BackendRuntimeConfiguration
     private lazy var authRuntimeConfiguration: ExternalAuthRuntimeConfiguration = ExternalAuthRuntimeConfiguration.load()
 
+    var settingsBackendContext: SettingsBackendContext {
+        backendRuntimeConfiguration.diagnostics(
+            profileSyncDiagnostics: profileSyncDiagnosticsStore.load()
+        )
+    }
+
     init(appGroupID: String = AppContainer.preferredAppGroupID) {
         Self.debugLaunchLog("[Launch] AppContainer init start")
         Self.migrateLegacyAppGroupDataIfNeeded(
@@ -89,6 +96,7 @@ final class AppContainer {
         self.appGroupDefaults = resolvedDefaults
         self.launchConfiguration = AppLaunchRuntimeConfiguration.load()
         self.backendRuntimeConfiguration = BackendRuntimeConfiguration.load()
+        self.profileSyncDiagnosticsStore = SupabaseProfileSyncDiagnosticsStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -104,7 +112,17 @@ final class AppContainer {
         self.toggleFavorite = ToggleFavoriteUseCase(entryRepo: entryRepo)
 
         // Profile / events repos
-        self.profileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
+        let localProfileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
+        if backendRuntimeConfiguration.supabaseConfiguration.canUseSupabase {
+            self.profileRepo = SupabaseProfileRepository(
+                configuration: backendRuntimeConfiguration.supabaseConfiguration,
+                fallback: localProfileRepo,
+                diagnosticsStore: profileSyncDiagnosticsStore
+            )
+        } else {
+            profileSyncDiagnosticsStore.record(status: .localFallback)
+            self.profileRepo = localProfileRepo
+        }
         self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
@@ -179,7 +197,7 @@ final class AppContainer {
             "[Launch] AppContainer init end",
             "safeMode=\(launchConfiguration.safeModeEnabled)",
             "auth=\(launchConfiguration.effectiveAuthEnabled)",
-            "backend=\(backendRuntimeConfiguration.diagnostics.statusText)"
+            "backend=\(settingsBackendContext.statusText)"
         )
     }
 
@@ -514,6 +532,26 @@ final class AppContainer {
     }
 
     func makeProfileViewModel() -> ProfileViewModel {
+        let profileRepository = profileRepo
+        let syncDiagnosticsStore = profileSyncDiagnosticsStore
+        let loadProfileSyncDiagnostics: @Sendable () -> ProfileSyncDiagnostics = {
+            syncDiagnosticsStore.load()
+        }
+        let syncProfileToBackend: @Sendable (UserProfile) async -> ProfileSyncDiagnostics = { profile in
+            guard let repository = profileRepository as? any ProfileRepository else {
+                return syncDiagnosticsStore.load()
+            }
+            guard let owner = ProfileOwnerIdentity(profile: profile) else {
+                return ProfileSyncDiagnostics(status: .skippedSignedOut)
+            }
+            do {
+                _ = try await repository.upsertCurrentUserProfile(profile, owner: owner)
+            } catch {
+                // Repository records a safe diagnostic and keeps the local profile.
+            }
+            return repository.profileSyncDiagnostics()
+        }
+
         guard launchConfiguration.effectiveAuthEnabled else {
             return ProfileViewModel(
                 get: getMyProfile,
@@ -532,7 +570,9 @@ final class AppContainer {
                 isOAuthCallbackSchemeRegistered: false,
                 allowsManualExternalAuthTokenInput: false,
                 isLoginBypassEnabled: false,
-                appDefaults: appGroupDefaults
+                appDefaults: appGroupDefaults,
+                loadProfileSyncDiagnostics: loadProfileSyncDiagnostics,
+                syncProfileToBackend: syncProfileToBackend
             )
         }
 
@@ -618,7 +658,9 @@ final class AppContainer {
             isOAuthCallbackSchemeRegistered: callbackSchemeRegistered,
             allowsManualExternalAuthTokenInput: allowManualTokenInput,
             isLoginBypassEnabled: Self.boolEnv("UITEST_BYPASS_LOGIN"),
-            appDefaults: appGroupDefaults
+            appDefaults: appGroupDefaults,
+            loadProfileSyncDiagnostics: loadProfileSyncDiagnostics,
+            syncProfileToBackend: syncProfileToBackend
         )
     }
 

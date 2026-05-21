@@ -87,6 +87,18 @@ Social connection behavior is still local/mock, but the domain now has backend-r
 
 Build 34 adds a Supabase plan and schema while keeping local fallback active. If Supabase config is empty, diagnostics show `disabled` / `localFallback` and the app continues to launch safely.
 
+Build 35 adds Supabase profile sync as the first backend-backed feature. Signed-in profile edits are saved locally first, then synced to the `profiles` table when Supabase is configured. If sync fails, local profile changes are preserved and the admin Backend診断 shows the profile sync status and last backend error.
+
+Still local/fallback in Build 35:
+
+- Follow graph
+- Blocks/reports
+- Community membership
+- DM threads/messages
+- Invite/share state
+
+Public feed/comments/ranking remain disabled.
+
 ## Sharing
 
 Sharing is designed to feel social without unsafe public posting:

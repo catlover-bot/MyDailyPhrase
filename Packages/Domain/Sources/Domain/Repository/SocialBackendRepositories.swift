@@ -5,6 +5,77 @@ public enum SocialBackendMode: String, Codable, CaseIterable, Sendable {
     case supabase
 }
 
+public enum ProfileSyncStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case skippedSignedOut
+    case idle
+    case syncing
+    case synced
+    case failed
+}
+
+public struct ProfileOwnerIdentity: Codable, Equatable, Sendable {
+    public var userID: String
+    public var provider: String
+    public var providerUserID: String
+    public var email: String?
+
+    public init(
+        userID: String,
+        provider: String,
+        providerUserID: String,
+        email: String? = nil
+    ) {
+        self.userID = userID.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.provider = provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        self.providerUserID = providerUserID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = email?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.email = (trimmedEmail?.isEmpty == false) ? trimmedEmail : nil
+    }
+
+    public var isUsable: Bool {
+        !userID.isEmpty && !provider.isEmpty && !providerUserID.isEmpty
+    }
+
+    public init?(profile: UserProfile, email: String? = nil) {
+        guard let provider = profile.linkedAuthProvider,
+              let providerUserID = profile.linkedAuthUserId else {
+            return nil
+        }
+        self.init(
+            userID: profile.userId,
+            provider: provider,
+            providerUserID: providerUserID,
+            email: email
+        )
+        guard isUsable else { return nil }
+    }
+}
+
+public struct ProfileSyncDiagnostics: Codable, Equatable, Sendable {
+    public var status: ProfileSyncStatus
+    public var lastErrorMessage: String?
+    public var lastSyncAt: Date?
+    public var lastAttemptAt: Date?
+    public var lastSyncedUserID: String?
+
+    public init(
+        status: ProfileSyncStatus = .localFallback,
+        lastErrorMessage: String? = nil,
+        lastSyncAt: Date? = nil,
+        lastAttemptAt: Date? = nil,
+        lastSyncedUserID: String? = nil
+    ) {
+        self.status = status
+        self.lastErrorMessage = lastErrorMessage
+        self.lastSyncAt = lastSyncAt
+        self.lastAttemptAt = lastAttemptAt
+        self.lastSyncedUserID = lastSyncedUserID
+    }
+
+    public static let localFallback = ProfileSyncDiagnostics()
+}
+
 public enum SocialReportTargetKind: String, Codable, CaseIterable, Sendable {
     case user
     case community
@@ -66,7 +137,65 @@ public struct SocialReport: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-public protocol ProfileRepository: UserProfileRepository {}
+public protocol ProfileRepository: UserProfileRepository {
+    var mode: SocialBackendMode { get }
+    var isBackendEnabled: Bool { get }
+
+    func profileSyncDiagnostics() -> ProfileSyncDiagnostics
+    func fetchCurrentUserProfile(owner: ProfileOwnerIdentity) async throws -> UserProfile?
+    func upsertCurrentUserProfile(_ profile: UserProfile, owner: ProfileOwnerIdentity) async throws -> UserProfile
+    func updateDisplayName(_ displayName: String, owner: ProfileOwnerIdentity) async throws -> UserProfile
+    func updateBio(_ bio: String?, owner: ProfileOwnerIdentity) async throws -> UserProfile
+    func updateAvatarSymbol(_ avatarSymbol: String?, owner: ProfileOwnerIdentity) async throws -> UserProfile
+    func updateInterestTags(_ interestTags: [String], owner: ProfileOwnerIdentity) async throws -> UserProfile
+}
+
+public extension ProfileRepository {
+    var mode: SocialBackendMode { .localFallback }
+    var isBackendEnabled: Bool { false }
+
+    func profileSyncDiagnostics() -> ProfileSyncDiagnostics {
+        .localFallback
+    }
+
+    func fetchCurrentUserProfile(owner: ProfileOwnerIdentity) async throws -> UserProfile? {
+        guard owner.isUsable else { return nil }
+        return getMyProfile()
+    }
+
+    func upsertCurrentUserProfile(_ profile: UserProfile, owner: ProfileOwnerIdentity) async throws -> UserProfile {
+        saveMyProfile(profile)
+        return profile
+    }
+
+    func updateDisplayName(_ displayName: String, owner: ProfileOwnerIdentity) async throws -> UserProfile {
+        mutateMyProfile(
+            { $0.displayName = displayName },
+            makeIfMissing: { UserProfile(userId: owner.userID, displayName: displayName) }
+        )
+    }
+
+    func updateBio(_ bio: String?, owner: ProfileOwnerIdentity) async throws -> UserProfile {
+        mutateMyProfile(
+            { $0.profileBio = bio },
+            makeIfMissing: { UserProfile(userId: owner.userID, displayName: "Me", profileBio: bio) }
+        )
+    }
+
+    func updateAvatarSymbol(_ avatarSymbol: String?, owner: ProfileOwnerIdentity) async throws -> UserProfile {
+        mutateMyProfile(
+            { $0.avatarSymbol = avatarSymbol },
+            makeIfMissing: { UserProfile(userId: owner.userID, displayName: "Me", avatarSymbol: avatarSymbol) }
+        )
+    }
+
+    func updateInterestTags(_ interestTags: [String], owner: ProfileOwnerIdentity) async throws -> UserProfile {
+        mutateMyProfile(
+            { $0.interestTags = interestTags },
+            makeIfMissing: { UserProfile(userId: owner.userID, displayName: "Me", interestTags: interestTags) }
+        )
+    }
+}
 
 public protocol CommunityRepository: CommunityTemplateRepository {}
 

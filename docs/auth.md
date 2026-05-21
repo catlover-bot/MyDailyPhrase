@@ -18,6 +18,7 @@
 - ゲストモードでは日記・ガチャ・見た目確認を試せますが、管理者機能や DM 試作機能は使えません。
 - Release では root `AuthGate` を強制せず、Profile / Settings / みんな のアカウント導線から手動で Apple ログインを確認できます。
 - プロフィールには表示名、ひとこと、アイコン、興味タグをローカル保存できます。
+- Build 35 では Supabase が構成されている場合に限り、Apple ログイン済みプロフィールの表示名・自己紹介・アイコン・興味タグを `profiles` テーブルへ同期します。失敗時もローカル保存は維持します。
 
 ## 起動安定化フラグ
 
@@ -44,7 +45,7 @@ Profile には初回ログイン後のセットアップカードを表示し、
 ## 注意
 
 - OAuth secret や client secret はリポジトリに置いていません。
-- Supabase の service role key や DB password もリポジトリに置きません。Build 34 では backend config が空なら safe に disabled となり、local fallback で起動します。
+- Supabase の service role key や DB password もリポジトリに置きません。backend config が空なら safe に disabled となり、local fallback で起動します。
 - Google の実運用ログインを有効にする場合は、開始 URL・callback scheme・サーバー検証の設定確認が必要です。
 - 既存の StoreKit / Creator Pass 判定はそのまま維持し、認証だけでは課金状態を変更しません。
 - 保存済み認証情報が壊れていた場合は安全に破棄し、クラッシュせずに signed out / ローカル起動へ戻します。

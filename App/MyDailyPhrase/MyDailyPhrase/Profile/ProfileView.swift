@@ -164,6 +164,10 @@ struct ProfileView: View {
 
                 accountConnectionCard
 
+                if vm.shouldShowProfileSyncStatusCard {
+                    profileSyncStatusCard
+                }
+
                 if vm.shouldShowProfileSetupCard {
                     profileSetupCard
                 }
@@ -534,6 +538,33 @@ struct ProfileView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var profileSyncStatusCard: some View {
+        AppSectionCard(
+            title: "プロフィール同期",
+            subtitle: "ログイン済みプロフィールは、Supabase設定がある場合だけ同期を試します。失敗してもこの端末の変更は残ります。"
+        ) {
+            HStack(spacing: 10) {
+                Image(systemName: vm.profileSyncDiagnostics.status == .synced ? "checkmark.icloud.fill" : "icloud")
+                    .foregroundStyle(vm.profileSyncDiagnostics.status == .failed ? Color.orange : Color.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(vm.profileSyncStatusText)
+                        .font(.subheadline.weight(.semibold))
+                    Text(vm.profileSyncDetailText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if let error = vm.profileSyncLastErrorText {
+                Text(error)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
