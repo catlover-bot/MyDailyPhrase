@@ -22,6 +22,8 @@ public enum SupabaseBackendStatus: String, Codable, Equatable, Sendable {
 }
 
 public struct SupabaseBackendConfiguration: Equatable, Sendable {
+    public static let profilesTableName = "profiles"
+
     public let isEnabledConfigured: Bool
     public let projectURL: URL?
     public let isProjectURLValid: Bool
@@ -72,6 +74,28 @@ public struct SupabaseBackendConfiguration: Equatable, Sendable {
         status == .configured
     }
 
+    public var keyTypeLabel: String {
+        guard let anonKey else { return "none" }
+        if anonKey.hasPrefix("sb_publishable_") {
+            return "publishable"
+        }
+        if anonKey.split(separator: ".").count == 3 {
+            return "jwt_anon_legacy"
+        }
+        return "unknown"
+    }
+
+    public var keySafePrefix: String {
+        guard let anonKey else { return "none" }
+        if anonKey.hasPrefix("sb_publishable_") {
+            return "sb_publishable"
+        }
+        if anonKey.split(separator: ".").count == 3 {
+            return "jwt"
+        }
+        return String(anonKey.prefix(6))
+    }
+
     private static func isValidProjectURL(_ url: URL?) -> Bool {
         guard let url,
               let scheme = url.scheme?.lowercased(),
@@ -101,10 +125,17 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let lastBackendError: String?
     public let lastProfileSyncAt: Date?
     public let backendModeLabel: String
+    public let keyType: String
+    public let keySafePrefix: String
+    public let profilesTableName: String
+    public let connectionStatus: BackendConnectionStatus
+    public let lastConnectionError: String?
+    public let lastConnectionCheckedAt: Date?
 
     public init(
         configuration: SupabaseBackendConfiguration,
-        profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback
+        profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
+        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback
     ) {
         self.provider = "supabase"
         self.status = configuration.status
@@ -121,14 +152,22 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         self.profileSyncStatus = profileSyncDiagnostics.status
         self.lastBackendError = profileSyncDiagnostics.lastErrorMessage
         self.lastProfileSyncAt = profileSyncDiagnostics.lastSyncAt
+        self.keyType = configuration.keyTypeLabel
+        self.keySafePrefix = configuration.keySafePrefix
+        self.profilesTableName = SupabaseBackendConfiguration.profilesTableName
+        self.connectionStatus = connectionDiagnostics.status
+        self.lastConnectionError = connectionDiagnostics.lastErrorMessage
+        self.lastConnectionCheckedAt = connectionDiagnostics.lastCheckedAt
         if activeMode == .localFallback {
             self.backendModeLabel = "localFallback"
         } else {
-            switch profileSyncDiagnostics.status {
-            case .synced:
+            switch (connectionDiagnostics.status, profileSyncDiagnostics.status) {
+            case (.reachable, _):
                 self.backendModeLabel = "supabaseAvailable"
-            case .failed:
+            case (.failed, _), (_, .failed):
                 self.backendModeLabel = "supabaseError"
+            case (_, .synced):
+                self.backendModeLabel = "supabaseAvailable"
             default:
                 self.backendModeLabel = "supabaseConfigured"
             }
@@ -143,7 +182,13 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "backendMode: \(backendModeLabel)",
             "projectURLHost: \(projectURLHost ?? "未設定")",
             "anonKeyConfigured: \(anonKeyConfigured)",
+            "keyType: \(keyType)",
+            "keyPrefix: \(keySafePrefix)",
             "schemaVersion: \(schemaVersion)",
+            "profilesTableName: \(profilesTableName)",
+            "connectionStatus: \(connectionStatus.rawValue)",
+            "lastConnectionError: \(lastConnectionError ?? "なし")",
+            "lastConnectionCheckedAt: \(lastConnectionCheckedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
             "localFallbackEnabled: \(localFallbackEnabled)",
             "publicFeedEnabled: \(publicFeedEnabled)",
             "commentsEnabled: \(commentsEnabled)",
@@ -154,6 +199,155 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "lastBackendError: \(lastBackendError ?? "なし")",
             "lastProfileSyncAt: \(lastProfileSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")"
         ].joined(separator: "\n")
+    }
+}
+
+public final class SupabaseConnectionDiagnosticsStore: @unchecked Sendable {
+    public static let storeKey = "MyDailyPhrase.backend.connection.diagnostics.v1"
+
+    private let defaults: UserDefaults
+    private let lock = NSRecursiveLock()
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    public init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    public func load() -> BackendConnectionDiagnostics {
+        withLock {
+            guard let data = defaults.data(forKey: Self.storeKey),
+                  let diagnostics = try? decoder.decode(BackendConnectionDiagnostics.self, from: data) else {
+                return .localFallback
+            }
+            return diagnostics
+        }
+    }
+
+    public func save(_ diagnostics: BackendConnectionDiagnostics) {
+        withLock {
+            guard let data = try? encoder.encode(diagnostics) else { return }
+            defaults.set(data, forKey: Self.storeKey)
+        }
+    }
+
+    public func record(
+        status: BackendConnectionStatus,
+        error: String? = nil,
+        date: Date = Date()
+    ) {
+        save(
+            BackendConnectionDiagnostics(
+                status: status,
+                lastErrorMessage: error,
+                lastCheckedAt: date
+            )
+        )
+    }
+
+    private func withLock<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+}
+
+public struct SupabaseConnectionTestResult: Equatable, Sendable {
+    public let diagnostics: BackendConnectionDiagnostics
+    public let tableName: String
+    public let host: String?
+    public let keyType: String
+
+    public init(
+        diagnostics: BackendConnectionDiagnostics,
+        tableName: String,
+        host: String?,
+        keyType: String
+    ) {
+        self.diagnostics = diagnostics
+        self.tableName = tableName
+        self.host = host
+        self.keyType = keyType
+    }
+}
+
+public struct SupabaseBackendConnectionTester: Sendable {
+    private let configuration: SupabaseBackendConfiguration
+    private let httpClient: SupabaseHTTPClient
+
+    public init(
+        configuration: SupabaseBackendConfiguration,
+        httpClient: SupabaseHTTPClient = URLSessionSupabaseHTTPClient()
+    ) {
+        self.configuration = configuration
+        self.httpClient = httpClient
+    }
+
+    public func testProfilesTableRead() async -> SupabaseConnectionTestResult {
+        let tableName = SupabaseBackendConfiguration.profilesTableName
+        guard configuration.isEnabledConfigured else {
+            return result(status: .localFallback, error: "Supabase は無効です")
+        }
+        guard configuration.status != .invalidConfiguration else {
+            return result(status: .failed, error: "Supabase URL が不正です。https://...supabase.co を確認してください。")
+        }
+        guard configuration.canUseSupabase,
+              let projectURL = configuration.projectURL,
+              let anonKey = configuration.anonKey,
+              var components = URLComponents(url: projectURL, resolvingAgainstBaseURL: false) else {
+            return result(status: .failed, error: "Supabase URL または publishable key が未設定です。")
+        }
+
+        components.path = "/rest/v1/\(tableName)"
+        components.queryItems = [
+            URLQueryItem(name: "select", value: "user_id"),
+            URLQueryItem(name: "limit", value: "1")
+        ]
+        guard let url = components.url else {
+            return result(status: .failed, error: "Supabase URL を組み立てられませんでした。")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        do {
+            let (data, response) = try await httpClient.data(for: request)
+            if (200..<300).contains(response.statusCode) {
+                return result(status: .reachable, error: nil)
+            }
+            return result(status: .failed, error: readableError(statusCode: response.statusCode, data: data, tableName: tableName))
+        } catch {
+            return result(status: .failed, error: "ネットワーク接続に失敗しました: \(error.localizedDescription)")
+        }
+    }
+
+    private func result(status: BackendConnectionStatus, error: String?) -> SupabaseConnectionTestResult {
+        SupabaseConnectionTestResult(
+            diagnostics: BackendConnectionDiagnostics(
+                status: status,
+                lastErrorMessage: error,
+                lastCheckedAt: Date()
+            ),
+            tableName: SupabaseBackendConfiguration.profilesTableName,
+            host: configuration.projectURL?.host,
+            keyType: configuration.keyTypeLabel
+        )
+    }
+
+    private func readableError(statusCode: Int, data: Data, tableName: String) -> String {
+        let body = String(data: data, encoding: .utf8) ?? HTTPURLResponse.localizedString(forStatusCode: statusCode)
+        let clippedBody = String(body.prefix(220))
+        switch statusCode {
+        case 401, 403:
+            return "HTTP \(statusCode): 認証またはRLSで拒否されました。RLS policy、user_id、publishable key、テーブル名 \(tableName) を確認してください。\(clippedBody)"
+        case 404:
+            return "HTTP 404: テーブル \(tableName) が見つかりません。schema.sql の適用とテーブル名を確認してください。\(clippedBody)"
+        default:
+            return "HTTP \(statusCode): Supabase接続テストに失敗しました。\(clippedBody)"
+        }
     }
 }
 

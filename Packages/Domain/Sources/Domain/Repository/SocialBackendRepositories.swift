@@ -8,9 +8,19 @@ public enum SocialBackendMode: String, Codable, CaseIterable, Sendable {
 public enum ProfileSyncStatus: String, Codable, CaseIterable, Sendable {
     case localFallback
     case skippedSignedOut
+    case configured
+    case connecting
     case idle
     case syncing
     case synced
+    case failed
+}
+
+public enum BackendConnectionStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case configured
+    case connecting
+    case reachable
     case failed
 }
 
@@ -74,6 +84,24 @@ public struct ProfileSyncDiagnostics: Codable, Equatable, Sendable {
     }
 
     public static let localFallback = ProfileSyncDiagnostics()
+}
+
+public struct BackendConnectionDiagnostics: Codable, Equatable, Sendable {
+    public var status: BackendConnectionStatus
+    public var lastErrorMessage: String?
+    public var lastCheckedAt: Date?
+
+    public init(
+        status: BackendConnectionStatus = .localFallback,
+        lastErrorMessage: String? = nil,
+        lastCheckedAt: Date? = nil
+    ) {
+        self.status = status
+        self.lastErrorMessage = lastErrorMessage
+        self.lastCheckedAt = lastCheckedAt
+    }
+
+    public static let localFallback = BackendConnectionDiagnostics()
 }
 
 public enum SocialReportTargetKind: String, Codable, CaseIterable, Sendable {

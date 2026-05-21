@@ -89,6 +89,13 @@ Build 34 adds a Supabase plan and schema while keeping local fallback active. If
 
 Build 35 adds Supabase profile sync as the first backend-backed feature. Signed-in profile edits are saved locally first, then synced to the `profiles` table when Supabase is configured. If sync fails, local profile changes are preserved and the admin Backend診断 shows the profile sync status and last backend error.
 
+Build 36 configures the Supabase project URL for profile sync testing and adds admin-only manual checks:
+
+- `Supabase接続テスト`: confirms the configured host/key can reach the `profiles` table path without writing data.
+- `プロフィール同期テスト`: requires a linked Apple user, upserts the current local profile, and fetches it back when possible.
+
+Diagnostics show key presence, key type `publishable`, and safe prefix `sb_publishable`; they do not show the full key.
+
 Still local/fallback in Build 35:
 
 - Follow graph

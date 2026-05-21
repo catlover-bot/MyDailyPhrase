@@ -8,6 +8,8 @@ struct SettingsView: View {
     @EnvironmentObject private var iap: IAPStore
     private let authContext: SettingsAuthContext
     private let backendContext: SettingsBackendContext
+    private let runBackendConnectionTest: (() async -> SettingsBackendContext)?
+    private let runProfileSyncTest: (() async -> SettingsBackendContext)?
     private let authTestEntryEnabled: Bool
     private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     private let onManualAuthStateChanged: (AppAuthViewModel) -> Void
@@ -21,6 +23,9 @@ struct SettingsView: View {
     @State private var diagnosticsCopyFeedback: String? = nil
     @State private var authDiagnosticsCopyFeedback: String? = nil
     @State private var backendDiagnosticsCopyFeedback: String? = nil
+    @State private var backendContextOverride: SettingsBackendContext? = nil
+    @State private var isRunningBackendConnectionTest = false
+    @State private var isRunningProfileSyncTest = false
     @State private var manualAuthViewModel: AppAuthViewModel? = nil
     @State private var manualAuthContext: SettingsAuthContext? = nil
     @State private var artworkCopyFeedback: String? = nil
@@ -35,6 +40,8 @@ struct SettingsView: View {
         viewModel: SettingsViewModel,
         authContext: SettingsAuthContext,
         backendContext: SettingsBackendContext = .localFallback,
+        runBackendConnectionTest: (() async -> SettingsBackendContext)? = nil,
+        runProfileSyncTest: (() async -> SettingsBackendContext)? = nil,
         authTestEntryEnabled: Bool = false,
         makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
         onManualAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in },
@@ -44,6 +51,8 @@ struct SettingsView: View {
         _vm = StateObject(wrappedValue: viewModel)
         self.authContext = authContext
         self.backendContext = backendContext
+        self.runBackendConnectionTest = runBackendConnectionTest
+        self.runProfileSyncTest = runProfileSyncTest
         self.authTestEntryEnabled = authTestEntryEnabled
         self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
         self.onManualAuthStateChanged = onManualAuthStateChanged
@@ -53,6 +62,10 @@ struct SettingsView: View {
 
     private var displayedAuthContext: SettingsAuthContext {
         manualAuthContext ?? authContext
+    }
+
+    private var displayedBackendContext: SettingsBackendContext {
+        backendContextOverride ?? backendContext
     }
 
     var body: some View {
@@ -801,41 +814,65 @@ struct SettingsView: View {
     }
 
     private var backendDiagnosticsSection: some View {
-        AppSectionCard(
+        let context = displayedBackendContext
+        return AppSectionCard(
             title: "Backend診断",
             subtitle: "Supabase 接続準備と local fallback の状態を確認します。未設定でも起動やQAは継続できます。"
         ) {
             VStack(alignment: .leading, spacing: 10) {
-                diagnosticRow(title: "Provider", value: backendContext.provider)
-                diagnosticRow(title: "Status", value: backendContext.statusText)
-                diagnosticRow(title: "Backend mode", value: backendContext.backendModeText)
-                diagnosticRow(title: "Active mode", value: backendContext.activeModeText)
-                diagnosticRow(title: "Project host", value: backendContext.projectURLHost)
-                diagnosticRow(title: "Anon key configured", value: backendContext.anonKeyConfigured ? "true" : "false")
-                diagnosticRow(title: "Schema version", value: backendContext.schemaVersion)
-                diagnosticRow(title: "Profile sync", value: backendContext.profileSyncStatus)
-                diagnosticRow(title: "Last sync", value: backendContext.lastProfileSyncAt)
-                diagnosticRow(title: "Last backend error", value: backendContext.lastBackendError)
-                diagnosticRow(title: "Local fallback", value: backendContext.localFallbackEnabled ? "enabled" : "disabled")
-                diagnosticRow(title: "Public feed", value: backendContext.publicFeedEnabled ? "enabled" : "disabled")
-                diagnosticRow(title: "Comments", value: backendContext.commentsEnabled ? "enabled" : "disabled")
-                diagnosticRow(title: "Ranking", value: backendContext.rankingEnabled ? "enabled" : "disabled")
-                diagnosticRow(title: "DM policy", value: backendContext.dmPolicy)
-                diagnosticRow(title: "Secrets in repo", value: backendContext.secretsInRepository ? "true" : "false")
+                diagnosticRow(title: "Provider", value: context.provider)
+                diagnosticRow(title: "Status", value: context.statusText)
+                diagnosticRow(title: "Backend mode", value: context.backendModeText)
+                diagnosticRow(title: "Active mode", value: context.activeModeText)
+                diagnosticRow(title: "Project host", value: context.projectURLHost)
+                diagnosticRow(title: "Anon key configured", value: context.anonKeyConfigured ? "true" : "false")
+                diagnosticRow(title: "Key type", value: context.keyType)
+                diagnosticRow(title: "Key prefix", value: context.keySafePrefix)
+                diagnosticRow(title: "Schema version", value: context.schemaVersion)
+                diagnosticRow(title: "Profile table", value: context.profilesTableName)
+                diagnosticRow(title: "Connection status", value: context.connectionStatus)
+                diagnosticRow(title: "Last connection check", value: context.lastConnectionCheckedAt)
+                diagnosticRow(title: "Last connection error", value: context.lastConnectionError)
+                diagnosticRow(title: "Profile sync", value: context.profileSyncStatus)
+                diagnosticRow(title: "Last sync", value: context.lastProfileSyncAt)
+                diagnosticRow(title: "Last backend error", value: context.lastBackendError)
+                diagnosticRow(title: "Local fallback", value: context.localFallbackEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Public feed", value: context.publicFeedEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Comments", value: context.commentsEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "Ranking", value: context.rankingEnabled ? "enabled" : "disabled")
+                diagnosticRow(title: "DM policy", value: context.dmPolicy)
+                diagnosticRow(title: "Secrets in repo", value: context.secretsInRepository ? "true" : "false")
 
                 Text("管理者は Supabase 未接続でも、既存のローカルQA、ガチャアート確認、購入診断、コミュニティ作成テストを継続できます。DMは相互フォロー限定、日記本文は自動共有されません。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Text("401/403 の場合は RLS policy、user_id、publishable key、profiles テーブル名を確認してください。service_role はアプリに入れません。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Button {
-                    UIPasteboard.general.string = backendContext.diagnosticsReportText
+                    UIPasteboard.general.string = context.diagnosticsReportText
                     backendDiagnosticsCopyFeedback = "Backend診断をコピーしました"
                 } label: {
                     Label("Backend診断をコピー", systemImage: "doc.on.doc")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        backendTestButton
+                        profileSyncTestButton
+                    }
+
+                    VStack(spacing: 10) {
+                        backendTestButton
+                        profileSyncTestButton
+                    }
+                }
 
                 if let backendDiagnosticsCopyFeedback {
                     Text(backendDiagnosticsCopyFeedback)
@@ -844,6 +881,54 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var backendTestButton: some View {
+        Button {
+            guard let runBackendConnectionTest else { return }
+            isRunningBackendConnectionTest = true
+            backendDiagnosticsCopyFeedback = nil
+            Task {
+                let updated = await runBackendConnectionTest()
+                await MainActor.run {
+                    backendContextOverride = updated
+                    backendDiagnosticsCopyFeedback = "Supabase接続テストを実行しました"
+                    isRunningBackendConnectionTest = false
+                }
+            }
+        } label: {
+            Label(
+                isRunningBackendConnectionTest ? "接続確認中..." : "Supabase接続テスト",
+                systemImage: "antenna.radiowaves.left.and.right"
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(runBackendConnectionTest == nil || isRunningBackendConnectionTest)
+    }
+
+    private var profileSyncTestButton: some View {
+        Button {
+            guard let runProfileSyncTest else { return }
+            isRunningProfileSyncTest = true
+            backendDiagnosticsCopyFeedback = nil
+            Task {
+                let updated = await runProfileSyncTest()
+                await MainActor.run {
+                    backendContextOverride = updated
+                    backendDiagnosticsCopyFeedback = "プロフィール同期テストを実行しました"
+                    isRunningProfileSyncTest = false
+                }
+            }
+        } label: {
+            Label(
+                isRunningProfileSyncTest ? "同期確認中..." : "プロフィール同期テスト",
+                systemImage: "person.crop.circle.badge.checkmark"
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .disabled(runProfileSyncTest == nil || isRunningProfileSyncTest)
     }
 
     private var versionBadge: some View {

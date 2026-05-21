@@ -16,6 +16,7 @@ final class AppContainer {
     // ✅ AppGroup UserDefaults を一箇所で確定（保険で standard fallback）
     private let appGroupDefaults: UserDefaults
     private let profileSyncDiagnosticsStore: SupabaseProfileSyncDiagnosticsStore
+    private let backendConnectionDiagnosticsStore: SupabaseConnectionDiagnosticsStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -80,7 +81,8 @@ final class AppContainer {
 
     var settingsBackendContext: SettingsBackendContext {
         backendRuntimeConfiguration.diagnostics(
-            profileSyncDiagnostics: profileSyncDiagnosticsStore.load()
+            profileSyncDiagnostics: profileSyncDiagnosticsStore.load(),
+            connectionDiagnostics: backendConnectionDiagnosticsStore.load()
         )
     }
 
@@ -97,6 +99,7 @@ final class AppContainer {
         self.launchConfiguration = AppLaunchRuntimeConfiguration.load()
         self.backendRuntimeConfiguration = BackendRuntimeConfiguration.load()
         self.profileSyncDiagnosticsStore = SupabaseProfileSyncDiagnosticsStore(defaults: resolvedDefaults)
+        self.backendConnectionDiagnosticsStore = SupabaseConnectionDiagnosticsStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -114,12 +117,19 @@ final class AppContainer {
         // Profile / events repos
         let localProfileRepo = AppGroupUserProfileRepository(appGroupID: appGroupID)
         if backendRuntimeConfiguration.supabaseConfiguration.canUseSupabase {
+            if backendConnectionDiagnosticsStore.load().status == .localFallback {
+                backendConnectionDiagnosticsStore.record(status: .configured)
+            }
+            if profileSyncDiagnosticsStore.load().status == .localFallback {
+                profileSyncDiagnosticsStore.record(status: .configured)
+            }
             self.profileRepo = SupabaseProfileRepository(
                 configuration: backendRuntimeConfiguration.supabaseConfiguration,
                 fallback: localProfileRepo,
                 diagnosticsStore: profileSyncDiagnosticsStore
             )
         } else {
+            backendConnectionDiagnosticsStore.record(status: .localFallback)
             profileSyncDiagnosticsStore.record(status: .localFallback)
             self.profileRepo = localProfileRepo
         }
@@ -662,6 +672,66 @@ final class AppContainer {
             loadProfileSyncDiagnostics: loadProfileSyncDiagnostics,
             syncProfileToBackend: syncProfileToBackend
         )
+    }
+
+    func runBackendConnectionTest() async -> SettingsBackendContext {
+        backendConnectionDiagnosticsStore.record(status: .connecting)
+        let tester = SupabaseBackendConnectionTester(
+            configuration: backendRuntimeConfiguration.supabaseConfiguration
+        )
+        let result = await tester.testProfilesTableRead()
+        backendConnectionDiagnosticsStore.save(result.diagnostics)
+        return settingsBackendContext
+    }
+
+    func runProfileSyncTest() async -> SettingsBackendContext {
+        guard let repository = profileRepo as? any ProfileRepository else {
+            profileSyncDiagnosticsStore.record(status: .failed, error: "ProfileRepository がSupabase同期に未対応です")
+            return settingsBackendContext
+        }
+
+        let profile = getMyProfile()
+        guard let owner = ProfileOwnerIdentity(profile: profile),
+              owner.provider == LinkedAuthProvider.apple.rawValue else {
+            profileSyncDiagnosticsStore.record(
+                status: .skippedSignedOut,
+                error: "Sign in with Apple 連携済みユーザーで実行してください"
+            )
+            return settingsBackendContext
+        }
+
+        profileSyncDiagnosticsStore.record(status: .syncing, userID: owner.userID)
+        do {
+            let synced = try await repository.upsertCurrentUserProfile(profile, owner: owner)
+            _ = try? await repository.fetchCurrentUserProfile(owner: owner)
+            if synced.userId == profile.userId {
+                profileSyncDiagnosticsStore.record(status: .synced, userID: owner.userID)
+            }
+        } catch {
+            profileSyncDiagnosticsStore.record(
+                status: .failed,
+                error: Self.backendGuidanceMessage(for: error),
+                userID: owner.userID
+            )
+        }
+        return settingsBackendContext
+    }
+
+    private static func backendGuidanceMessage(for error: Error) -> String {
+        if case let SupabaseProfileError.invalidResponse(statusCode, message) = error {
+            switch statusCode {
+            case 401, 403:
+                return "HTTP \(statusCode): 認証/RLSで拒否されました。RLS policy、user_id、publishable key、profiles テーブル名を確認してください。\(String(message.prefix(160)))"
+            case 404:
+                return "HTTP 404: profiles テーブルが見つかりません。schema.sql が適用済みか確認してください。\(String(message.prefix(160)))"
+            default:
+                return "HTTP \(statusCode): プロフィール同期に失敗しました。\(String(message.prefix(160)))"
+            }
+        }
+        if case let SupabaseProfileError.unavailable(status) = error {
+            return "Supabase が利用できません: \(status.label)"
+        }
+        return String(error.localizedDescription.prefix(180))
     }
 
     private func makeAuthRepository(

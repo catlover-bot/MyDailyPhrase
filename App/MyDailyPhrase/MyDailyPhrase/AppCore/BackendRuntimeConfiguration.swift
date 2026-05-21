@@ -5,11 +5,15 @@ import Domain
 struct BackendRuntimeConfiguration: Sendable {
     let supabaseConfiguration: SupabaseBackendConfiguration
 
-    func diagnostics(profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback) -> SettingsBackendContext {
+    func diagnostics(
+        profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
+        connectionDiagnostics: BackendConnectionDiagnostics = .localFallback
+    ) -> SettingsBackendContext {
         SettingsBackendContext(
             snapshot: BackendDiagnosticsSnapshot(
                 configuration: supabaseConfiguration,
-                profileSyncDiagnostics: profileSyncDiagnostics
+                profileSyncDiagnostics: profileSyncDiagnostics,
+                connectionDiagnostics: connectionDiagnostics
             )
         )
     }
@@ -33,7 +37,13 @@ struct SettingsBackendContext: Sendable {
     let activeModeText: String
     let projectURLHost: String
     let anonKeyConfigured: Bool
+    let keyType: String
+    let keySafePrefix: String
     let schemaVersion: String
+    let profilesTableName: String
+    let connectionStatus: String
+    let lastConnectionError: String
+    let lastConnectionCheckedAt: String
     let localFallbackEnabled: Bool
     let publicFeedEnabled: Bool
     let commentsEnabled: Bool
@@ -52,7 +62,13 @@ struct SettingsBackendContext: Sendable {
         self.activeModeText = snapshot.activeMode.rawValue
         self.projectURLHost = snapshot.projectURLHost ?? "未設定"
         self.anonKeyConfigured = snapshot.anonKeyConfigured
+        self.keyType = snapshot.keyType
+        self.keySafePrefix = snapshot.keySafePrefix
         self.schemaVersion = snapshot.schemaVersion
+        self.profilesTableName = snapshot.profilesTableName
+        self.connectionStatus = snapshot.connectionStatus.rawValue
+        self.lastConnectionError = snapshot.lastConnectionError ?? "なし"
+        self.lastConnectionCheckedAt = snapshot.lastConnectionCheckedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
         self.localFallbackEnabled = snapshot.localFallbackEnabled
         self.publicFeedEnabled = snapshot.publicFeedEnabled
         self.commentsEnabled = snapshot.commentsEnabled

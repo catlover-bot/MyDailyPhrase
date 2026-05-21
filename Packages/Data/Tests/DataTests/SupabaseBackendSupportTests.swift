@@ -54,10 +54,11 @@ struct SupabaseBackendSupportTests {
 
     @Test("configured Supabase reports supabase active mode")
     func configuredSupabaseReportsActiveMode() {
+        let publishableKey = "sb_publishable_lq54eBvrXa7v6ouvvIsgKQ_Z6xwnTUq"
         let config = SupabaseBackendConfiguration.make(
             isEnabledConfigured: true,
             projectURLString: "https://example.supabase.co",
-            anonKey: "public-anon-key"
+            anonKey: publishableKey
         )
         let snapshot = BackendDiagnosticsSnapshot(configuration: config)
 
@@ -66,7 +67,53 @@ struct SupabaseBackendSupportTests {
         #expect(snapshot.backendModeLabel == "supabaseConfigured")
         #expect(snapshot.projectURLHost == "example.supabase.co")
         #expect(snapshot.anonKeyConfigured)
+        #expect(snapshot.keyType == "publishable")
+        #expect(snapshot.keySafePrefix == "sb_publishable")
         #expect(snapshot.secretsInRepository == false)
+        #expect(snapshot.reportText.contains(publishableKey) == false)
+    }
+
+    @Test("profile table mapping matches schema")
+    func profileTableMappingMatchesSchema() {
+        #expect(SupabaseBackendConfiguration.profilesTableName == "profiles")
+    }
+
+    @Test("connection test reaches profiles table without exposing key")
+    func connectionTestUsesProfilesTable() async {
+        let key = "sb_publishable_lq54eBvrXa7v6ouvvIsgKQ_Z6xwnTUq"
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: key
+        )
+        let httpClient = MockSupabaseHTTPClient(statusCode: 200, body: "[]")
+        let tester = SupabaseBackendConnectionTester(configuration: config, httpClient: httpClient)
+
+        let result = await tester.testProfilesTableRead()
+
+        #expect(result.diagnostics.status == .reachable)
+        #expect(result.tableName == "profiles")
+        #expect(result.keyType == "publishable")
+        #expect(httpClient.lastRequest?.url?.absoluteString.contains("/rest/v1/profiles") == true)
+        #expect(httpClient.lastRequest?.value(forHTTPHeaderField: "apikey") == key)
+        #expect(BackendDiagnosticsSnapshot(configuration: config, connectionDiagnostics: result.diagnostics).reportText.contains(key) == false)
+    }
+
+    @Test("connection test gives RLS guidance for permission errors")
+    func connectionTestRLSGuidance() async {
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test"
+        )
+        let httpClient = MockSupabaseHTTPClient(statusCode: 403, body: "{\"message\":\"permission denied\"}")
+        let tester = SupabaseBackendConnectionTester(configuration: config, httpClient: httpClient)
+
+        let result = await tester.testProfilesTableRead()
+
+        #expect(result.diagnostics.status == .failed)
+        #expect(result.diagnostics.lastErrorMessage?.contains("RLS") == true)
+        #expect(result.diagnostics.lastErrorMessage?.contains("profiles") == true)
     }
 
     @Test("profile payload maps app fields to Supabase profile columns")
@@ -238,5 +285,27 @@ private final class MockSupabaseProfileClient: SupabaseProfileClient, @unchecked
             interestTags: payload.interestTags,
             updatedAt: payload.updatedAt
         )
+    }
+}
+
+private final class MockSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Sendable {
+    let statusCode: Int
+    let body: String
+    private(set) var lastRequest: URLRequest?
+
+    init(statusCode: Int, body: String) {
+        self.statusCode = statusCode
+        self.body = body
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        lastRequest = request
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.supabase.co")!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(body.utf8), response)
     }
 }

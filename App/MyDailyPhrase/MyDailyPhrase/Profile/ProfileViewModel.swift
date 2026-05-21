@@ -448,6 +448,10 @@ final class ProfileViewModel: ObservableObject {
             return "ローカル保存"
         case .skippedSignedOut:
             return "未ログインのため未同期"
+        case .configured:
+            return "同期準備済み"
+        case .connecting:
+            return "接続確認中"
         case .idle:
             return "同期待ち"
         case .syncing:
@@ -466,6 +470,10 @@ final class ProfileViewModel: ObservableObject {
             return "Supabase プロフィールと同期しました（\(at)）。"
         case .failed:
             return "同期に失敗しました。ローカルのプロフィール変更は保存されています。"
+        case .configured:
+            return "Supabase設定があります。プロフィール保存時に同期を試します。"
+        case .connecting:
+            return "Supabase接続を確認しています。"
         case .syncing:
             return "プロフィールをSupabaseへ反映しています。"
         case .idle:
