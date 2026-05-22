@@ -67,12 +67,13 @@ DM remains mutual-follow only.
 
 ## Communities
 
-Community participation remains free. Creator/community creation is gated:
+Community participation remains free. Community and membership state can sync to Supabase when a Supabase Auth session exists. Local/mock behavior remains the fallback for signed-out users, local preset ids, missing backend config, or backend failures.
 
 - Creator Pass users can create/customize communities.
 - Admin can preview creation through admin capability.
 - Normal unpaid users can join but cannot create premium communities.
 - Admin bypass does not modify StoreKit entitlement.
+- Supabase `communities.creator_user_id` and `memberships.user_id` use Supabase Auth user id, not Apple providerUserId.
 - The `みんな` tab is organized around joined communities, recommended communities, recommended users, following, mutual follows, DM, and invite/share.
 
 ## Repository Boundary
@@ -113,9 +114,16 @@ Build 39 adds Supabase-backed social connection sync:
 - Apple `providerUserId` is not used for remote social rows; it remains for Apple identity and admin allowlist only.
 - Supabase Auth user id is used for `follower_user_id`, `blocker_user_id`, and `reporter_user_id`.
 
-Still local/fallback in Build 39:
+Build 40 adds Supabase-backed community and membership sync:
 
-- Community membership
+- Joined/recommended communities can refresh from Supabase when signed in.
+- Join/leave writes to `memberships` as the authenticated Supabase user.
+- Creator/admin community creation writes to `communities` when the app-side Creator Pass/admin check allows it.
+- Backend failures preserve local state and show detailed errors only in admin Backend診断.
+- StoreKit Creator Pass entitlement remains separate from admin bypass and backend sync.
+
+Still local/fallback in Build 40:
+
 - DM threads/messages
 - Invite/share state
 

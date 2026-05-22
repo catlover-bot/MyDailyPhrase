@@ -197,13 +197,23 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let socialFollowerCount: Int?
     public let socialBlockedCount: Int?
     public let lastSocialReportedTargetID: String?
+    public let communitySyncStatus: CommunitySyncStatus
+    public let membershipSyncStatus: CommunitySyncStatus
+    public let lastCommunitySyncError: String?
+    public let lastCommunitySyncAt: Date?
+    public let joinedCommunityCount: Int?
+    public let recommendedCommunityCount: Int?
+    public let communityMemberCount: Int?
+    public let lastCommunityID: String?
+    public let communityRepositoryMode: SocialBackendMode
 
     public init(
         configuration: SupabaseBackendConfiguration,
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
         authDiagnostics: SupabaseAuthDiagnostics = .disabled,
-        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback
+        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback,
+        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback
     ) {
         self.provider = "supabase"
         self.status = configuration.status
@@ -239,15 +249,24 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         self.socialFollowerCount = socialSyncDiagnostics.followerCount
         self.socialBlockedCount = socialSyncDiagnostics.blockedCount
         self.lastSocialReportedTargetID = socialSyncDiagnostics.lastReportedTargetID
+        self.communitySyncStatus = communitySyncDiagnostics.status
+        self.membershipSyncStatus = communitySyncDiagnostics.membershipStatus
+        self.lastCommunitySyncError = communitySyncDiagnostics.lastErrorMessage
+        self.lastCommunitySyncAt = communitySyncDiagnostics.lastSyncAt
+        self.joinedCommunityCount = communitySyncDiagnostics.joinedCommunityCount
+        self.recommendedCommunityCount = communitySyncDiagnostics.recommendedCommunityCount
+        self.communityMemberCount = communitySyncDiagnostics.memberCount
+        self.lastCommunityID = communitySyncDiagnostics.lastCommunityID
+        self.communityRepositoryMode = configuration.canUseSupabase ? .supabase : .localFallback
         if activeMode == .localFallback {
             self.backendModeLabel = "localFallback"
         } else {
-            switch (connectionDiagnostics.status, profileSyncDiagnostics.status) {
-            case (.reachable, _):
+            switch (connectionDiagnostics.status, profileSyncDiagnostics.status, communitySyncDiagnostics.status) {
+            case (.reachable, _, _):
                 self.backendModeLabel = "supabaseAvailable"
-            case (.failed, _), (_, .failed):
+            case (.failed, _, _), (_, .failed, _), (_, _, .failed):
                 self.backendModeLabel = "supabaseError"
-            case (_, .synced):
+            case (_, .synced, _), (_, _, .synced):
                 self.backendModeLabel = "supabaseAvailable"
             default:
                 self.backendModeLabel = "supabaseConfigured"
@@ -291,7 +310,16 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "socialFollowingCount: \(socialFollowingCount.map(String.init) ?? "なし")",
             "socialFollowerCount: \(socialFollowerCount.map(String.init) ?? "なし")",
             "socialBlockedCount: \(socialBlockedCount.map(String.init) ?? "なし")",
-            "lastSocialReportedTargetID: \(lastSocialReportedTargetID ?? "なし")"
+            "lastSocialReportedTargetID: \(lastSocialReportedTargetID ?? "なし")",
+            "communitySyncStatus: \(communitySyncStatus.rawValue)",
+            "membershipSyncStatus: \(membershipSyncStatus.rawValue)",
+            "communityRepositoryMode: \(communityRepositoryMode.rawValue)",
+            "lastCommunitySyncError: \(lastCommunitySyncError ?? "なし")",
+            "lastCommunitySyncAt: \(lastCommunitySyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "joinedCommunityCount: \(joinedCommunityCount.map(String.init) ?? "なし")",
+            "recommendedCommunityCount: \(recommendedCommunityCount.map(String.init) ?? "なし")",
+            "communityMemberCount: \(communityMemberCount.map(String.init) ?? "なし")",
+            "lastCommunityID: \(lastCommunityID ?? "なし")"
         ].joined(separator: "\n")
     }
 }

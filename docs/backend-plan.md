@@ -1,6 +1,6 @@
 # Backend Plan
 
-Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync. Build 38 bridges manual Sign in with Apple to Supabase Auth so profile writes can satisfy RLS. Build 39 adds Supabase-backed follow, block, and report sync while keeping local fallback and public feed/comment/ranking disabled.
+Build 34 prepared the app to move local/mock social features toward Supabase without enabling unsafe public UGC. Build 35 adds the first backend-backed path: profile sync. Build 38 bridges manual Sign in with Apple to Supabase Auth so profile writes can satisfy RLS. Build 39 adds Supabase-backed follow, block, and report sync. Build 40 adds Supabase-backed community and membership sync while keeping local fallback and public feed/comment/ranking disabled.
 
 ## Current Runtime Policy
 
@@ -11,7 +11,7 @@ Build 34 prepared the app to move local/mock social features toward Supabase wit
 - Missing backend config must never crash the app.
 - Local Apple sign-in alone is not enough for RLS writes. Profile sync requires a Supabase Auth session.
 - Admin can continue local QA when backend is disconnected.
-- StoreKit/IAP and Creator Pass entitlement are not connected to backend profile or social sync.
+- StoreKit/IAP and Creator Pass entitlement are not connected to backend profile, social, or community sync.
 
 ## Supabase Configuration
 
@@ -73,7 +73,7 @@ If the user is signed out, the app does not attempt backend profile writes. If S
 Current limitations:
 
 - Diary answers are not synced.
-- DM/community membership still uses local fallback.
+- DM still uses local fallback.
 - Public feed/comments/ranking remain disabled.
 - Profile sync depends on safe Supabase policies being installed before production use.
 
@@ -133,6 +133,56 @@ Common social sync errors:
 - Local preview target: the target profile is a seeded/local card and cannot be written to Supabase.
 - `404`: check that `follows`, `blocks`, and `reports` tables exist and schema was applied.
 
+## Build 40 Community and Membership Sync
+
+Communities and memberships now use Supabase when all of these are true:
+
+- Supabase backend config is valid.
+- A Supabase Auth session exists.
+- The community id is a Supabase UUID.
+
+Remote identity mapping:
+
+- Apple `providerUserId`: still used only for Apple identity and admin allowlist checks.
+- Supabase Auth user id: used as `communities.creator_user_id` and `memberships.user_id`.
+- Local `AuthUser.id`: remains for local diary/gacha/community fallback data.
+
+Synced tables:
+
+- `communities`: authenticated users can read active invite-style community cards; creators can insert and update their own communities.
+- `memberships`: authenticated users can join/leave as themselves, and the app can fetch membership state/counts.
+
+Creator/admin behavior:
+
+- Normal unpaid users can join communities.
+- Normal unpaid users cannot create Creator/paid communities.
+- Creator Pass users can create communities.
+- Admin can create/test communities through admin capability, but this does not change StoreKit Creator Pass entitlement.
+- The iOS app does not use `service_role`; creator/admin checks remain app-side plus RLS ownership.
+
+Fallback behavior:
+
+- Signed-out users see login CTA for backend community actions.
+- Local preset/community ids are not written to Supabase and continue local fallback.
+- Backend failures preserve local state and show details only in Backend診断.
+
+Community sync statuses:
+
+- `localFallback`: Supabase is disabled, incomplete, or the community is local-only.
+- `skippedSignedOut`: no Supabase Auth session is available, so remote community sync is skipped.
+- `configured`: Supabase is configured but community sync has not completed.
+- `syncing`: refresh/join/leave/create/update is running.
+- `synced`: remote community or membership sync succeeded.
+- `failed`: remote sync failed and local state was preserved.
+
+Still not enabled:
+
+- public feed
+- public comments
+- ranking
+- remote DM messages
+- diary answer sync
+
 Common errors:
 
 - `401` / `403` / `42501`: check that Supabase Auth is configured, the Apple provider accepted the identity token, `profiles.user_id = auth.uid()`, and the client is using the publishable key plus Supabase access token, not `service_role`.
@@ -164,6 +214,7 @@ Not included/enabled yet:
 - public feed
 - public comments
 - ranking
+- remote DM messages
 - diary answer sync
 
 ## Repository Boundary
@@ -210,6 +261,12 @@ Settings > Admin shows Backend diagnostics for the allowlisted owner:
 - social following/follower/blocked counts
 - last social sync time
 - last social sync error
+- community sync status
+- membership sync status
+- joined/recommended community counts
+- community repository mode
+- last community sync time
+- last community sync error
 - last backend error
 - local fallback state
 - public feed/comment/ranking disabled state
@@ -221,5 +278,6 @@ Manual admin tests:
 
 - `Supabase接続テスト`: reads the `profiles` table metadata path without writing data.
 - `プロフィール同期テスト`: requires a Sign in with Apple linked profile and Supabase Auth session, upserts the local profile, then fetches it back when possible.
+- `コミュニティ同期テスト`: requires a Sign in with Apple linked profile and Supabase Auth session, refreshes backend communities and membership state.
 
 If `プロフィール同期テスト` shows `ローカル保存済み / Supabase認証待ち`, run the manual Apple login again and confirm Supabase Auth status becomes `signedIn`.

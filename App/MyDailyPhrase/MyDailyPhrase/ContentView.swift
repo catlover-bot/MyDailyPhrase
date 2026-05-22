@@ -50,6 +50,7 @@ struct ContentView: View {
     let settingsBackendContextProvider: () -> SettingsBackendContext
     let runBackendConnectionTest: (() async -> SettingsBackendContext)?
     let runProfileSyncTest: (() async -> SettingsBackendContext)?
+    let runCommunitySyncTest: (() async -> SettingsBackendContext)?
     let authTestEntryEnabled: Bool
     let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     let onAuthSignOut: () -> Void
@@ -107,6 +108,7 @@ struct ContentView: View {
                     backendContext: settingsBackendContextProvider(),
                     runBackendConnectionTest: runBackendConnectionTest,
                     runProfileSyncTest: runProfileSyncTest,
+                    runCommunitySyncTest: runCommunitySyncTest,
                     authTestEntryEnabled: authTestEntryEnabled,
                     makeAuthPreviewViewModel: makeAuthPreviewViewModel,
                     onManualAuthStateChanged: handleManualAuthStateChanged,

@@ -22,6 +22,7 @@
 - Build 36 では TestFlight確認用に Supabase project URL と publishable key を構成しています。`SUPABASE_ANON_KEY` という設定名ですが、値は `sb_publishable` で始まるpublishable keyを使います。
 - Build 38 では手動の Apple ログイン完了後、Apple `identityToken` を Supabase Auth に渡して Supabase セッションを作成します。local Apple session だけでは `auth.uid()` が作られないため、RLS付きの `users` / `profiles` 書き込みには Supabase Auth session が必要です。
 - Build 39 では follow / block / report の同期にも Supabase Auth user id を使います。Apple `providerUserId` は管理者allowlistやApple本人確認用に残し、Supabaseの `follows` / `blocks` / `reports` には書き込みません。
+- Build 40 では community / membership の同期にも Supabase Auth user id を使います。`communities.creator_user_id` と `memberships.user_id` は `auth.uid()` と一致する必要があります。
 
 ## 起動安定化フラグ
 
@@ -53,9 +54,9 @@ Supabase-backed social sync uses this identity split:
 
 - Apple `providerUserId`: stable Apple account identifier, used for admin allowlist and diagnostics.
 - Local `AuthUser.id`: local app identity used by existing local diary/gacha/social fallback data.
-- Supabase Auth user id: remote actor id used for `users.id`, `profiles.user_id`, `follows.follower_user_id`, `blocks.blocker_user_id`, and `reports.reporter_user_id`.
+- Supabase Auth user id: remote actor id used for `users.id`, `profiles.user_id`, `follows.follower_user_id`, `blocks.blocker_user_id`, `reports.reporter_user_id`, `communities.creator_user_id`, and `memberships.user_id`.
 
-If there is no Supabase Auth session, follow/block/report actions stay local and admin diagnostics record the fallback state. The app does not force login at launch and does not upload diary answers as part of social sync.
+If there is no Supabase Auth session, follow/block/report/community actions stay local and admin diagnostics record the fallback state. The app does not force login at launch and does not upload diary answers as part of social sync.
 
 ## 注意
 

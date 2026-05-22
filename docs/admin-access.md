@@ -70,4 +70,6 @@ Release では safe mode のまま、allowlist に一致した手動 Apple ロ�
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。
 - Backend 診断は管理者メニュー内にだけ表示します。Supabase 未設定でも `localFallback` としてローカル QA を継続できます。
+- コミュニティ同期テストは管理者だけが Backend 診断から実行できます。Supabase Auth session がある場合は `communities` / `memberships` を確認し、未接続時は local fallback のまま安全に戻ります。
+- 管理者のコミュニティ作成テストは `管理者権限で有効` と区別し、StoreKit Creator Pass entitlement は変更しません。
 - allowlist が空でもクラッシュせず、単に非管理者として扱います。

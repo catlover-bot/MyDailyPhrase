@@ -9,7 +9,8 @@ struct BackendRuntimeConfiguration: Sendable {
         profileSyncDiagnostics: ProfileSyncDiagnostics = .localFallback,
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
         authDiagnostics: SupabaseAuthDiagnostics = .disabled,
-        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback
+        socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback,
+        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback
     ) -> SettingsBackendContext {
         SettingsBackendContext(
             snapshot: BackendDiagnosticsSnapshot(
@@ -17,7 +18,8 @@ struct BackendRuntimeConfiguration: Sendable {
                 profileSyncDiagnostics: profileSyncDiagnostics,
                 connectionDiagnostics: connectionDiagnostics,
                 authDiagnostics: authDiagnostics,
-                socialSyncDiagnostics: socialSyncDiagnostics
+                socialSyncDiagnostics: socialSyncDiagnostics,
+                communitySyncDiagnostics: communitySyncDiagnostics
             )
         )
     }
@@ -72,6 +74,15 @@ struct SettingsBackendContext: Sendable {
     let socialFollowerCount: String
     let socialBlockedCount: String
     let lastSocialReportedTargetID: String
+    let communitySyncStatus: String
+    let membershipSyncStatus: String
+    let lastCommunitySyncError: String
+    let lastCommunitySyncAt: String
+    let joinedCommunityCount: String
+    let recommendedCommunityCount: String
+    let communityMemberCount: String
+    let lastCommunityID: String
+    let communityRepositoryMode: String
     let diagnosticsReportText: String
 
     init(snapshot: BackendDiagnosticsSnapshot) {
@@ -110,6 +121,15 @@ struct SettingsBackendContext: Sendable {
         self.socialFollowerCount = snapshot.socialFollowerCount.map(String.init) ?? "なし"
         self.socialBlockedCount = snapshot.socialBlockedCount.map(String.init) ?? "なし"
         self.lastSocialReportedTargetID = snapshot.lastSocialReportedTargetID ?? "なし"
+        self.communitySyncStatus = snapshot.communitySyncStatus.rawValue
+        self.membershipSyncStatus = snapshot.membershipSyncStatus.rawValue
+        self.lastCommunitySyncError = snapshot.lastCommunitySyncError ?? "なし"
+        self.lastCommunitySyncAt = snapshot.lastCommunitySyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.joinedCommunityCount = snapshot.joinedCommunityCount.map(String.init) ?? "なし"
+        self.recommendedCommunityCount = snapshot.recommendedCommunityCount.map(String.init) ?? "なし"
+        self.communityMemberCount = snapshot.communityMemberCount.map(String.init) ?? "なし"
+        self.lastCommunityID = snapshot.lastCommunityID ?? "なし"
+        self.communityRepositoryMode = snapshot.communityRepositoryMode.rawValue
         self.diagnosticsReportText = snapshot.reportText
     }
 

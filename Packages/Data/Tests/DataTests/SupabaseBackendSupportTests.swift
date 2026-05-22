@@ -356,13 +356,26 @@ struct SupabaseBackendSupportTests {
           }
         ]
         """
-        let httpClient = SequenceSupabaseHTTPClient(responses: [
-            (201, ""),
-            (200, followingBody),
-            (200, "[]"),
-            (200, "[]"),
-            (200, profileBody)
-        ])
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if request.httpMethod == "POST", path.contains("/follows") {
+                return (201, "")
+            }
+            if path.contains("/follows"), query.contains("followed_user_id=eq.") {
+                return (200, "[]")
+            }
+            if path.contains("/follows"), query.contains("follower_user_id=eq.") {
+                return (200, followingBody)
+            }
+            if path.contains("/blocks") {
+                return (200, "[]")
+            }
+            if path.contains("/profiles") {
+                return (200, profileBody)
+            }
+            return (200, "[]")
+        }
         let repository = makeSupabaseSocialRepository(
             httpClient: httpClient,
             authSession: SupabaseAuthSession(
@@ -375,14 +388,15 @@ struct SupabaseBackendSupportTests {
         let profile = UserProfile(userId: "local-user", displayName: "Me")
 
         let diagnostics = try await repository.repository.follow(targetUserID: targetID, for: profile)
-        let firstRequestBody = httpClient.requestBodies.first ?? nil
+        let followPost = httpClient.requests.first { $0.httpMethod == "POST" && ($0.url?.path.contains("/follows") == true) }
+        let firstRequestBody = followPost?.httpBody.flatMap { String(data: $0, encoding: .utf8) }
 
         #expect(diagnostics.status == .synced)
         #expect(diagnostics.followingCount == 1)
-        #expect(httpClient.requests.first?.url?.absoluteString.contains("/rest/v1/follows") == true)
+        #expect(followPost?.url?.absoluteString.contains("/rest/v1/follows") == true)
         #expect(firstRequestBody?.contains(authUserID) == true)
         #expect(firstRequestBody?.contains(targetID) == true)
-        #expect(httpClient.requests.first?.value(forHTTPHeaderField: "Authorization") == "Bearer access-token-secret")
+        #expect(followPost?.value(forHTTPHeaderField: "Authorization") == "Bearer access-token-secret")
         #expect(BackendDiagnosticsSnapshot(configuration: repository.config, socialSyncDiagnostics: diagnostics).reportText.contains("access-token-secret") == false)
     }
 
@@ -488,6 +502,229 @@ struct SupabaseBackendSupportTests {
         }
     }
 
+    @Test("Supabase community join uses Supabase auth user id")
+    func supabaseCommunityJoinUsesAuthUserID() async throws {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let communityID = "55555555-5555-4555-8555-555555555555"
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "POST", path.contains("/memberships") {
+                return (201, "")
+            }
+            if path.contains("/memberships") {
+                return (200, """
+                [
+                  { "community_id": "\(communityID)", "user_id": "\(authUserID)", "member_role": "member", "joined_at": "2026-05-23T00:00:00Z" }
+                ]
+                """)
+            }
+            if path.contains("/communities") {
+                return (200, """
+                [
+                  {
+                    "id": "\(communityID)",
+                    "creator_user_id": "\(authUserID)",
+                    "name": "同期テスト部屋",
+                    "description": "Supabase community",
+                    "category": "games",
+                    "emoji": "🎮",
+                    "visibility": "invite_only",
+                    "prompt_schedule": "daily",
+                    "prompt_policy": {
+                      "tone": "casual",
+                      "promptLength": "short",
+                      "privacyLevel": "safeToShare",
+                      "answerStyle": "onePhrase",
+                      "language": "ja"
+                    },
+                    "prompt_packs": [],
+                    "theme_decoration_id": null,
+                    "allowed_tags": ["games"],
+                    "blocked_words": [],
+                    "requires_creator_pass_to_create": true,
+                    "is_official_preset": false,
+                    "created_at": "2026-05-23T00:00:00Z"
+                  }
+                ]
+                """)
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseCommunityRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: "refresh-token-secret",
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let profile = UserProfile(userId: "local-user", displayName: "Me")
+
+        let diagnostics = try await repository.repository.joinCommunity(id: communityID, for: profile)
+        let membershipPost = httpClient.requests.first { $0.httpMethod == "POST" && ($0.url?.path.contains("/memberships") == true) }
+        let membershipBody = membershipPost?.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+
+        #expect(diagnostics.status == .synced)
+        #expect(diagnostics.membershipStatus == .synced)
+        #expect(diagnostics.joinedCommunityCount == 1)
+        #expect(membershipBody?.contains(authUserID) == true)
+        #expect(membershipBody?.contains(communityID) == true)
+        #expect(membershipPost?.value(forHTTPHeaderField: "Authorization") == "Bearer access-token-secret")
+        #expect(BackendDiagnosticsSnapshot(configuration: repository.config, communitySyncDiagnostics: diagnostics).reportText.contains("access-token-secret") == false)
+    }
+
+    @Test("Supabase community skips remote write without auth session")
+    func supabaseCommunityMissingAuthSkipsRemoteWrite() async {
+        let httpClient = RoutingSupabaseHTTPClient { _ in (200, "[]") }
+        let repository = makeSupabaseCommunityRepository(httpClient: httpClient, authSession: nil)
+
+        do {
+            _ = try await repository.repository.joinCommunity(
+                id: "55555555-5555-4555-8555-555555555555",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("join should wait for Supabase Auth")
+        } catch {
+            #expect(error as? SupabaseCommunityRepositoryError == .supabaseAuthSessionMissing)
+            #expect(httpClient.requests.isEmpty)
+            #expect(repository.repository.communitySyncDiagnostics().status == .skippedSignedOut)
+        }
+    }
+
+    @Test("Supabase community create uses auth user as creator")
+    func supabaseCommunityCreateUsesAuthUserAsCreator() async throws {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let communityID = "55555555-5555-4555-8555-555555555555"
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "POST", path.contains("/communities") {
+                return (201, "")
+            }
+            if request.httpMethod == "POST", path.contains("/memberships") {
+                return (201, "")
+            }
+            if path.contains("/memberships") {
+                return (200, """
+                [{ "community_id": "\(communityID)", "user_id": "\(authUserID)", "member_role": "member", "joined_at": "2026-05-23T00:00:00Z" }]
+                """)
+            }
+            if path.contains("/communities") {
+                return (200, "[]")
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseCommunityRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let community = CommunityTemplate(
+            id: communityID,
+            name: "作成テスト",
+            description: "Creator/admin community test",
+            category: .games,
+            emoji: "🎮",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000),
+            requiresCreatorPassToCreate: true
+        )
+
+        _ = try await repository.repository.createCommunity(
+            community,
+            creatorProfile: UserProfile(userId: "local-user", displayName: "Owner"),
+            canCreate: true
+        )
+        let communityPost = httpClient.requests.first { $0.httpMethod == "POST" && ($0.url?.path.contains("/communities") == true) }
+        let communityBody = communityPost?.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+
+        #expect(communityBody?.contains(#""creator_user_id":"\#(authUserID)""#) == true)
+        #expect(communityBody?.contains(#""id":"\#(communityID)""#) == true)
+        #expect(repository.fallback.community(id: communityID)?.isJoined == true)
+    }
+
+    @Test("Supabase community creation is blocked without create access")
+    func supabaseCommunityCreationRequiresAccess() async {
+        let repository = makeSupabaseCommunityRepository(
+            httpClient: RoutingSupabaseHTTPClient { _ in (200, "[]") },
+            authSession: SupabaseAuthSession(
+                userID: "22222222-2222-4222-8222-222222222222",
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        let community = CommunityTemplate(
+            id: "55555555-5555-4555-8555-555555555555",
+            name: "作成不可",
+            description: "No creator pass",
+            category: .games,
+            emoji: "🎮",
+            createdAt: Date(),
+            requiresCreatorPassToCreate: true
+        )
+
+        do {
+            _ = try await repository.repository.createCommunity(
+                community,
+                creatorProfile: UserProfile(userId: "local-user", displayName: "Me"),
+                canCreate: false
+            )
+            Issue.record("create should require Creator/Admin access")
+        } catch {
+            #expect(error as? SupabaseCommunityRepositoryError == .creationNotAllowed)
+            #expect(repository.repository.communitySyncDiagnostics().status == .failed)
+        }
+    }
+
+    @Test("Supabase community RLS errors become readable diagnostics")
+    func supabaseCommunityRLSFailureIsSafe() async {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let communityID = "55555555-5555-4555-8555-555555555555"
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            if request.httpMethod == "POST", request.url?.path.contains("/memberships") == true {
+                return (403, #"{"message":"new row violates row-level security policy"}"#)
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseCommunityRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+        repository.fallback.saveCommunity(
+            CommunityTemplate(
+                id: communityID,
+                name: "RLSテスト",
+                description: "Local state remains",
+                category: .games,
+                emoji: "🎮",
+                createdAt: Date()
+            )
+        )
+
+        do {
+            _ = try await repository.repository.joinCommunity(
+                id: communityID,
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("join should fail with RLS guidance")
+        } catch {
+            let diagnostics = repository.repository.communitySyncDiagnostics()
+            #expect(diagnostics.status == .failed)
+            #expect(diagnostics.lastErrorMessage?.contains("RLS") == true)
+            #expect(repository.fallback.community(id: communityID)?.isJoined == true)
+            #expect(BackendDiagnosticsSnapshot(configuration: repository.config, communitySyncDiagnostics: diagnostics).reportText.contains("access-token-secret") == false)
+        }
+    }
+
     private func makeSupabaseProfileRepository() -> (
         repository: SupabaseProfileRepository,
         fallback: AppGroupUserProfileRepository,
@@ -545,6 +782,32 @@ struct SupabaseBackendSupportTests {
             authSessionProvider: { authSession }
         )
         return (repository, config)
+    }
+
+    private func makeSupabaseCommunityRepository(
+        httpClient: SupabaseHTTPClient,
+        authSession: SupabaseAuthSession?
+    ) -> (
+        repository: SupabaseCommunityRepository,
+        fallback: AppGroupCommunityTemplateRepository,
+        config: SupabaseBackendConfiguration
+    ) {
+        let suiteName = "group.MyDailyPhrase.supabase.community.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test"
+        )
+        let fallback = AppGroupCommunityTemplateRepository(appGroupID: suiteName)
+        let repository = SupabaseCommunityRepository(
+            configuration: config,
+            fallback: fallback,
+            httpClient: httpClient,
+            diagnosticsStore: SupabaseCommunitySyncDiagnosticsStore(defaults: defaults),
+            authSessionProvider: { authSession }
+        )
+        return (repository, fallback, config)
     }
 }
 
@@ -636,6 +899,30 @@ private final class SequenceSupabaseHTTPClient: SupabaseHTTPClient, @unchecked S
             return response
         }
 
+        let httpResponse = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.supabase.co")!,
+            statusCode: response.0,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(response.1.utf8), httpResponse)
+    }
+}
+
+private final class RoutingSupabaseHTTPClient: SupabaseHTTPClient, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "RoutingSupabaseHTTPClient")
+    private let handler: @Sendable (URLRequest) -> (Int, String)
+    private(set) var requests: [URLRequest] = []
+
+    init(handler: @escaping @Sendable (URLRequest) -> (Int, String)) {
+        self.handler = handler
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let response = queue.sync { () -> (Int, String) in
+            requests.append(request)
+            return handler(request)
+        }
         let httpResponse = HTTPURLResponse(
             url: request.url ?? URL(string: "https://example.supabase.co")!,
             statusCode: response.0,

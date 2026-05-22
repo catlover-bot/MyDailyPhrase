@@ -26,6 +26,24 @@ public enum SocialSyncStatus: String, Codable, CaseIterable, Sendable {
     case failed
 }
 
+public enum CommunitySyncStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case skippedSignedOut
+    case configured
+    case syncing
+    case synced
+    case failed
+}
+
+public enum CommunityMembershipStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case notJoined
+    case member
+    case creator
+    case moderator
+    case admin
+}
+
 public enum BackendConnectionStatus: String, Codable, CaseIterable, Sendable {
     case localFallback
     case configured
@@ -145,6 +163,63 @@ public struct SocialSyncDiagnostics: Codable, Equatable, Sendable {
     }
 
     public static let localFallback = SocialSyncDiagnostics()
+}
+
+public struct CommunitySyncDiagnostics: Codable, Equatable, Sendable {
+    public var status: CommunitySyncStatus
+    public var membershipStatus: CommunitySyncStatus
+    public var lastErrorMessage: String?
+    public var lastSyncAt: Date?
+    public var lastAttemptAt: Date?
+    public var joinedCommunityCount: Int?
+    public var recommendedCommunityCount: Int?
+    public var memberCount: Int?
+    public var lastCommunityID: String?
+
+    public init(
+        status: CommunitySyncStatus = .localFallback,
+        membershipStatus: CommunitySyncStatus = .localFallback,
+        lastErrorMessage: String? = nil,
+        lastSyncAt: Date? = nil,
+        lastAttemptAt: Date? = nil,
+        joinedCommunityCount: Int? = nil,
+        recommendedCommunityCount: Int? = nil,
+        memberCount: Int? = nil,
+        lastCommunityID: String? = nil
+    ) {
+        self.status = status
+        self.membershipStatus = membershipStatus
+        self.lastErrorMessage = lastErrorMessage
+        self.lastSyncAt = lastSyncAt
+        self.lastAttemptAt = lastAttemptAt
+        self.joinedCommunityCount = joinedCommunityCount
+        self.recommendedCommunityCount = recommendedCommunityCount
+        self.memberCount = memberCount
+        self.lastCommunityID = lastCommunityID
+    }
+
+    public static let localFallback = CommunitySyncDiagnostics()
+}
+
+public struct CommunityMemberSummary: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { userID }
+    public var userID: String
+    public var role: CommunityMembershipStatus
+    public var joinedAt: Date?
+    public var displayName: String?
+
+    public init(
+        userID: String,
+        role: CommunityMembershipStatus,
+        joinedAt: Date? = nil,
+        displayName: String? = nil
+    ) {
+        self.userID = userID.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.role = role
+        self.joinedAt = joinedAt
+        let trimmedDisplayName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.displayName = (trimmedDisplayName?.isEmpty == false) ? trimmedDisplayName : nil
+    }
 }
 
 public enum SocialReportTargetKind: String, Codable, CaseIterable, Sendable {
@@ -268,7 +343,66 @@ public extension ProfileRepository {
     }
 }
 
-public protocol CommunityRepository: CommunityTemplateRepository {}
+public protocol CommunityRepository: CommunityTemplateRepository {
+    var mode: SocialBackendMode { get }
+    var isBackendEnabled: Bool { get }
+
+    func communitySyncDiagnostics() -> CommunitySyncDiagnostics
+    func refreshRemoteCommunities(for profile: UserProfile) async throws -> CommunitySyncDiagnostics
+    func fetchCommunityDetail(id: String, for profile: UserProfile) async throws -> CommunityTemplate?
+    func createCommunity(_ community: CommunityTemplate, creatorProfile: UserProfile, canCreate: Bool) async throws -> CommunityTemplate
+    func updateCommunity(_ community: CommunityTemplate, actorProfile: UserProfile, canManageAsAdmin: Bool) async throws -> CommunityTemplate
+    func joinCommunity(id: String, for profile: UserProfile) async throws -> CommunitySyncDiagnostics
+    func leaveCommunity(id: String, for profile: UserProfile) async throws -> CommunitySyncDiagnostics
+    func fetchMembers(communityID: String, for profile: UserProfile) async throws -> [CommunityMemberSummary]
+    func membershipStatus(communityID: String, for profile: UserProfile) async throws -> CommunityMembershipStatus
+}
+
+public extension CommunityRepository {
+    var mode: SocialBackendMode { .localFallback }
+    var isBackendEnabled: Bool { false }
+
+    func communitySyncDiagnostics() -> CommunitySyncDiagnostics {
+        .localFallback
+    }
+
+    func refreshRemoteCommunities(for profile: UserProfile) async throws -> CommunitySyncDiagnostics {
+        .localFallback
+    }
+
+    func fetchCommunityDetail(id: String, for profile: UserProfile) async throws -> CommunityTemplate? {
+        community(id: id)
+    }
+
+    func createCommunity(_ community: CommunityTemplate, creatorProfile: UserProfile, canCreate: Bool) async throws -> CommunityTemplate {
+        guard canCreate else { return community }
+        saveCommunity(community)
+        return community
+    }
+
+    func updateCommunity(_ community: CommunityTemplate, actorProfile: UserProfile, canManageAsAdmin: Bool) async throws -> CommunityTemplate {
+        saveCommunity(community)
+        return community
+    }
+
+    func joinCommunity(id: String, for profile: UserProfile) async throws -> CommunitySyncDiagnostics {
+        setJoined(true, communityId: id, joinedAt: Date())
+        return .localFallback
+    }
+
+    func leaveCommunity(id: String, for profile: UserProfile) async throws -> CommunitySyncDiagnostics {
+        setJoined(false, communityId: id, joinedAt: nil)
+        return .localFallback
+    }
+
+    func fetchMembers(communityID: String, for profile: UserProfile) async throws -> [CommunityMemberSummary] {
+        []
+    }
+
+    func membershipStatus(communityID: String, for profile: UserProfile) async throws -> CommunityMembershipStatus {
+        community(id: communityID)?.isJoined == true ? .member : .notJoined
+    }
+}
 
 public protocol DMRepository: Sendable {
     func listThreads(for userID: String) -> [DirectMessageConversation]

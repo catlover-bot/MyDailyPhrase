@@ -83,6 +83,7 @@ final class CommunityLiteViewModel: ObservableObject {
     private let timeZone: TimeZone
     private let creatorEntitlementService: CreatorEntitlementService
     private let socialConnectionRepository: SocialConnectionRepository
+    private let communityRepository: CommunityRepository
     private let calendar: Calendar
     private let promptEngine: CommunityPromptEngine
 
@@ -101,7 +102,8 @@ final class CommunityLiteViewModel: ObservableObject {
         defaults: UserDefaults,
         timeZone: TimeZone,
         creatorEntitlementService: CreatorEntitlementService,
-        socialConnectionRepository: SocialConnectionRepository
+        socialConnectionRepository: SocialConnectionRepository,
+        communityRepository: CommunityRepository
     ) {
         self.getMyProfile = getMyProfile
         self.updateMyProfile = updateMyProfile
@@ -116,6 +118,7 @@ final class CommunityLiteViewModel: ObservableObject {
         self.timeZone = timeZone
         self.creatorEntitlementService = creatorEntitlementService
         self.socialConnectionRepository = socialConnectionRepository
+        self.communityRepository = communityRepository
 
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
@@ -313,6 +316,7 @@ final class CommunityLiteViewModel: ObservableObject {
         reloadCommunities()
         reloadSocialProfiles(profile: profile)
         refreshRemoteSocialStateIfPossible()
+        refreshRemoteCommunityStateIfPossible()
         ensureSelectedCommunity()
         refreshSelectedCommunityContext()
     }
@@ -323,6 +327,10 @@ final class CommunityLiteViewModel: ObservableObject {
     }
 
     func join(communityId: String) {
+        guard canUseLocalSocialActions else {
+            lastMessage = "コミュニティ参加はログイン後に同期できます"
+            return
+        }
         joinCommunity(communityId: communityId)
         reloadCommunities()
         if selectedCommunityId != communityId {
@@ -331,6 +339,9 @@ final class CommunityLiteViewModel: ObservableObject {
             refreshSelectedCommunityContext()
         }
         lastMessage = "無料でコミュニティに参加しました"
+        syncCommunityOperation {
+            try await self.communityRepository.joinCommunity(id: communityId, for: self.getMyProfile())
+        }
     }
 
     func leaveSelectedCommunity() {
@@ -344,6 +355,9 @@ final class CommunityLiteViewModel: ObservableObject {
         ensureSelectedCommunity()
         refreshSelectedCommunityContext()
         lastMessage = "コミュニティから離れました"
+        syncCommunityOperation {
+            try await self.communityRepository.leaveCommunity(id: communityId, for: self.getMyProfile())
+        }
     }
 
     func saveSelectedCommunityResponse() {
@@ -379,7 +393,7 @@ final class CommunityLiteViewModel: ObservableObject {
         }
 
         var community = draftCommunityPreview
-        community.id = "creator.\(UUID().uuidString)"
+        community.id = UUID().uuidString
         community.createdAt = Date()
         community.creatorDisplayName = displayName
         community.creatorId = userId
@@ -393,6 +407,14 @@ final class CommunityLiteViewModel: ObservableObject {
         reloadCommunities()
         selectedCommunityId = saved.id
         lastMessage = "ローカルな招待制コミュニティを作成しました"
+        syncCommunityOperation {
+            _ = try await self.communityRepository.createCommunity(
+                saved,
+                creatorProfile: self.getMyProfile(),
+                canCreate: self.canCreateCommunity
+            )
+            return self.communityRepository.communitySyncDiagnostics()
+        }
     }
 
     func isFollowing(_ profileID: String) -> Bool {
@@ -753,6 +775,21 @@ final class CommunityLiteViewModel: ObservableObject {
         }
     }
 
+    private func refreshRemoteCommunityStateIfPossible() {
+        guard canUseLocalSocialActions else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await self.communityRepository.refreshRemoteCommunities(for: self.getMyProfile())
+                self.reloadCommunities()
+                self.ensureSelectedCommunity()
+                self.refreshSelectedCommunityContext()
+            } catch {
+                // Local fallback remains the visible source of truth; diagnostics capture backend details.
+            }
+        }
+    }
+
     private func syncSocialOperation(_ operation: @escaping @MainActor () async throws -> SocialSyncDiagnostics) {
         Task { [weak self] in
             guard let self else { return }
@@ -761,6 +798,21 @@ final class CommunityLiteViewModel: ObservableObject {
                 self.reloadSocialProfiles(profile: self.getMyProfile())
             } catch {
                 // Keep the immediate local UX. Backend diagnostics explain any RLS/network issue.
+            }
+        }
+    }
+
+    private func syncCommunityOperation(_ operation: @escaping @MainActor () async throws -> CommunitySyncDiagnostics) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await operation()
+                self.reloadCommunities()
+                self.ensureSelectedCommunity()
+                self.refreshSelectedCommunityContext()
+                self.lastMessage = "コミュニティを同期しました"
+            } catch {
+                self.lastMessage = "通信に失敗しました。ローカル状態は保持されています。"
             }
         }
     }

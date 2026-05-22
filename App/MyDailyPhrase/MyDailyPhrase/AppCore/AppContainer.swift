@@ -19,6 +19,7 @@ final class AppContainer {
     private let backendConnectionDiagnosticsStore: SupabaseConnectionDiagnosticsStore
     private let supabaseAuthSessionStore: SupabaseAuthSessionStore
     private let socialSyncDiagnosticsStore: SupabaseSocialSyncDiagnosticsStore
+    private let communitySyncDiagnosticsStore: SupabaseCommunitySyncDiagnosticsStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -30,7 +31,7 @@ final class AppContainer {
     // ===== Profile / Challenge / Reaction =====
     private let profileRepo: UserProfileRepository
     private let socialConnectionRepo: SocialConnectionRepository
-    private let communityTemplateRepo: CommunityTemplateRepository
+    private let communityTemplateRepo: CommunityRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
 
@@ -87,7 +88,8 @@ final class AppContainer {
             profileSyncDiagnostics: profileSyncDiagnosticsStore.load(),
             connectionDiagnostics: backendConnectionDiagnosticsStore.load(),
             authDiagnostics: supabaseAuthSessionStore.loadDiagnostics(),
-            socialSyncDiagnostics: socialSyncDiagnosticsStore.load()
+            socialSyncDiagnostics: socialSyncDiagnosticsStore.load(),
+            communitySyncDiagnostics: communitySyncDiagnosticsStore.load()
         )
     }
 
@@ -107,6 +109,7 @@ final class AppContainer {
         self.backendConnectionDiagnosticsStore = SupabaseConnectionDiagnosticsStore(defaults: resolvedDefaults)
         self.supabaseAuthSessionStore = SupabaseAuthSessionStore(defaults: resolvedDefaults)
         self.socialSyncDiagnosticsStore = SupabaseSocialSyncDiagnosticsStore(defaults: resolvedDefaults)
+        self.communitySyncDiagnosticsStore = SupabaseCommunitySyncDiagnosticsStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -126,6 +129,7 @@ final class AppContainer {
         let localSocialRepo = LocalSocialConnectionRepository {
             SocialSupport.demoProfiles()
         }
+        let localCommunityRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         if backendRuntimeConfiguration.supabaseConfiguration.canUseSupabase {
             if backendConnectionDiagnosticsStore.load().status == .localFallback {
                 backendConnectionDiagnosticsStore.record(status: .configured)
@@ -135,6 +139,9 @@ final class AppContainer {
             }
             if socialSyncDiagnosticsStore.load().status == .localFallback {
                 socialSyncDiagnosticsStore.record(status: .configured)
+            }
+            if communitySyncDiagnosticsStore.load().status == .localFallback {
+                communitySyncDiagnosticsStore.record(status: .configured, membershipStatus: .configured)
             }
             if backendRuntimeConfiguration.supabaseConfiguration.canUseAppleAuthBridge {
                 if supabaseAuthSessionStore.loadSession() == nil,
@@ -160,15 +167,24 @@ final class AppContainer {
                     supabaseAuthSessionStore.loadSession()
                 }
             )
+            self.communityTemplateRepo = SupabaseCommunityRepository(
+                configuration: backendRuntimeConfiguration.supabaseConfiguration,
+                fallback: localCommunityRepo,
+                diagnosticsStore: communitySyncDiagnosticsStore,
+                authSessionProvider: { [supabaseAuthSessionStore] in
+                    supabaseAuthSessionStore.loadSession()
+                }
+            )
         } else {
             backendConnectionDiagnosticsStore.record(status: .localFallback)
             profileSyncDiagnosticsStore.record(status: .localFallback)
             supabaseAuthSessionStore.record(status: .disabled)
             socialSyncDiagnosticsStore.record(status: .localFallback)
+            communitySyncDiagnosticsStore.record(status: .localFallback, membershipStatus: .localFallback)
             self.profileRepo = localProfileRepo
             self.socialConnectionRepo = localSocialRepo
+            self.communityTemplateRepo = localCommunityRepo
         }
-        self.communityTemplateRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
 
@@ -548,7 +564,8 @@ final class AppContainer {
             defaults: appGroupDefaults,
             timeZone: timeZone,
             creatorEntitlementService: CreatorEntitlementService(defaults: appGroupDefaults),
-            socialConnectionRepository: socialConnectionRepo
+            socialConnectionRepository: socialConnectionRepo,
+            communityRepository: communityTemplateRepo
         )
     }
 
@@ -845,6 +862,30 @@ final class AppContainer {
         return settingsBackendContext
     }
 
+    func runCommunitySyncTest() async -> SettingsBackendContext {
+        let profile = getMyProfile()
+        guard profile.linkedAuthProvider == LinkedAuthProvider.apple.rawValue else {
+            communitySyncDiagnosticsStore.record(
+                status: .skippedSignedOut,
+                membershipStatus: .skippedSignedOut,
+                error: "Sign in with Apple 連携済みユーザーで実行してください"
+            )
+            return settingsBackendContext
+        }
+
+        communitySyncDiagnosticsStore.record(status: .syncing, membershipStatus: .syncing)
+        do {
+            _ = try await communityTemplateRepo.refreshRemoteCommunities(for: profile)
+        } catch {
+            communitySyncDiagnosticsStore.record(
+                status: .failed,
+                membershipStatus: .failed,
+                error: Self.communityBackendGuidanceMessage(for: error)
+            )
+        }
+        return settingsBackendContext
+    }
+
     private static func backendGuidanceMessage(for error: Error) -> String {
         if case let SupabaseProfileError.invalidResponse(statusCode, message) = error {
             switch statusCode {
@@ -861,6 +902,32 @@ final class AppContainer {
         }
         if case SupabaseProfileError.supabaseAuthSessionMissing = error {
             return "ローカル保存済み / Supabase認証待ち"
+        }
+        return String(error.localizedDescription.prefix(180))
+    }
+
+    private static func communityBackendGuidanceMessage(for error: Error) -> String {
+        if case let SupabaseCommunityRepositoryError.invalidResponse(statusCode, message) = error {
+            switch statusCode {
+            case 401, 403:
+                return "HTTP \(statusCode): Community同期がRLSで拒否されました。Supabase Auth session と auth.uid() の一致、communities/memberships policy を確認してください。\(String(message.prefix(160)))"
+            case 404:
+                return "HTTP 404: communities または memberships テーブルが見つかりません。schema.sql が適用済みか確認してください。\(String(message.prefix(160)))"
+            default:
+                return "HTTP \(statusCode): Community同期に失敗しました。\(String(message.prefix(160)))"
+            }
+        }
+        if case SupabaseCommunityRepositoryError.supabaseAuthSessionMissing = error {
+            return "ローカル保存済み / Supabase認証待ち"
+        }
+        if case SupabaseCommunityRepositoryError.targetIsLocalOnly = error {
+            return "ローカルコミュニティのためSupabase同期をスキップしました"
+        }
+        if case SupabaseCommunityRepositoryError.creationNotAllowed = error {
+            return "コミュニティ作成権限がありません"
+        }
+        if case let SupabaseCommunityRepositoryError.unavailable(status) = error {
+            return "Supabase が利用できません: \(status.label)"
         }
         return String(error.localizedDescription.prefix(180))
     }

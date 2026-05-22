@@ -10,6 +10,7 @@ struct SettingsView: View {
     private let backendContext: SettingsBackendContext
     private let runBackendConnectionTest: (() async -> SettingsBackendContext)?
     private let runProfileSyncTest: (() async -> SettingsBackendContext)?
+    private let runCommunitySyncTest: (() async -> SettingsBackendContext)?
     private let authTestEntryEnabled: Bool
     private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     private let onManualAuthStateChanged: (AppAuthViewModel) -> Void
@@ -26,6 +27,7 @@ struct SettingsView: View {
     @State private var backendContextOverride: SettingsBackendContext? = nil
     @State private var isRunningBackendConnectionTest = false
     @State private var isRunningProfileSyncTest = false
+    @State private var isRunningCommunitySyncTest = false
     @State private var manualAuthViewModel: AppAuthViewModel? = nil
     @State private var manualAuthContext: SettingsAuthContext? = nil
     @State private var artworkCopyFeedback: String? = nil
@@ -42,6 +44,7 @@ struct SettingsView: View {
         backendContext: SettingsBackendContext = .localFallback,
         runBackendConnectionTest: (() async -> SettingsBackendContext)? = nil,
         runProfileSyncTest: (() async -> SettingsBackendContext)? = nil,
+        runCommunitySyncTest: (() async -> SettingsBackendContext)? = nil,
         authTestEntryEnabled: Bool = false,
         makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
         onManualAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in },
@@ -53,6 +56,7 @@ struct SettingsView: View {
         self.backendContext = backendContext
         self.runBackendConnectionTest = runBackendConnectionTest
         self.runProfileSyncTest = runProfileSyncTest
+        self.runCommunitySyncTest = runCommunitySyncTest
         self.authTestEntryEnabled = authTestEntryEnabled
         self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
         self.onManualAuthStateChanged = onManualAuthStateChanged
@@ -848,6 +852,14 @@ struct SettingsView: View {
                 diagnosticRow(title: "Social blocked", value: context.socialBlockedCount)
                 diagnosticRow(title: "Last social sync", value: context.lastSocialSyncAt)
                 diagnosticRow(title: "Last social error", value: context.lastSocialSyncError)
+                diagnosticRow(title: "Community sync", value: context.communitySyncStatus)
+                diagnosticRow(title: "Membership sync", value: context.membershipSyncStatus)
+                diagnosticRow(title: "Community repository", value: context.communityRepositoryMode)
+                diagnosticRow(title: "Joined communities", value: context.joinedCommunityCount)
+                diagnosticRow(title: "Recommended communities", value: context.recommendedCommunityCount)
+                diagnosticRow(title: "Community members", value: context.communityMemberCount)
+                diagnosticRow(title: "Last community sync", value: context.lastCommunitySyncAt)
+                diagnosticRow(title: "Last community error", value: context.lastCommunitySyncError)
                 diagnosticRow(title: "Local fallback", value: context.localFallbackEnabled ? "enabled" : "disabled")
                 diagnosticRow(title: "Public feed", value: context.publicFeedEnabled ? "enabled" : "disabled")
                 diagnosticRow(title: "Comments", value: context.commentsEnabled ? "enabled" : "disabled")
@@ -870,6 +882,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Text("Community / Membership の同期も Supabase Auth user id を使います。未ログイン時やローカルプリセットでは local fallback が継続され、日記本文は自動共有されません。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Button {
                     UIPasteboard.general.string = context.diagnosticsReportText
                     backendDiagnosticsCopyFeedback = "Backend診断をコピーしました"
@@ -883,11 +900,13 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         backendTestButton
                         profileSyncTestButton
+                        communitySyncTestButton
                     }
 
                     VStack(spacing: 10) {
                         backendTestButton
                         profileSyncTestButton
+                        communitySyncTestButton
                     }
                 }
 
@@ -946,6 +965,30 @@ struct SettingsView: View {
         }
         .buttonStyle(.bordered)
         .disabled(runProfileSyncTest == nil || isRunningProfileSyncTest)
+    }
+
+    private var communitySyncTestButton: some View {
+        Button {
+            guard let runCommunitySyncTest else { return }
+            isRunningCommunitySyncTest = true
+            backendDiagnosticsCopyFeedback = nil
+            Task {
+                let updated = await runCommunitySyncTest()
+                await MainActor.run {
+                    backendContextOverride = updated
+                    backendDiagnosticsCopyFeedback = "コミュニティ同期テストを実行しました"
+                    isRunningCommunitySyncTest = false
+                }
+            }
+        } label: {
+            Label(
+                isRunningCommunitySyncTest ? "Community確認中..." : "コミュニティ同期テスト",
+                systemImage: "person.2.badge.gearshape"
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .disabled(runCommunitySyncTest == nil || isRunningCommunitySyncTest)
     }
 
     private var versionBadge: some View {

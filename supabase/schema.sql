@@ -125,6 +125,14 @@ create index if not exists memberships_user_idx on public.memberships(user_id);
 create index if not exists dm_messages_thread_created_idx on public.dm_messages(thread_id, created_at);
 create index if not exists reports_target_idx on public.reports(target_kind, target_id);
 
+alter table public.communities
+  add column if not exists custom_prompt_seeds text[] not null default '{}',
+  add column if not exists pinned_next_prompt_text text check (char_length(coalesce(pinned_next_prompt_text, '')) <= 70),
+  add column if not exists archived_at timestamptz;
+
+alter table public.memberships
+  add column if not exists status text not null default 'active' check (status in ('active', 'muted'));
+
 alter table public.users enable row level security;
 alter table public.profiles enable row level security;
 alter table public.follows enable row level security;
@@ -153,6 +161,13 @@ drop policy if exists "blocks_owner_insert" on public.blocks;
 drop policy if exists "blocks_owner_delete" on public.blocks;
 drop policy if exists "reports_owner_select" on public.reports;
 drop policy if exists "reports_owner_insert" on public.reports;
+drop policy if exists "communities_authenticated_read" on public.communities;
+drop policy if exists "communities_creator_insert" on public.communities;
+drop policy if exists "communities_creator_update" on public.communities;
+drop policy if exists "memberships_authenticated_read_visible" on public.memberships;
+drop policy if exists "memberships_owner_insert" on public.memberships;
+drop policy if exists "memberships_owner_delete" on public.memberships;
+drop policy if exists "memberships_owner_update" on public.memberships;
 
 create policy "users_owner_select" on public.users
   for select to authenticated
@@ -225,6 +240,61 @@ create policy "reports_owner_select" on public.reports
 create policy "reports_owner_insert" on public.reports
   for insert to authenticated
   with check (reporter_user_id = auth.uid());
+
+-- Backend-backed communities and memberships.
+-- Normal users may join as themselves. Creator/admin entitlement checks remain app-side and never use service_role in iOS.
+-- Public posting/feed/comment/ranking remains disabled; this only exposes safe community cards and membership state to authenticated users.
+create policy "communities_authenticated_read" on public.communities
+  for select to authenticated
+  using (
+    archived_at is null
+    and visibility in ('invite_only', 'public_disabled')
+  );
+
+create policy "communities_creator_insert" on public.communities
+  for insert to authenticated
+  with check (
+    creator_user_id = auth.uid()
+    and archived_at is null
+  );
+
+create policy "communities_creator_update" on public.communities
+  for update to authenticated
+  using (creator_user_id = auth.uid())
+  with check (
+    creator_user_id = auth.uid()
+    and archived_at is null
+  );
+
+create policy "memberships_authenticated_read_visible" on public.memberships
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.communities c
+      where c.id = memberships.community_id
+        and c.archived_at is null
+        and c.visibility in ('invite_only', 'public_disabled')
+    )
+  );
+
+create policy "memberships_owner_insert" on public.memberships
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and member_role = 'member'
+  );
+
+create policy "memberships_owner_delete" on public.memberships
+  for delete to authenticated
+  using (user_id = auth.uid());
+
+create policy "memberships_owner_update" on public.memberships
+  for update to authenticated
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and member_role = 'member'
+  );
 
 -- Future policies, still intentionally not broad-enabled:
 -- create policy "dm_thread_members_only" on public.dm_threads for select using (auth.uid() in (user_a_id, user_b_id));
