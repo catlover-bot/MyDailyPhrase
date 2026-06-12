@@ -73,7 +73,6 @@ If the user is signed out, the app does not attempt backend profile writes. If S
 Current limitations:
 
 - Diary answers are not synced.
-- DM still uses local fallback.
 - Public feed/comments/ranking remain disabled.
 - Profile sync depends on safe Supabase policies being installed before production use.
 
@@ -115,7 +114,6 @@ Still not enabled:
 - public feed
 - public comments
 - ranking
-- remote DM messages
 - diary answer sync
 
 Social sync statuses:
@@ -132,6 +130,42 @@ Common social sync errors:
 - `401` / `403` / `42501`: check that the app has a Supabase Auth access token and that `auth.uid()` equals the actor column (`follower_user_id`, `blocker_user_id`, or `reporter_user_id`).
 - Local preview target: the target profile is a seeded/local card and cannot be written to Supabase.
 - `404`: check that `follows`, `blocks`, and `reports` tables exist and schema was applied.
+
+## Build 41 DM Sync
+
+DM threads and text messages now use Supabase when all of these are true:
+
+- Supabase backend config is valid.
+- A Supabase Auth session exists.
+- Both participants are Supabase user UUIDs.
+- The two users are mutual follows.
+- Neither user has blocked the other.
+
+Remote identity mapping:
+
+- Supabase Auth user id: used as `dm_threads.user_a_id`, `dm_threads.user_b_id`, and `dm_messages.sender_user_id`.
+- Apple `providerUserId`: not used for remote DM rows. It remains only for Apple identity and admin allowlist checks.
+- Local profile id: still used by local fallback data.
+
+The app saves the local DM state first, then attempts Supabase sync. If Supabase Auth is missing, backend config is incomplete, RLS rejects the request, or the peer is a local preview profile, the local state is preserved and admin diagnostics record the fallback/error.
+
+Synced tables:
+
+- `dm_threads`: one authenticated two-person thread per sorted Supabase user pair.
+- `dm_messages`: text-only messages explicitly entered in the DM UI.
+
+Privacy and safety:
+
+- Diary answers are never auto-sent to DM.
+- DM remains text-only.
+- No images, files, link previews, public anonymous DM, public feed, comments, or ranking are enabled.
+- Diagnostics show status/counts/thread id/peer id only. They must not show access tokens, refresh tokens, Apple identity tokens, full Supabase keys, or DM message bodies.
+
+Common DM sync errors:
+
+- `401` / `403` / `42501`: check Supabase Auth session, mutual follow rows, block rows, and that `auth.uid()` matches the sender/participant ids.
+- Local preview target: the target profile is not a Supabase UUID and stays local-only.
+- `404`: check that `dm_threads`, `dm_messages`, indexes, and RLS policies from `schema.sql` are applied.
 
 ## Build 40 Community and Membership Sync
 

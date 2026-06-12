@@ -58,12 +58,14 @@ Follow, block, and report can sync to Supabase when a Supabase Auth session exis
 
 DM remains mutual-follow only.
 
-- Text-only local draft flow.
+- Text-only flow. Build 41 can sync DM threads/messages to Supabase when both users are mutual follows, neither side is blocked, and a Supabase Auth session exists.
 - No images, files, or link previews.
 - No anonymous public DM.
 - Block/report/delete controls remain available.
 - Diary answers are not sent automatically.
 - Disabled DM buttons should explain the reason: not followed yet, not followed back yet, blocked, or unsupported.
+- Local fallback remains active for signed-out users, local preview profiles, backend failures, or missing Supabase Auth.
+- Remote DM rows use Supabase Auth user id for participants and sender. Apple `providerUserId` is not written to `dm_threads` or `dm_messages`.
 
 ## Communities
 
@@ -122,9 +124,15 @@ Build 40 adds Supabase-backed community and membership sync:
 - Backend failures preserve local state and show detailed errors only in admin Backend診断.
 - StoreKit Creator Pass entitlement remains separate from admin bypass and backend sync.
 
-Still local/fallback in Build 40:
+Build 41 adds Supabase-backed mutual-follow DM sync:
 
-- DM threads/messages
+- DM threads refresh from `dm_threads` when signed in with Supabase Auth.
+- Explicit text messages entered in the DM UI write to `dm_messages`.
+- Remote send is blocked unless users are mutual follows and neither side is blocked.
+- Diagnostics show DM sync status and counts, never message bodies or tokens.
+
+Still local/fallback in Build 41:
+
 - Invite/share state
 
 Public feed/comments/ranking remain disabled.

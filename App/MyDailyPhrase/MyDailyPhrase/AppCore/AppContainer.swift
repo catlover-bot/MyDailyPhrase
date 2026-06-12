@@ -20,6 +20,7 @@ final class AppContainer {
     private let supabaseAuthSessionStore: SupabaseAuthSessionStore
     private let socialSyncDiagnosticsStore: SupabaseSocialSyncDiagnosticsStore
     private let communitySyncDiagnosticsStore: SupabaseCommunitySyncDiagnosticsStore
+    private let dmSyncDiagnosticsStore: SupabaseDMSyncDiagnosticsStore
 
     // ===== Core =====
     private let entryRepo: EntryRepository
@@ -32,6 +33,7 @@ final class AppContainer {
     private let profileRepo: UserProfileRepository
     private let socialConnectionRepo: SocialConnectionRepository
     private let communityTemplateRepo: CommunityRepository
+    private let dmRepo: DMRepository
     private let challengeEventRepo: ChallengeEventRepository
     private let reactionEventRepo: ReactionEventRepository
 
@@ -89,7 +91,8 @@ final class AppContainer {
             connectionDiagnostics: backendConnectionDiagnosticsStore.load(),
             authDiagnostics: supabaseAuthSessionStore.loadDiagnostics(),
             socialSyncDiagnostics: socialSyncDiagnosticsStore.load(),
-            communitySyncDiagnostics: communitySyncDiagnosticsStore.load()
+            communitySyncDiagnostics: communitySyncDiagnosticsStore.load(),
+            dmSyncDiagnostics: dmSyncDiagnosticsStore.load()
         )
     }
 
@@ -110,6 +113,7 @@ final class AppContainer {
         self.supabaseAuthSessionStore = SupabaseAuthSessionStore(defaults: resolvedDefaults)
         self.socialSyncDiagnosticsStore = SupabaseSocialSyncDiagnosticsStore(defaults: resolvedDefaults)
         self.communitySyncDiagnosticsStore = SupabaseCommunitySyncDiagnosticsStore(defaults: resolvedDefaults)
+        self.dmSyncDiagnosticsStore = SupabaseDMSyncDiagnosticsStore(defaults: resolvedDefaults)
 #if DEBUG
         Self.seedNotificationABMetricsForUITestIfNeeded(defaults: resolvedDefaults)
 #endif
@@ -130,6 +134,7 @@ final class AppContainer {
             SocialSupport.demoProfiles()
         }
         let localCommunityRepo = AppGroupCommunityTemplateRepository(appGroupID: appGroupID)
+        let localDMRepo = LocalDMRepository(profileRepository: localProfileRepo)
         if backendRuntimeConfiguration.supabaseConfiguration.canUseSupabase {
             if backendConnectionDiagnosticsStore.load().status == .localFallback {
                 backendConnectionDiagnosticsStore.record(status: .configured)
@@ -142,6 +147,9 @@ final class AppContainer {
             }
             if communitySyncDiagnosticsStore.load().status == .localFallback {
                 communitySyncDiagnosticsStore.record(status: .configured, membershipStatus: .configured)
+            }
+            if dmSyncDiagnosticsStore.load().status == .localFallback {
+                dmSyncDiagnosticsStore.record(status: .configured)
             }
             if backendRuntimeConfiguration.supabaseConfiguration.canUseAppleAuthBridge {
                 if supabaseAuthSessionStore.loadSession() == nil,
@@ -175,15 +183,25 @@ final class AppContainer {
                     supabaseAuthSessionStore.loadSession()
                 }
             )
+            self.dmRepo = SupabaseDMRepository(
+                configuration: backendRuntimeConfiguration.supabaseConfiguration,
+                fallback: localDMRepo,
+                diagnosticsStore: dmSyncDiagnosticsStore,
+                authSessionProvider: { [supabaseAuthSessionStore] in
+                    supabaseAuthSessionStore.loadSession()
+                }
+            )
         } else {
             backendConnectionDiagnosticsStore.record(status: .localFallback)
             profileSyncDiagnosticsStore.record(status: .localFallback)
             supabaseAuthSessionStore.record(status: .disabled)
             socialSyncDiagnosticsStore.record(status: .localFallback)
             communitySyncDiagnosticsStore.record(status: .localFallback, membershipStatus: .localFallback)
+            dmSyncDiagnosticsStore.record(status: .localFallback)
             self.profileRepo = localProfileRepo
             self.socialConnectionRepo = localSocialRepo
             self.communityTemplateRepo = localCommunityRepo
+            self.dmRepo = localDMRepo
         }
         self.challengeEventRepo = AppGroupChallengeEventRepository(appGroupID: appGroupID)
         self.reactionEventRepo = AppGroupReactionEventRepository(appGroupID: appGroupID)
@@ -565,7 +583,8 @@ final class AppContainer {
             timeZone: timeZone,
             creatorEntitlementService: CreatorEntitlementService(defaults: appGroupDefaults),
             socialConnectionRepository: socialConnectionRepo,
-            communityRepository: communityTemplateRepo
+            communityRepository: communityTemplateRepo,
+            dmRepository: dmRepo
         )
     }
 
@@ -886,6 +905,28 @@ final class AppContainer {
         return settingsBackendContext
     }
 
+    func runDMSyncTest() async -> SettingsBackendContext {
+        let profile = getMyProfile()
+        guard profile.linkedAuthProvider == LinkedAuthProvider.apple.rawValue else {
+            dmSyncDiagnosticsStore.record(
+                status: .skippedSignedOut,
+                error: "Sign in with Apple 連携済みユーザーで実行してください"
+            )
+            return settingsBackendContext
+        }
+
+        dmSyncDiagnosticsStore.record(status: .syncing)
+        do {
+            _ = try await dmRepo.refreshRemoteThreads(for: profile)
+        } catch {
+            dmSyncDiagnosticsStore.record(
+                status: .failed,
+                error: Self.dmBackendGuidanceMessage(for: error)
+            )
+        }
+        return settingsBackendContext
+    }
+
     private static func backendGuidanceMessage(for error: Error) -> String {
         if case let SupabaseProfileError.invalidResponse(statusCode, message) = error {
             switch statusCode {
@@ -927,6 +968,35 @@ final class AppContainer {
             return "コミュニティ作成権限がありません"
         }
         if case let SupabaseCommunityRepositoryError.unavailable(status) = error {
+            return "Supabase が利用できません: \(status.label)"
+        }
+        return String(error.localizedDescription.prefix(180))
+    }
+
+    private static func dmBackendGuidanceMessage(for error: Error) -> String {
+        if case let SupabaseDMRepositoryError.invalidResponse(statusCode, message) = error {
+            switch statusCode {
+            case 401, 403:
+                return "HTTP \(statusCode): DM同期がRLSで拒否されました。Supabase Auth session、相互フォロー、ブロック状態、auth.uid() を確認してください。\(String(message.prefix(160)))"
+            case 404:
+                return "HTTP 404: dm_threads/dm_messages テーブルまたはpolicyを確認してください。\(String(message.prefix(160)))"
+            default:
+                return "HTTP \(statusCode): DM同期に失敗しました。\(String(message.prefix(160)))"
+            }
+        }
+        if case SupabaseDMRepositoryError.supabaseAuthSessionMissing = error {
+            return "ローカル保存済み / Supabase認証待ち"
+        }
+        if case SupabaseDMRepositoryError.notMutualFollow = error {
+            return "DMは相互フォローの相手とのみ同期できます"
+        }
+        if case SupabaseDMRepositoryError.blockedUser = error {
+            return "ブロック中の相手にはDMできません"
+        }
+        if case SupabaseDMRepositoryError.targetIsLocalOnly = error {
+            return "ローカルプレビュー相手のためSupabase DM同期をスキップしました"
+        }
+        if case let SupabaseDMRepositoryError.unavailable(status) = error {
             return "Supabase が利用できません: \(status.label)"
         }
         return String(error.localizedDescription.prefix(180))

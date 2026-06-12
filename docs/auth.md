@@ -23,6 +23,7 @@
 - Build 38 では手動の Apple ログイン完了後、Apple `identityToken` を Supabase Auth に渡して Supabase セッションを作成します。local Apple session だけでは `auth.uid()` が作られないため、RLS付きの `users` / `profiles` 書き込みには Supabase Auth session が必要です。
 - Build 39 では follow / block / report の同期にも Supabase Auth user id を使います。Apple `providerUserId` は管理者allowlistやApple本人確認用に残し、Supabaseの `follows` / `blocks` / `reports` には書き込みません。
 - Build 40 では community / membership の同期にも Supabase Auth user id を使います。`communities.creator_user_id` と `memberships.user_id` は `auth.uid()` と一致する必要があります。
+- Build 41 では mutual-follow DM の同期にも Supabase Auth user id を使います。`dm_threads.user_a_id` / `user_b_id` と `dm_messages.sender_user_id` は `auth.uid()` ベースで、Apple `providerUserId` はDM行に保存しません。
 
 ## 起動安定化フラグ
 
@@ -54,9 +55,9 @@ Supabase-backed social sync uses this identity split:
 
 - Apple `providerUserId`: stable Apple account identifier, used for admin allowlist and diagnostics.
 - Local `AuthUser.id`: local app identity used by existing local diary/gacha/social fallback data.
-- Supabase Auth user id: remote actor id used for `users.id`, `profiles.user_id`, `follows.follower_user_id`, `blocks.blocker_user_id`, `reports.reporter_user_id`, `communities.creator_user_id`, and `memberships.user_id`.
+- Supabase Auth user id: remote actor id used for `users.id`, `profiles.user_id`, `follows.follower_user_id`, `blocks.blocker_user_id`, `reports.reporter_user_id`, `communities.creator_user_id`, `memberships.user_id`, `dm_threads.user_a_id`, `dm_threads.user_b_id`, and `dm_messages.sender_user_id`.
 
-If there is no Supabase Auth session, follow/block/report/community actions stay local and admin diagnostics record the fallback state. The app does not force login at launch and does not upload diary answers as part of social sync.
+If there is no Supabase Auth session, follow/block/report/community/DM actions stay local and admin diagnostics record the fallback state. The app does not force login at launch and does not upload diary answers as part of social sync.
 
 ## 注意
 
@@ -64,7 +65,7 @@ If there is no Supabase Auth session, follow/block/report/community actions stay
 - Supabase の service role key や DB password もリポジトリに置きません。backend config が空なら safe に disabled となり、local fallback で起動します。
 - `service_role` は絶対にiOSアプリへ入れません。Backend診断もキー全文を表示せず、key present / key type / safe prefix のみを表示します。
 - Supabase Auth の access token / refresh token は診断コピーへ出しません。診断には token present の yes/no、期限、Supabase user id だけを表示します。
-- Social sync diagnostics also avoid tokens. They may show sync status, counts, last error, and last sync time, but not access tokens, refresh tokens, Apple identity tokens, or full Supabase keys.
+- Social and DM sync diagnostics also avoid tokens and private text. They may show sync status, counts, last error, and last sync time, but not access tokens, refresh tokens, Apple identity tokens, full Supabase keys, or DM message bodies.
 - SupabaseでApple Providerを設定する場合は、Apple側のBundle ID/Service ID、redirect/callback、nonce検証設定を確認してください。401/403/42501 が出る場合は `auth.uid()` と `profiles.user_id` の一致も確認します。
 - Google の実運用ログインを有効にする場合は、開始 URL・callback scheme・サーバー検証の設定確認が必要です。
 - 既存の StoreKit / Creator Pass 判定はそのまま維持し、認証だけでは課金状態を変更しません。

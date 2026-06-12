@@ -11,6 +11,7 @@ struct SettingsView: View {
     private let runBackendConnectionTest: (() async -> SettingsBackendContext)?
     private let runProfileSyncTest: (() async -> SettingsBackendContext)?
     private let runCommunitySyncTest: (() async -> SettingsBackendContext)?
+    private let runDMSyncTest: (() async -> SettingsBackendContext)?
     private let authTestEntryEnabled: Bool
     private let makeAuthPreviewViewModel: (() -> AppAuthViewModel)?
     private let onManualAuthStateChanged: (AppAuthViewModel) -> Void
@@ -28,6 +29,7 @@ struct SettingsView: View {
     @State private var isRunningBackendConnectionTest = false
     @State private var isRunningProfileSyncTest = false
     @State private var isRunningCommunitySyncTest = false
+    @State private var isRunningDMSyncTest = false
     @State private var manualAuthViewModel: AppAuthViewModel? = nil
     @State private var manualAuthContext: SettingsAuthContext? = nil
     @State private var artworkCopyFeedback: String? = nil
@@ -45,6 +47,7 @@ struct SettingsView: View {
         runBackendConnectionTest: (() async -> SettingsBackendContext)? = nil,
         runProfileSyncTest: (() async -> SettingsBackendContext)? = nil,
         runCommunitySyncTest: (() async -> SettingsBackendContext)? = nil,
+        runDMSyncTest: (() async -> SettingsBackendContext)? = nil,
         authTestEntryEnabled: Bool = false,
         makeAuthPreviewViewModel: (() -> AppAuthViewModel)? = nil,
         onManualAuthStateChanged: @escaping (AppAuthViewModel) -> Void = { _ in },
@@ -57,6 +60,7 @@ struct SettingsView: View {
         self.runBackendConnectionTest = runBackendConnectionTest
         self.runProfileSyncTest = runProfileSyncTest
         self.runCommunitySyncTest = runCommunitySyncTest
+        self.runDMSyncTest = runDMSyncTest
         self.authTestEntryEnabled = authTestEntryEnabled
         self.makeAuthPreviewViewModel = makeAuthPreviewViewModel
         self.onManualAuthStateChanged = onManualAuthStateChanged
@@ -860,6 +864,12 @@ struct SettingsView: View {
                 diagnosticRow(title: "Community members", value: context.communityMemberCount)
                 diagnosticRow(title: "Last community sync", value: context.lastCommunitySyncAt)
                 diagnosticRow(title: "Last community error", value: context.lastCommunitySyncError)
+                diagnosticRow(title: "DM sync", value: context.dmSyncStatus)
+                diagnosticRow(title: "DM repository", value: context.dmRepositoryMode)
+                diagnosticRow(title: "DM threads", value: context.dmThreadCount)
+                diagnosticRow(title: "DM messages", value: context.dmMessageCount)
+                diagnosticRow(title: "Last DM sync", value: context.lastDMSyncAt)
+                diagnosticRow(title: "Last DM error", value: context.lastDMSyncError)
                 diagnosticRow(title: "Local fallback", value: context.localFallbackEnabled ? "enabled" : "disabled")
                 diagnosticRow(title: "Public feed", value: context.publicFeedEnabled ? "enabled" : "disabled")
                 diagnosticRow(title: "Comments", value: context.commentsEnabled ? "enabled" : "disabled")
@@ -887,6 +897,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Text("DM同期は dm_threads / dm_messages を使います。本文は診断に出さず、相互フォローとブロック状態を確認してから同期します。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Button {
                     UIPasteboard.general.string = context.diagnosticsReportText
                     backendDiagnosticsCopyFeedback = "Backend診断をコピーしました"
@@ -901,12 +916,14 @@ struct SettingsView: View {
                         backendTestButton
                         profileSyncTestButton
                         communitySyncTestButton
+                        dmSyncTestButton
                     }
 
                     VStack(spacing: 10) {
                         backendTestButton
                         profileSyncTestButton
                         communitySyncTestButton
+                        dmSyncTestButton
                     }
                 }
 
@@ -989,6 +1006,30 @@ struct SettingsView: View {
         }
         .buttonStyle(.bordered)
         .disabled(runCommunitySyncTest == nil || isRunningCommunitySyncTest)
+    }
+
+    private var dmSyncTestButton: some View {
+        Button {
+            guard let runDMSyncTest else { return }
+            isRunningDMSyncTest = true
+            backendDiagnosticsCopyFeedback = nil
+            Task {
+                let updated = await runDMSyncTest()
+                await MainActor.run {
+                    backendContextOverride = updated
+                    backendDiagnosticsCopyFeedback = "DM同期テストを実行しました"
+                    isRunningDMSyncTest = false
+                }
+            }
+        } label: {
+            Label(
+                isRunningDMSyncTest ? "DM確認中..." : "DM同期テスト",
+                systemImage: "message.badge"
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .disabled(runDMSyncTest == nil || isRunningDMSyncTest)
     }
 
     private var versionBadge: some View {

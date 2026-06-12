@@ -84,6 +84,7 @@ final class CommunityLiteViewModel: ObservableObject {
     private let creatorEntitlementService: CreatorEntitlementService
     private let socialConnectionRepository: SocialConnectionRepository
     private let communityRepository: CommunityRepository
+    private let dmRepository: DMRepository
     private let calendar: Calendar
     private let promptEngine: CommunityPromptEngine
 
@@ -103,7 +104,8 @@ final class CommunityLiteViewModel: ObservableObject {
         timeZone: TimeZone,
         creatorEntitlementService: CreatorEntitlementService,
         socialConnectionRepository: SocialConnectionRepository,
-        communityRepository: CommunityRepository
+        communityRepository: CommunityRepository,
+        dmRepository: DMRepository
     ) {
         self.getMyProfile = getMyProfile
         self.updateMyProfile = updateMyProfile
@@ -119,6 +121,7 @@ final class CommunityLiteViewModel: ObservableObject {
         self.creatorEntitlementService = creatorEntitlementService
         self.socialConnectionRepository = socialConnectionRepository
         self.communityRepository = communityRepository
+        self.dmRepository = dmRepository
 
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
@@ -284,7 +287,7 @@ final class CommunityLiteViewModel: ObservableObject {
         hasLinkedAccount = profile.linkedAuthProvider != nil
         selectedDecorationId = profile.selectedDecorationId
         streak = computeStreak.execute()
-        dmConversations = profile.dmConversations
+        dmConversations = dmRepository.listThreads(for: profile.userId)
         ownedDecorationItems = profile.ownedDecorationIds
             .compactMap(CardDecorationCatalog.byId)
             .sorted { lhs, rhs in
@@ -317,6 +320,7 @@ final class CommunityLiteViewModel: ObservableObject {
         reloadSocialProfiles(profile: profile)
         refreshRemoteSocialStateIfPossible()
         refreshRemoteCommunityStateIfPossible()
+        refreshRemoteDMStateIfPossible()
         ensureSelectedCommunity()
         refreshSelectedCommunityContext()
     }
@@ -431,7 +435,9 @@ final class CommunityLiteViewModel: ObservableObject {
 
     func canSendDM(to profile: SocialUserProfileSummary) -> Bool {
         guard canUseLocalSocialActions else { return false }
-        return socialConnectionRepository.canStartDirectMessage(from: getMyProfile(), to: profile)
+        let me = getMyProfile()
+        return socialConnectionRepository.canStartDirectMessage(from: me, to: profile)
+            && dmRepository.canStartThread(from: me, to: profile)
     }
 
     func dmUnavailableReason(for profile: SocialUserProfileSummary) -> String? {
@@ -494,7 +500,7 @@ final class CommunityLiteViewModel: ObservableObject {
             dmConversations: updatedConversations
         )
         reloadSocialProfiles(profile: getMyProfile())
-        dmConversations = getMyProfile().dmConversations
+        dmConversations = dmRepository.listThreads(for: getMyProfile().userId)
         lastMessage = updatedBlocked.contains(profile.id) ? "ブロックしました" : "ブロックを解除しました"
         syncSocialOperation {
             if wasBlocked {
@@ -545,10 +551,13 @@ final class CommunityLiteViewModel: ObservableObject {
         let others = getMyProfile().dmConversations.filter { $0.participantUserID != profile.id }
         let merged = [updatedConversation] + others
         _ = updateMyProfile(dmConversations: merged)
-        dmConversations = getMyProfile().dmConversations
+        dmConversations = dmRepository.listThreads(for: getMyProfile().userId)
         selectedConversationId = updatedConversation.participantUserID
         dmDraftText = ""
-        lastMessage = "この端末にDMの下書きを保存しました"
+        lastMessage = "DMを保存しました。同期できる場合はSupabaseにも反映します"
+        syncDMOperation {
+            try await self.dmRepository.sendMessage(to: profile, body: trimmed, for: self.getMyProfile())
+        }
     }
 
     func deleteConversation(_ conversationID: String) {
@@ -561,7 +570,8 @@ final class CommunityLiteViewModel: ObservableObject {
             .participantUserID
         let remaining = getMyProfile().dmConversations.filter { $0.id != conversationID }
         _ = updateMyProfile(dmConversations: remaining)
-        dmConversations = getMyProfile().dmConversations
+        dmRepository.deleteThread(id: conversationID, for: getMyProfile().userId)
+        dmConversations = dmRepository.listThreads(for: getMyProfile().userId)
         if selectedConversationId == removedParticipantID {
             selectedConversationId = dmConversations.first?.participantUserID
         }
@@ -755,7 +765,7 @@ final class CommunityLiteViewModel: ObservableObject {
             .filter { !profile.blockedUserIDs.contains($0.id) }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         socialProfiles = merged
-        dmConversations = profile.dmConversations
+        dmConversations = dmRepository.listThreads(for: profile.userId)
             .sorted { $0.updatedAt > $1.updatedAt }
         if selectedConversationId == nil {
             selectedConversationId = dmConversations.first?.participantUserID
@@ -790,6 +800,21 @@ final class CommunityLiteViewModel: ObservableObject {
         }
     }
 
+    private func refreshRemoteDMStateIfPossible() {
+        guard canUseLocalSocialActions else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await self.dmRepository.refreshRemoteThreads(for: self.getMyProfile())
+                self.dmConversations = self.dmRepository
+                    .listThreads(for: self.getMyProfile().userId)
+                    .sorted { $0.updatedAt > $1.updatedAt }
+            } catch {
+                // Local fallback remains visible; backend diagnostics capture RLS/network detail.
+            }
+        }
+    }
+
     private func syncSocialOperation(_ operation: @escaping @MainActor () async throws -> SocialSyncDiagnostics) {
         Task { [weak self] in
             guard let self else { return }
@@ -811,6 +836,21 @@ final class CommunityLiteViewModel: ObservableObject {
                 self.ensureSelectedCommunity()
                 self.refreshSelectedCommunityContext()
                 self.lastMessage = "コミュニティを同期しました"
+            } catch {
+                self.lastMessage = "通信に失敗しました。ローカル状態は保持されています。"
+            }
+        }
+    }
+
+    private func syncDMOperation(_ operation: @escaping @MainActor () async throws -> DMSyncDiagnostics) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await operation()
+                self.dmConversations = self.dmRepository
+                    .listThreads(for: self.getMyProfile().userId)
+                    .sorted { $0.updatedAt > $1.updatedAt }
+                self.lastMessage = "DMを同期しました"
             } catch {
                 self.lastMessage = "通信に失敗しました。ローカル状態は保持されています。"
             }

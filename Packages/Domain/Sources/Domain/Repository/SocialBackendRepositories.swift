@@ -35,6 +35,15 @@ public enum CommunitySyncStatus: String, Codable, CaseIterable, Sendable {
     case failed
 }
 
+public enum DMSyncStatus: String, Codable, CaseIterable, Sendable {
+    case localFallback
+    case skippedSignedOut
+    case configured
+    case syncing
+    case synced
+    case failed
+}
+
 public enum CommunityMembershipStatus: String, Codable, CaseIterable, Sendable {
     case localFallback
     case notJoined
@@ -199,6 +208,39 @@ public struct CommunitySyncDiagnostics: Codable, Equatable, Sendable {
     }
 
     public static let localFallback = CommunitySyncDiagnostics()
+}
+
+public struct DMSyncDiagnostics: Codable, Equatable, Sendable {
+    public var status: DMSyncStatus
+    public var lastErrorMessage: String?
+    public var lastSyncAt: Date?
+    public var lastAttemptAt: Date?
+    public var threadCount: Int?
+    public var messageCount: Int?
+    public var lastThreadID: String?
+    public var lastPeerUserID: String?
+
+    public init(
+        status: DMSyncStatus = .localFallback,
+        lastErrorMessage: String? = nil,
+        lastSyncAt: Date? = nil,
+        lastAttemptAt: Date? = nil,
+        threadCount: Int? = nil,
+        messageCount: Int? = nil,
+        lastThreadID: String? = nil,
+        lastPeerUserID: String? = nil
+    ) {
+        self.status = status
+        self.lastErrorMessage = lastErrorMessage
+        self.lastSyncAt = lastSyncAt
+        self.lastAttemptAt = lastAttemptAt
+        self.threadCount = threadCount
+        self.messageCount = messageCount
+        self.lastThreadID = lastThreadID
+        self.lastPeerUserID = lastPeerUserID
+    }
+
+    public static let localFallback = DMSyncDiagnostics()
 }
 
 public struct CommunityMemberSummary: Codable, Equatable, Identifiable, Sendable {
@@ -405,11 +447,52 @@ public extension CommunityRepository {
 }
 
 public protocol DMRepository: Sendable {
+    var mode: SocialBackendMode { get }
+    var isBackendEnabled: Bool { get }
+
+    func dmSyncDiagnostics() -> DMSyncDiagnostics
     func listThreads(for userID: String) -> [DirectMessageConversation]
     func thread(id: String, for userID: String) -> DirectMessageConversation?
     func saveThread(_ thread: DirectMessageConversation, for userID: String)
     func deleteThread(id: String, for userID: String)
     func canStartThread(from profile: UserProfile, to target: SocialUserProfileSummary) -> Bool
+    func refreshRemoteThreads(for profile: UserProfile) async throws -> DMSyncDiagnostics
+    func sendMessage(to target: SocialUserProfileSummary, body: String, for profile: UserProfile) async throws -> DMSyncDiagnostics
+}
+
+public extension DMRepository {
+    var mode: SocialBackendMode { .localFallback }
+    var isBackendEnabled: Bool { false }
+
+    func dmSyncDiagnostics() -> DMSyncDiagnostics {
+        .localFallback
+    }
+
+    func refreshRemoteThreads(for profile: UserProfile) async throws -> DMSyncDiagnostics {
+        .localFallback
+    }
+
+    func sendMessage(to target: SocialUserProfileSummary, body: String, for profile: UserProfile) async throws -> DMSyncDiagnostics {
+        guard canStartThread(from: profile, to: target) else {
+            return .localFallback
+        }
+        let trimmed = String(body.trimmingCharacters(in: .whitespacesAndNewlines).prefix(240))
+        guard !trimmed.isEmpty else { return .localFallback }
+        var conversation = thread(id: target.id, for: profile.userId)
+            ?? DirectMessageConversation(
+                participantUserID: target.id,
+                participantDisplayName: target.displayName,
+                participantProfileTitle: target.profileTitle,
+                participantDecorationID: target.equippedThemeId,
+                messages: []
+            )
+        let sentAt = Date()
+        conversation.messages.append(DirectMessageMessage(sender: .me, body: trimmed, sentAt: sentAt))
+        conversation.updatedAt = sentAt
+        conversation.normalize()
+        saveThread(conversation, for: profile.userId)
+        return .localFallback
+    }
 }
 
 public protocol ReportRepository: Sendable {

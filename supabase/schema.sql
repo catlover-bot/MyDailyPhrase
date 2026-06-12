@@ -122,6 +122,10 @@ create index if not exists profiles_discoverable_idx on public.profiles(is_disco
 create index if not exists follows_followed_idx on public.follows(followed_user_id);
 create index if not exists blocks_blocked_idx on public.blocks(blocked_user_id);
 create index if not exists memberships_user_idx on public.memberships(user_id);
+create index if not exists dm_threads_user_a_idx on public.dm_threads(user_a_id);
+create index if not exists dm_threads_user_b_idx on public.dm_threads(user_b_id);
+create unique index if not exists dm_threads_pair_unique_idx
+  on public.dm_threads (least(user_a_id, user_b_id), greatest(user_a_id, user_b_id));
 create index if not exists dm_messages_thread_created_idx on public.dm_messages(thread_id, created_at);
 create index if not exists reports_target_idx on public.reports(target_kind, target_id);
 
@@ -168,6 +172,11 @@ drop policy if exists "memberships_authenticated_read_visible" on public.members
 drop policy if exists "memberships_owner_insert" on public.memberships;
 drop policy if exists "memberships_owner_delete" on public.memberships;
 drop policy if exists "memberships_owner_update" on public.memberships;
+drop policy if exists "dm_threads_participant_select" on public.dm_threads;
+drop policy if exists "dm_threads_mutual_insert" on public.dm_threads;
+drop policy if exists "dm_threads_participant_update" on public.dm_threads;
+drop policy if exists "dm_messages_participant_select" on public.dm_messages;
+drop policy if exists "dm_messages_sender_insert" on public.dm_messages;
 
 create policy "users_owner_select" on public.users
   for select to authenticated
@@ -223,7 +232,10 @@ create policy "follows_owner_delete" on public.follows
 
 create policy "blocks_owner_select" on public.blocks
   for select to authenticated
-  using (blocker_user_id = auth.uid());
+  using (
+    blocker_user_id = auth.uid()
+    or blocked_user_id = auth.uid()
+  );
 
 create policy "blocks_owner_insert" on public.blocks
   for insert to authenticated
@@ -296,13 +308,89 @@ create policy "memberships_owner_update" on public.memberships
     and member_role = 'member'
   );
 
+-- Backend-backed mutual-follow DM sync.
+-- The iOS client uses Supabase Auth user ids for user_a_id, user_b_id, and sender_user_id.
+-- Diary text is never synced by this schema; only explicit text entered into the DM UI can become dm_messages.body.
+create policy "dm_threads_participant_select" on public.dm_threads
+  for select to authenticated
+  using (
+    auth.uid() in (user_a_id, user_b_id)
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_user_id = auth.uid() and b.blocked_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end)
+         or (b.blocker_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end and b.blocked_user_id = auth.uid())
+    )
+  );
+
+create policy "dm_threads_mutual_insert" on public.dm_threads
+  for insert to authenticated
+  with check (
+    auth.uid() in (user_a_id, user_b_id)
+    and user_a_id <> user_b_id
+    and exists (
+      select 1 from public.follows f
+      where f.follower_user_id = auth.uid()
+        and f.followed_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end
+    )
+    and exists (
+      select 1 from public.follows f
+      where f.follower_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end
+        and f.followed_user_id = auth.uid()
+    )
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_user_id = auth.uid() and b.blocked_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end)
+         or (b.blocker_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end and b.blocked_user_id = auth.uid())
+    )
+  );
+
+create policy "dm_threads_participant_update" on public.dm_threads
+  for update to authenticated
+  using (auth.uid() in (user_a_id, user_b_id))
+  with check (
+    auth.uid() in (user_a_id, user_b_id)
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_user_id = auth.uid() and b.blocked_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end)
+         or (b.blocker_user_id = case when user_a_id = auth.uid() then user_b_id else user_a_id end and b.blocked_user_id = auth.uid())
+    )
+  );
+
+create policy "dm_messages_participant_select" on public.dm_messages
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.dm_threads t
+      where t.id = dm_messages.thread_id
+        and auth.uid() in (t.user_a_id, t.user_b_id)
+    )
+  );
+
+create policy "dm_messages_sender_insert" on public.dm_messages
+  for insert to authenticated
+  with check (
+    sender_user_id = auth.uid()
+    and exists (
+      select 1 from public.dm_threads t
+      where t.id = dm_messages.thread_id
+        and auth.uid() in (t.user_a_id, t.user_b_id)
+        and exists (
+          select 1 from public.follows f
+          where f.follower_user_id = auth.uid()
+            and f.followed_user_id = case when t.user_a_id = auth.uid() then t.user_b_id else t.user_a_id end
+        )
+        and exists (
+          select 1 from public.follows f
+          where f.follower_user_id = case when t.user_a_id = auth.uid() then t.user_b_id else t.user_a_id end
+            and f.followed_user_id = auth.uid()
+        )
+        and not exists (
+          select 1 from public.blocks b
+          where (b.blocker_user_id = auth.uid() and b.blocked_user_id = case when t.user_a_id = auth.uid() then t.user_b_id else t.user_a_id end)
+             or (b.blocker_user_id = case when t.user_a_id = auth.uid() then t.user_b_id else t.user_a_id end and b.blocked_user_id = auth.uid())
+        )
+    )
+  );
+
 -- Future policies, still intentionally not broad-enabled:
--- create policy "dm_thread_members_only" on public.dm_threads for select using (auth.uid() in (user_a_id, user_b_id));
--- create policy "dm_messages_members_only" on public.dm_messages for select using (
---   exists (
---     select 1 from public.dm_threads t
---     where t.id = dm_messages.thread_id
---       and auth.uid() in (t.user_a_id, t.user_b_id)
---   )
--- );
 -- create policy "reports_owner_insert" on public.reports for insert with check (reporter_user_id = auth.uid());

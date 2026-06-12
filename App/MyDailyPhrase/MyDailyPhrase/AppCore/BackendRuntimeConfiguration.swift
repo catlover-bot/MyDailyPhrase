@@ -10,7 +10,8 @@ struct BackendRuntimeConfiguration: Sendable {
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
         authDiagnostics: SupabaseAuthDiagnostics = .disabled,
         socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback,
-        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback
+        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback,
+        dmSyncDiagnostics: DMSyncDiagnostics = .localFallback
     ) -> SettingsBackendContext {
         SettingsBackendContext(
             snapshot: BackendDiagnosticsSnapshot(
@@ -19,7 +20,8 @@ struct BackendRuntimeConfiguration: Sendable {
                 connectionDiagnostics: connectionDiagnostics,
                 authDiagnostics: authDiagnostics,
                 socialSyncDiagnostics: socialSyncDiagnostics,
-                communitySyncDiagnostics: communitySyncDiagnostics
+                communitySyncDiagnostics: communitySyncDiagnostics,
+                dmSyncDiagnostics: dmSyncDiagnostics
             )
         )
     }
@@ -83,6 +85,14 @@ struct SettingsBackendContext: Sendable {
     let communityMemberCount: String
     let lastCommunityID: String
     let communityRepositoryMode: String
+    let dmSyncStatus: String
+    let lastDMSyncError: String
+    let lastDMSyncAt: String
+    let dmThreadCount: String
+    let dmMessageCount: String
+    let lastDMThreadID: String
+    let lastDMPeerUserID: String
+    let dmRepositoryMode: String
     let diagnosticsReportText: String
 
     init(snapshot: BackendDiagnosticsSnapshot) {
@@ -130,6 +140,14 @@ struct SettingsBackendContext: Sendable {
         self.communityMemberCount = snapshot.communityMemberCount.map(String.init) ?? "なし"
         self.lastCommunityID = snapshot.lastCommunityID ?? "なし"
         self.communityRepositoryMode = snapshot.communityRepositoryMode.rawValue
+        self.dmSyncStatus = snapshot.dmSyncStatus.rawValue
+        self.lastDMSyncError = snapshot.lastDMSyncError ?? "なし"
+        self.lastDMSyncAt = snapshot.lastDMSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし"
+        self.dmThreadCount = snapshot.dmThreadCount.map(String.init) ?? "なし"
+        self.dmMessageCount = snapshot.dmMessageCount.map(String.init) ?? "なし"
+        self.lastDMThreadID = snapshot.lastDMThreadID ?? "なし"
+        self.lastDMPeerUserID = snapshot.lastDMPeerUserID ?? "なし"
+        self.dmRepositoryMode = snapshot.dmRepositoryMode.rawValue
         self.diagnosticsReportText = snapshot.reportText
     }
 

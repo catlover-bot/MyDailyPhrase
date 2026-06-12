@@ -206,6 +206,14 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
     public let communityMemberCount: Int?
     public let lastCommunityID: String?
     public let communityRepositoryMode: SocialBackendMode
+    public let dmSyncStatus: DMSyncStatus
+    public let lastDMSyncError: String?
+    public let lastDMSyncAt: Date?
+    public let dmThreadCount: Int?
+    public let dmMessageCount: Int?
+    public let lastDMThreadID: String?
+    public let lastDMPeerUserID: String?
+    public let dmRepositoryMode: SocialBackendMode
 
     public init(
         configuration: SupabaseBackendConfiguration,
@@ -213,7 +221,8 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         connectionDiagnostics: BackendConnectionDiagnostics = .localFallback,
         authDiagnostics: SupabaseAuthDiagnostics = .disabled,
         socialSyncDiagnostics: SocialSyncDiagnostics = .localFallback,
-        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback
+        communitySyncDiagnostics: CommunitySyncDiagnostics = .localFallback,
+        dmSyncDiagnostics: DMSyncDiagnostics = .localFallback
     ) {
         self.provider = "supabase"
         self.status = configuration.status
@@ -258,15 +267,23 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
         self.communityMemberCount = communitySyncDiagnostics.memberCount
         self.lastCommunityID = communitySyncDiagnostics.lastCommunityID
         self.communityRepositoryMode = configuration.canUseSupabase ? .supabase : .localFallback
+        self.dmSyncStatus = dmSyncDiagnostics.status
+        self.lastDMSyncError = dmSyncDiagnostics.lastErrorMessage
+        self.lastDMSyncAt = dmSyncDiagnostics.lastSyncAt
+        self.dmThreadCount = dmSyncDiagnostics.threadCount
+        self.dmMessageCount = dmSyncDiagnostics.messageCount
+        self.lastDMThreadID = dmSyncDiagnostics.lastThreadID
+        self.lastDMPeerUserID = dmSyncDiagnostics.lastPeerUserID
+        self.dmRepositoryMode = configuration.canUseSupabase ? .supabase : .localFallback
         if activeMode == .localFallback {
             self.backendModeLabel = "localFallback"
         } else {
-            switch (connectionDiagnostics.status, profileSyncDiagnostics.status, communitySyncDiagnostics.status) {
-            case (.reachable, _, _):
+            switch (connectionDiagnostics.status, profileSyncDiagnostics.status, communitySyncDiagnostics.status, dmSyncDiagnostics.status) {
+            case (.reachable, _, _, _):
                 self.backendModeLabel = "supabaseAvailable"
-            case (.failed, _, _), (_, .failed, _), (_, _, .failed):
+            case (.failed, _, _, _), (_, .failed, _, _), (_, _, .failed, _), (_, _, _, .failed):
                 self.backendModeLabel = "supabaseError"
-            case (_, .synced, _), (_, _, .synced):
+            case (_, .synced, _, _), (_, _, .synced, _), (_, _, _, .synced):
                 self.backendModeLabel = "supabaseAvailable"
             default:
                 self.backendModeLabel = "supabaseConfigured"
@@ -319,7 +336,15 @@ public struct BackendDiagnosticsSnapshot: Equatable, Sendable {
             "joinedCommunityCount: \(joinedCommunityCount.map(String.init) ?? "なし")",
             "recommendedCommunityCount: \(recommendedCommunityCount.map(String.init) ?? "なし")",
             "communityMemberCount: \(communityMemberCount.map(String.init) ?? "なし")",
-            "lastCommunityID: \(lastCommunityID ?? "なし")"
+            "lastCommunityID: \(lastCommunityID ?? "なし")",
+            "dmSyncStatus: \(dmSyncStatus.rawValue)",
+            "dmRepositoryMode: \(dmRepositoryMode.rawValue)",
+            "lastDMSyncError: \(lastDMSyncError ?? "なし")",
+            "lastDMSyncAt: \(lastDMSyncAt.map { ISO8601DateFormatter().string(from: $0) } ?? "なし")",
+            "dmThreadCount: \(dmThreadCount.map(String.init) ?? "なし")",
+            "dmMessageCount: \(dmMessageCount.map(String.init) ?? "なし")",
+            "lastDMThreadID: \(lastDMThreadID ?? "なし")",
+            "lastDMPeerUserID: \(lastDMPeerUserID ?? "なし")"
         ].joined(separator: "\n")
     }
 }

@@ -446,12 +446,16 @@ struct SupabaseBackendSupportTests {
           }
         ]
         """
-        let httpClient = SequenceSupabaseHTTPClient(responses: [
-            (200, "[]"),
-            (200, "[]"),
-            (200, blockedBody),
-            (200, profileBody)
-        ])
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            if path.contains("/blocks") {
+                return (200, blockedBody)
+            }
+            if path.contains("/profiles") {
+                return (200, profileBody)
+            }
+            return (200, "[]")
+        }
         let repository = makeSupabaseSocialRepository(
             httpClient: httpClient,
             authSession: SupabaseAuthSession(
@@ -725,6 +729,224 @@ struct SupabaseBackendSupportTests {
         }
     }
 
+    @Test("Supabase DM send uses Supabase auth user id and hides message bodies from diagnostics")
+    func supabaseDMSendUsesAuthUserID() async throws {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let peerID = "33333333-3333-4333-8333-333333333333"
+        let threadID = "44444444-4444-4444-8444-444444444444"
+        let explicitBody = "今日は短く遊べそうです"
+        let threadBody = """
+        [{ "id": "\(threadID)", "user_a_id": "\(authUserID)", "user_b_id": "\(peerID)", "updated_at": "2026-06-12T00:00:00Z" }]
+        """
+        let messageBody = """
+        [{ "id": "55555555-5555-4555-8555-555555555555", "thread_id": "\(threadID)", "sender_user_id": "\(authUserID)", "body": "\(explicitBody)", "created_at": "2026-06-12T00:00:01Z" }]
+        """
+        let peerProfileBody = """
+        [{ "user_id": "\(peerID)", "display_name": "Remote Friend", "equipped_theme_id": "classic", "profile_title": "同期テスト" }]
+        """
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/blocks") {
+                return (200, "[]")
+            }
+            if path.contains("/follows"), query.contains("follower_user_id=eq.\(authUserID)") {
+                return (200, "[{ \"follower_user_id\": \"\(authUserID)\", \"followed_user_id\": \"\(peerID)\" }]")
+            }
+            if path.contains("/follows"), query.contains("follower_user_id=eq.\(peerID)") {
+                return (200, "[{ \"follower_user_id\": \"\(peerID)\", \"followed_user_id\": \"\(authUserID)\" }]")
+            }
+            if request.httpMethod == "GET", path.contains("/dm_threads"), query.contains("or=") {
+                return (200, threadBody)
+            }
+            if request.httpMethod == "GET", path.contains("/dm_threads") {
+                return (200, "[]")
+            }
+            if request.httpMethod == "POST", path.contains("/dm_threads") {
+                return (201, threadBody)
+            }
+            if request.httpMethod == "POST", path.contains("/dm_messages") {
+                return (201, "")
+            }
+            if request.httpMethod == "PATCH", path.contains("/dm_threads") {
+                return (204, "")
+            }
+            if path.contains("/dm_messages") {
+                return (200, messageBody)
+            }
+            if path.contains("/profiles") {
+                return (200, peerProfileBody)
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseDMRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: "refresh-token-secret",
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+
+        let diagnostics = try await repository.repository.sendMessage(
+            to: SocialUserProfileSummary(
+                id: peerID,
+                displayName: "Remote Friend",
+                equippedThemeId: "classic",
+                joinedCommunityCount: 0,
+                supportsMutualDM: true,
+                isLocalOnly: false
+            ),
+            body: explicitBody,
+            for: UserProfile(userId: "local-user", displayName: "Me")
+        )
+        let threadPost = httpClient.requests.first { $0.httpMethod == "POST" && ($0.url?.path.contains("/dm_threads") == true) }
+        let messagePost = httpClient.requests.first { $0.httpMethod == "POST" && ($0.url?.path.contains("/dm_messages") == true) }
+        let threadPostBody = threadPost?.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+        let messagePostBody = messagePost?.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+        let report = BackendDiagnosticsSnapshot(
+            configuration: repository.config,
+            dmSyncDiagnostics: diagnostics
+        ).reportText
+
+        #expect(diagnostics.status == .synced)
+        #expect(diagnostics.threadCount == 1)
+        #expect(diagnostics.messageCount == 1)
+        #expect(threadPostBody?.contains(authUserID) == true)
+        #expect(threadPostBody?.contains(peerID) == true)
+        #expect(messagePostBody?.contains(#""sender_user_id":"\#(authUserID)""#) == true)
+        #expect(messagePostBody?.contains(explicitBody) == true)
+        #expect(messagePost?.value(forHTTPHeaderField: "Authorization") == "Bearer access-token-secret")
+        #expect(report.contains("access-token-secret") == false)
+        #expect(report.contains("refresh-token-secret") == false)
+        #expect(report.contains(explicitBody) == false)
+    }
+
+    @Test("Supabase DM skips remote write without auth session")
+    func supabaseDMMissingAuthSkipsRemoteWrite() async {
+        let httpClient = RoutingSupabaseHTTPClient { _ in (200, "[]") }
+        let repository = makeSupabaseDMRepository(httpClient: httpClient, authSession: nil)
+
+        do {
+            _ = try await repository.repository.sendMessage(
+                to: SocialUserProfileSummary(
+                    id: "33333333-3333-4333-8333-333333333333",
+                    displayName: "Remote Friend",
+                    equippedThemeId: "classic",
+                    joinedCommunityCount: 0,
+                    supportsMutualDM: true,
+                    isLocalOnly: false
+                ),
+                body: "hello",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("DM send should wait for Supabase Auth")
+        } catch {
+            #expect(error as? SupabaseDMRepositoryError == .supabaseAuthSessionMissing)
+            #expect(httpClient.requests.isEmpty)
+            #expect(repository.repository.dmSyncDiagnostics().status == .skippedSignedOut)
+        }
+    }
+
+    @Test("Supabase DM requires mutual follow")
+    func supabaseDMRequiresMutualFollow() async {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let peerID = "33333333-3333-4333-8333-333333333333"
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/blocks") {
+                return (200, "[]")
+            }
+            if path.contains("/follows"), query.contains("follower_user_id=eq.\(authUserID)") {
+                return (200, "[{ \"follower_user_id\": \"\(authUserID)\", \"followed_user_id\": \"\(peerID)\" }]")
+            }
+            if path.contains("/follows") {
+                return (200, "[]")
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseDMRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+
+        do {
+            _ = try await repository.repository.sendMessage(
+                to: SocialUserProfileSummary(
+                    id: peerID,
+                    displayName: "Remote Friend",
+                    equippedThemeId: "classic",
+                    joinedCommunityCount: 0,
+                    supportsMutualDM: true,
+                    isLocalOnly: false
+                ),
+                body: "not mutual",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("DM send should require mutual follow")
+        } catch {
+            #expect(error as? SupabaseDMRepositoryError == .notMutualFollow)
+            #expect(httpClient.requests.contains { $0.url?.path.contains("/dm_messages") == true } == false)
+            #expect(repository.repository.dmSyncDiagnostics().lastErrorMessage?.contains("相互フォロー") == true)
+        }
+    }
+
+    @Test("Supabase DM blocks blocked users")
+    func supabaseDMBlocksBlockedUsers() async {
+        let authUserID = "22222222-2222-4222-8222-222222222222"
+        let peerID = "33333333-3333-4333-8333-333333333333"
+        let httpClient = RoutingSupabaseHTTPClient { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/blocks"), query.contains("blocker_user_id=eq.\(authUserID)") {
+                return (200, "[{ \"blocker_user_id\": \"\(authUserID)\", \"blocked_user_id\": \"\(peerID)\" }]")
+            }
+            if path.contains("/blocks") {
+                return (200, "[]")
+            }
+            if path.contains("/follows") {
+                return (200, "[{ \"follower_user_id\": \"\(authUserID)\", \"followed_user_id\": \"\(peerID)\" }]")
+            }
+            return (200, "[]")
+        }
+        let repository = makeSupabaseDMRepository(
+            httpClient: httpClient,
+            authSession: SupabaseAuthSession(
+                userID: authUserID,
+                accessToken: "access-token-secret",
+                refreshToken: nil,
+                expiresAt: Date().addingTimeInterval(3600)
+            )
+        )
+
+        do {
+            _ = try await repository.repository.sendMessage(
+                to: SocialUserProfileSummary(
+                    id: peerID,
+                    displayName: "Remote Friend",
+                    equippedThemeId: "classic",
+                    joinedCommunityCount: 0,
+                    supportsMutualDM: true,
+                    isLocalOnly: false
+                ),
+                body: "blocked",
+                for: UserProfile(userId: "local-user", displayName: "Me")
+            )
+            Issue.record("DM send should stop for blocked users")
+        } catch {
+            #expect(error as? SupabaseDMRepositoryError == .blockedUser)
+            #expect(httpClient.requests.contains { $0.url?.path.contains("/dm_messages") == true } == false)
+            #expect(repository.repository.dmSyncDiagnostics().lastErrorMessage?.contains("ブロック") == true)
+        }
+    }
+
     private func makeSupabaseProfileRepository() -> (
         repository: SupabaseProfileRepository,
         fallback: AppGroupUserProfileRepository,
@@ -805,6 +1027,33 @@ struct SupabaseBackendSupportTests {
             fallback: fallback,
             httpClient: httpClient,
             diagnosticsStore: SupabaseCommunitySyncDiagnosticsStore(defaults: defaults),
+            authSessionProvider: { authSession }
+        )
+        return (repository, fallback, config)
+    }
+
+    private func makeSupabaseDMRepository(
+        httpClient: SupabaseHTTPClient,
+        authSession: SupabaseAuthSession?
+    ) -> (
+        repository: SupabaseDMRepository,
+        fallback: LocalDMRepository,
+        config: SupabaseBackendConfiguration
+    ) {
+        let suiteName = "group.MyDailyPhrase.supabase.dm.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        let profileRepository = AppGroupUserProfileRepository(appGroupID: suiteName)
+        let fallback = LocalDMRepository(profileRepository: profileRepository)
+        let config = SupabaseBackendConfiguration.make(
+            isEnabledConfigured: true,
+            projectURLString: "https://example.supabase.co",
+            anonKey: "sb_publishable_test"
+        )
+        let repository = SupabaseDMRepository(
+            configuration: config,
+            fallback: fallback,
+            httpClient: httpClient,
+            diagnosticsStore: SupabaseDMSyncDiagnosticsStore(defaults: defaults),
             authSessionProvider: { authSession }
         )
         return (repository, fallback, config)
