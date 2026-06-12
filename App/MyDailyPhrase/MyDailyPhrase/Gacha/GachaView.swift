@@ -226,7 +226,7 @@ struct GachaView: View {
         .animation(.easeInOut(duration: 0.15), value: overlayCinematicMode != nil)
         .animation(.easeInOut(duration: 0.15), value: statusBannerMessage != nil)
         .alert("ガチャエラー", isPresented: $showsErrorAlert) {
-            Button("再同期") {
+            Button("状態を更新") {
                 vm.recoverNow()
             }
             Button("閉じる", role: .cancel) {
@@ -1967,7 +1967,7 @@ struct GachaView: View {
 
                     Spacer()
 
-                    Button("再同期") {
+                    Button("状態を更新") {
                         vm.recoverNow()
                     }
                     .buttonStyle(.borderedProminent)
@@ -2112,7 +2112,7 @@ struct GachaView: View {
 
             HStack {
                 Spacer()
-                Button("再同期") {
+                Button("状態を更新") {
                     vm.recoverNow()
                 }
                 .font(.caption.weight(.semibold))

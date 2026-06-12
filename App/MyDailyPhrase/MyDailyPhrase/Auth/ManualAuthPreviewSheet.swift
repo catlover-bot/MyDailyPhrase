@@ -51,17 +51,33 @@ struct ManualAuthPreviewSheet: View {
                             : "Appleでログインすると、プロフィール共有・フォロー・相互フォローDMを使いやすくできます。日記は自動公開されません。",
                         accent: .blue
                     ) {
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 8) {
-                                InfoBadge(title: vm.isAuthEnabled ? "Auth有効" : "Auth無効", systemImage: "lock.shield", tint: vm.isAuthEnabled ? .green : .orange)
-                                InfoBadge(title: vm.canUseAppleSignIn ? "Apple有効" : "Apple準備中", systemImage: "apple.logo", tint: .black)
-                                InfoBadge(title: vm.canUseGuestMode ? "ゲスト可" : "ゲスト不可", systemImage: "person", tint: .teal)
-                            }
+                        if isDiagnosticsMode {
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 8) {
+                                    InfoBadge(title: vm.isAuthEnabled ? "認証ON" : "認証OFF", systemImage: "lock.shield", tint: vm.isAuthEnabled ? .green : .orange)
+                                    InfoBadge(title: vm.canUseAppleSignIn ? "Apple有効" : "Apple準備中", systemImage: "apple.logo", tint: .black)
+                                    InfoBadge(title: vm.canUseGuestMode ? "ゲスト可" : "ゲスト不可", systemImage: "person", tint: .teal)
+                                }
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                InfoBadge(title: vm.isAuthEnabled ? "Auth有効" : "Auth無効", systemImage: "lock.shield", tint: vm.isAuthEnabled ? .green : .orange)
-                                InfoBadge(title: vm.canUseAppleSignIn ? "Apple有効" : "Apple準備中", systemImage: "apple.logo", tint: .black)
-                                InfoBadge(title: vm.canUseGuestMode ? "ゲスト可" : "ゲスト不可", systemImage: "person", tint: .teal)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    InfoBadge(title: vm.isAuthEnabled ? "認証ON" : "認証OFF", systemImage: "lock.shield", tint: vm.isAuthEnabled ? .green : .orange)
+                                    InfoBadge(title: vm.canUseAppleSignIn ? "Apple有効" : "Apple準備中", systemImage: "apple.logo", tint: .black)
+                                    InfoBadge(title: vm.canUseGuestMode ? "ゲスト可" : "ゲスト不可", systemImage: "person", tint: .teal)
+                                }
+                            }
+                        } else {
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 8) {
+                                    InfoBadge(title: "日記は非公開", systemImage: "lock.fill", tint: .indigo)
+                                    InfoBadge(title: "共有は自分で選ぶ", systemImage: "square.and.arrow.up", tint: .teal)
+                                    InfoBadge(title: "相互フォローDM", systemImage: "message.fill", tint: .blue)
+                                }
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    InfoBadge(title: "日記は非公開", systemImage: "lock.fill", tint: .indigo)
+                                    InfoBadge(title: "共有は自分で選ぶ", systemImage: "square.and.arrow.up", tint: .teal)
+                                    InfoBadge(title: "相互フォローDM", systemImage: "message.fill", tint: .blue)
+                                }
                             }
                         }
                     }
@@ -93,7 +109,7 @@ struct ManualAuthPreviewSheet: View {
                 .padding(.bottom, AppChrome.standardPageBottomPadding)
             }
             .background(AppScreenBackground())
-            .navigationTitle("ログイン機能テスト")
+            .navigationTitle(isDiagnosticsMode ? "ログイン機能プレビュー" : "ログイン / 新規登録")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") {
@@ -242,8 +258,8 @@ struct ManualAuthPreviewSheet: View {
 
     private var authDiagnosticsCard: some View {
         AppSectionCard(
-            title: "認証診断",
-            subtitle: "Apple user identifier は AUTH_ADMIN_APPLE_USER_IDS に追加するときの確認用です。"
+            title: "開発者向け認証診断",
+            subtitle: "管理者設定やログイン状態の確認用です。通常の利用画面には表示しません。"
         ) {
             diagnosticRow(title: "authState", value: vm.currentAuthStateText)
             diagnosticRow(title: "provider", value: vm.currentSession?.user.provider.displayName ?? "なし")
@@ -258,9 +274,9 @@ struct ManualAuthPreviewSheet: View {
 
             Button {
                 UIPasteboard.general.string = vm.diagnosticsReportText
-                copyFeedback = "認証診断をコピーしました"
+                copyFeedback = "開発者向け認証診断をコピーしました"
             } label: {
-                Label("認証診断をコピー", systemImage: "doc.on.doc")
+                Label("開発者向け認証診断をコピー", systemImage: "doc.on.doc")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -373,17 +389,17 @@ struct AuthPreviewUnavailableSheet: View {
     var body: some View {
         NavigationStack {
             AppSectionCard(
-                title: "ログイン機能テストは利用できません",
-                subtitle: "このビルドでは手動テスト用の認証ランタイムを作れません。"
+                title: "ログインは準備中です",
+                subtitle: "このビルドでは、ここからログイン画面を開けません。"
             ) {
-                Text("通常起動には影響しません。設定値を確認してから再度お試しください。")
+                Text("基本機能はこのまま利用できます。時間をおいてからもう一度お試しください。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding()
             .background(AppScreenBackground())
-            .navigationTitle("ログイン機能テスト")
+            .navigationTitle("ログイン / 新規登録")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") {

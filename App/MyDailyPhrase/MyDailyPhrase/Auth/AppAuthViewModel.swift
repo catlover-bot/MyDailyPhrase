@@ -236,7 +236,7 @@ final class AppAuthViewModel: ObservableObject {
         }
 
         if currentFeatureAccess.isAdminBypassingCreatorFeatures {
-            return "管理者権限で Creator 機能と QA 機能が有効です。StoreKit の加入状態は変更されません。"
+            return "管理者権限で Creator 機能と QA 機能が有効です。Creator Pass の購入状態は変更されません。"
         }
 
         if creatorPassEntitled {
@@ -309,7 +309,7 @@ final class AppAuthViewModel: ObservableObject {
                 if let bridgeAppleSignInToSupabase {
                     let outcome = await bridgeAppleSignInToSupabase(identityToken, nonce)
                     message += outcome.didCreateSession
-                        ? "。Supabase Auth連携も完了しました。"
+                        ? "。アカウントの保存準備も完了しました。"
                         : "。\(outcome.message)"
                     if !outcome.didCreateSession {
                         lastAuthErrorDescription = outcome.message

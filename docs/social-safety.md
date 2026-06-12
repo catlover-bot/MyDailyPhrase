@@ -1,6 +1,6 @@
 # Social Safety Scope
 
-## Current scope in Build `1.0 (41)`
+## Current scope in Build `1.0 (42)`
 
 `MyDailyPhrase` includes a lightweight social UX layer, but it is intentionally constrained to avoid unsafe public UGC.
 
@@ -40,6 +40,16 @@ User-facing rules:
 
 - `DMは相互フォローの相手とのみ利用できます。`
 - `不快な相手はブロック・通報できます。`
+- `まだメッセージはありません。相互フォローの相手とメッセージを始められます。`
+
+## User-facing copy boundary
+
+Build `1.0 (42)` separates product copy from developer diagnostics.
+
+- Normal users should see friendly product language such as `プロフィールを保存しました`, `コミュニティ情報を更新しました`, and `メッセージを更新しました`.
+- Normal screens must not show Supabase, RLS, auth.uid, providerUserId, UUID, access token, refresh token, localFallback, StoreKit product IDs, or raw table names.
+- Raw IDs and backend troubleshooting details belong only in admin/developer diagnostics.
+- Diagnostics must never print tokens or DM message bodies.
 
 ## What is intentionally not enabled
 
@@ -58,11 +68,12 @@ The shipped flow must not expose any of the following until a real backend and m
 
 Current status:
 
-- no real social backend is required for the shipped Build `1.0 (12)` flow
-- no CloudKit-backed social graph is enabled in this release pass
+- profile, follow/block/report, community/membership, and mutual-follow DM can use Supabase when the user is signed in and policies allow it
+- local fallback remains available when the user is signed out, offline, or using local/demo preview rows
+- no CloudKit-backed social graph is enabled
 - no public account system is required for the core diary / gacha loop
 
-If a real follow / DM backend is added later, the app must first define:
+Before expanding beyond this constrained scope, define:
 
 - stable user identity
 - authentication rules

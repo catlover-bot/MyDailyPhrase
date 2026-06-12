@@ -222,7 +222,7 @@ final class IAPStore: ObservableObject {
         case .pending:
             return "購入保留中"
         case .restored:
-            return "購入情報を同期済み"
+            return "購入情報を確認済み"
         case .purchased:
             return "購入処理が完了しました"
         case .cancelled:
@@ -256,7 +256,7 @@ final class IAPStore: ObservableObject {
         case .loading:
             return "安全に読み込めた商品だけ表示します。価格が確認できるまで購入ボタンは有効になりません。"
         case .loaded:
-            return "StoreKit から取得できた商品のみ、価格と購入ボタンを表示しています。"
+            return "App Storeで確認できた商品のみ、価格と購入ボタンを表示しています。"
         case .partiallyLoaded:
             return "読み込めた商品から先に表示しています。表示されていない商品は App Store 側の反映待ちの可能性があります。"
         case .unavailable:
@@ -399,7 +399,7 @@ final class IAPStore: ObservableObject {
             try await AppStore.sync()
             await refreshStorefrontDiagnostics()
             await refreshCreatorPassEntitlement()
-            lastMessage = "App Storeと同期しました"
+            lastMessage = "App Storeの購入情報を確認しました"
             eventStatus = .restored
         } catch {
             let debugMessage = error.localizedDescription

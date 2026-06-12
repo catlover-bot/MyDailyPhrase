@@ -532,7 +532,7 @@ final class AppContainer {
                 guard let self else {
                     return SupabaseAuthBridgeOutcome(
                         didCreateSession: false,
-                        message: "Supabase Auth連携を開始できませんでした",
+                        message: "アカウント保存の準備を開始できませんでした。もう一度お試しください。",
                         supabaseUserID: nil
                     )
                 }
@@ -775,21 +775,29 @@ final class AppContainer {
     func bridgeAppleSignInToSupabase(identityToken: String?, nonce: String?) async -> SupabaseAuthBridgeOutcome {
         let configuration = backendRuntimeConfiguration.supabaseConfiguration
         guard configuration.canUseAppleAuthBridge else {
-            let message = configuration.canUseSupabase
+            let diagnosticMessage = configuration.canUseSupabase
                 ? "Supabase Auth連携は設定で無効です。"
                 : "Supabase URLまたはpublishable keyが未設定です。"
             supabaseAuthSessionStore.record(
                 status: configuration.canUseSupabase ? .disabled : .missingConfiguration,
-                error: message
+                error: diagnosticMessage
             )
-            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+            return SupabaseAuthBridgeOutcome(
+                didCreateSession: false,
+                message: "ログインは完了しました。プロフィールのアカウント保存は準備中です。",
+                supabaseUserID: nil
+            )
         }
 
         guard let identityToken,
               !identityToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            let message = "Apple identityTokenを取得できなかったため、Supabase Auth連携をスキップしました。"
-            supabaseAuthSessionStore.record(status: .failed, error: message)
-            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+            let diagnosticMessage = "Apple identityTokenを取得できなかったため、Supabase Auth連携をスキップしました。"
+            supabaseAuthSessionStore.record(status: .failed, error: diagnosticMessage)
+            return SupabaseAuthBridgeOutcome(
+                didCreateSession: false,
+                message: "ログイン情報を確認できませんでした。もう一度お試しください。",
+                supabaseUserID: nil
+            )
         }
 
         supabaseAuthSessionStore.record(status: .signingIn)
@@ -803,13 +811,17 @@ final class AppContainer {
             await syncProfileAfterSupabaseAuthIfPossible(supabaseUserID: session.userID)
             return SupabaseAuthBridgeOutcome(
                 didCreateSession: true,
-                message: "Supabase Auth連携が完了しました",
+                message: "アカウントの保存準備が完了しました",
                 supabaseUserID: session.userID
             )
         } catch {
-            let message = Self.supabaseAuthGuidanceMessage(for: error)
-            supabaseAuthSessionStore.record(status: .failed, error: message)
-            return SupabaseAuthBridgeOutcome(didCreateSession: false, message: message, supabaseUserID: nil)
+            let diagnosticMessage = Self.supabaseAuthGuidanceMessage(for: error)
+            supabaseAuthSessionStore.record(status: .failed, error: diagnosticMessage)
+            return SupabaseAuthBridgeOutcome(
+                didCreateSession: false,
+                message: "ログインは完了しましたが、プロフィールのアカウント保存準備に失敗しました。あとでもう一度試せます。",
+                supabaseUserID: nil
+            )
         }
     }
 

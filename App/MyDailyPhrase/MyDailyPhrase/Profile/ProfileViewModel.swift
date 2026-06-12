@@ -409,7 +409,7 @@ final class ProfileViewModel: ObservableObject {
             let diagnostics = await syncProfileToBackend(profile)
             profileSyncDiagnostics = diagnostics
             if diagnostics.status == .failed {
-                lastMessage = "プロフィール同期に失敗しました。ローカル変更は保存済みです。"
+                lastMessage = "プロフィールの反映に失敗しました。変更はこの端末に保存済みです。"
             }
         }
     }
@@ -429,9 +429,9 @@ final class ProfileViewModel: ObservableObject {
 
     var linkedAuthStatusText: String {
         if linkedAuthProvider == nil {
-            return "現在はローカルプロファイルで利用中です"
+            return "ログインなしでも基本機能を利用できます"
         }
-        return "\(linkedAuthProviderName) 連携済み（\(linkedAuthUserIdHint)）"
+        return "\(linkedAuthProviderName) でログイン済み"
     }
 
     var hasLinkedAuth: Bool {
@@ -445,23 +445,23 @@ final class ProfileViewModel: ObservableObject {
     var profileSyncStatusText: String {
         switch profileSyncDiagnostics.status {
         case .localFallback:
-            return "ローカル保存"
+            return "この端末に保存"
         case .skippedSignedOut:
-            return "未ログインのため未同期"
+            return "ログイン待ち"
         case .configured:
-            return "同期準備済み"
+            return "保存準備済み"
         case .connecting:
-            return "接続確認中"
+            return "確認中"
         case .idle:
-            return "同期待ち"
+            return "次回保存で反映"
         case .skippedSupabaseAuthMissing:
-            return "Supabase認証待ち"
+            return "ログイン確認待ち"
         case .syncing:
-            return "同期中"
+            return "反映中"
         case .synced:
-            return "同期済み"
+            return "保存済み"
         case .failed:
-            return "同期エラー"
+            return "保存エラー"
         }
     }
 
@@ -469,28 +469,29 @@ final class ProfileViewModel: ObservableObject {
         switch profileSyncDiagnostics.status {
         case .synced:
             let at = profileSyncDiagnostics.lastSyncAt.map(formattedAuditDate) ?? "時刻不明"
-            return "Supabase プロフィールと同期しました（\(at)）。"
+            return "プロフィールを保存しました（\(at)）。"
         case .failed:
-            return "同期に失敗しました。ローカルのプロフィール変更は保存されています。"
+            return "反映に失敗しました。プロフィール変更はこの端末に保存されています。"
         case .configured:
-            return "Supabase設定があります。プロフィール保存時に同期を試します。"
+            return "プロフィール保存時に、ログイン済みアカウントへも反映を試します。"
         case .connecting:
-            return "Supabase接続を確認しています。"
+            return "プロフィールの保存先を確認しています。"
         case .syncing:
-            return "プロフィールをSupabaseへ反映しています。"
+            return "プロフィールを反映しています。"
         case .idle:
-            return "次回保存時にSupabaseへ反映します。"
+            return "次に保存したとき、アカウントにも反映します。"
         case .skippedSupabaseAuthMissing:
-            return "ローカル保存済みです。Supabase Auth連携後に同期を試せます。"
+            return "この端末に保存済みです。ログイン確認後にアカウントへ反映できます。"
         case .skippedSignedOut:
-            return "ログインするとプロフィール同期を試せます。"
+            return "ログインするとプロフィールをアカウントに反映できます。"
         case .localFallback:
-            return "バックエンド未設定のため、この端末に保存しています。"
+            return "この端末に保存しています。"
         }
     }
 
     var profileSyncLastErrorText: String? {
-        profileSyncDiagnostics.lastErrorMessage
+        guard profileSyncDiagnostics.lastErrorMessage != nil else { return nil }
+        return "詳しい情報は開発者向け診断に記録されています。"
     }
 
     var requiresInitialOnboarding: Bool {

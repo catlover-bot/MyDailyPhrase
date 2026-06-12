@@ -76,6 +76,14 @@ struct SettingsView: View {
         backendContextOverride ?? backendContext
     }
 
+    private var canRevealDeveloperDiagnostics: Bool {
+        #if DEBUG
+        true
+        #else
+        displayedAuthContext.canAccessAdminMenu
+        #endif
+    }
+
     var body: some View {
         let authContext = displayedAuthContext
 
@@ -198,10 +206,10 @@ struct SettingsView: View {
                     }
                 }
 
-                if showsIAPDiagnostics {
+                if showsIAPDiagnostics && canRevealDeveloperDiagnostics {
                     AppSectionCard(
-                        title: "認証診断情報",
-                        subtitle: "認証設定が空でも安全に起動できているかを確認できます。"
+                        title: "開発者向け認証情報",
+                        subtitle: "管理者・開発者向けの確認情報です。通常の利用画面には表示しません。"
                     ) {
                         VStack(alignment: .leading, spacing: 10) {
                             diagnosticRow(title: "authEnabled", value: authContext.isAuthEnabled ? "true" : "false")
@@ -218,9 +226,9 @@ struct SettingsView: View {
 
                             Button {
                                 UIPasteboard.general.string = authContext.diagnosticsReportText
-                                authDiagnosticsCopyFeedback = "認証診断をコピーしました"
+                                authDiagnosticsCopyFeedback = "開発者向け認証情報をコピーしました"
                             } label: {
-                                Label("認証診断をコピー", systemImage: "doc.on.doc")
+                                Label("開発者向け認証情報をコピー", systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
@@ -356,7 +364,7 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    if showsIAPDiagnostics {
+                    if showsIAPDiagnostics && canRevealDeveloperDiagnostics {
                         AppSectionCard(
                             title: "購入診断情報",
                             subtitle: "TestFlight で価格が出ないときに、どの商品 ID が読み込めていないかを確認できます。"
@@ -402,7 +410,7 @@ struct SettingsView: View {
                     }
                 }
 
-                if showsIAPDiagnostics {
+                if showsIAPDiagnostics && canRevealDeveloperDiagnostics {
                     AppSectionCard(
                         title: "ガチャアート確認",
                         subtitle: "未所持のアイテムも含めて、assets.xcassets に登録したアートがこの端末で見えているか確認できます。"
@@ -503,7 +511,7 @@ struct SettingsView: View {
                         title: "管理者メニュー",
                         subtitle: "管理者権限で有効な確認メニューです。通常ユーザーには表示されません。"
                     ) {
-                        Text("StoreKit の加入状態を変えずに、Creator 機能・ガチャ QA・購入診断・ローカルデモの確認ができます。")
+                        Text("Creator Pass の購入状態を変えずに、Creator 機能・ガチャ QA・購入診断・ローカルデモの確認ができます。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -661,6 +669,7 @@ struct SettingsView: View {
             if let manualAuthViewModel {
                 ManualAuthPreviewSheet(
                     viewModel: manualAuthViewModel,
+                    isDiagnosticsMode: canRevealDeveloperDiagnostics && showsIAPDiagnostics,
                     onAuthStateChanged: updateManualAuthContext
                 )
             } else {
@@ -730,10 +739,12 @@ struct SettingsView: View {
         let authContext = displayedAuthContext
 
         return AppSectionCard(
-            title: "ログイン機能テスト",
-            subtitle: "起動時の認証ゲートは使わず、ここから手動でログイン画面と診断だけを確認できます。"
+            title: "アカウントにログイン",
+            subtitle: "ログインすると、プロフィール共有・フォロー・相互フォローDMを使いやすくできます。日記は自動公開されません。"
         ) {
-            Text("Release の通常起動はこれまで通り安全モードのメイン画面です。Appleログインが無効な場合は準備中として表示します。")
+            let canShowDeveloperDiagnostics = canRevealDeveloperDiagnostics
+
+            Text("基本機能はログインなしでも使えます。必要なタイミングで、ここからログイン / 新規登録できます。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -743,53 +754,59 @@ struct SettingsView: View {
                     Button {
                         openManualAuthPreview()
                     } label: {
-                        Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
+                        Label("ログイン / 新規登録", systemImage: "person.crop.circle.badge.checkmark")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(makeAuthPreviewViewModel == nil)
 
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            showsAuthTestDiagnostics.toggle()
+                    if canShowDeveloperDiagnostics {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                showsAuthTestDiagnostics.toggle()
+                            }
+                        } label: {
+                            Label("開発者向け認証情報", systemImage: "stethoscope")
+                                .frame(maxWidth: .infinity)
                         }
-                    } label: {
-                        Label("認証診断を表示", systemImage: "stethoscope")
-                            .frame(maxWidth: .infinity)
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
 
                 VStack(spacing: 10) {
                     Button {
                         openManualAuthPreview()
                     } label: {
-                        Label("ログイン画面を開く", systemImage: "person.crop.circle.badge.checkmark")
+                        Label("ログイン / 新規登録", systemImage: "person.crop.circle.badge.checkmark")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(makeAuthPreviewViewModel == nil)
 
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            showsAuthTestDiagnostics.toggle()
+                    if canShowDeveloperDiagnostics {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                showsAuthTestDiagnostics.toggle()
+                            }
+                        } label: {
+                            Label("開発者向け認証情報", systemImage: "stethoscope")
+                                .frame(maxWidth: .infinity)
                         }
-                    } label: {
-                        Label("認証診断を表示", systemImage: "stethoscope")
-                            .frame(maxWidth: .infinity)
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
 
-            Button {
-                UIPasteboard.general.string = authContext.diagnosticsReportText
-                authDiagnosticsCopyFeedback = "認証診断をコピーしました"
-            } label: {
-                Label("認証診断をコピー", systemImage: "doc.on.doc")
-                    .frame(maxWidth: .infinity)
+            if canShowDeveloperDiagnostics {
+                Button {
+                    UIPasteboard.general.string = authContext.diagnosticsReportText
+                    authDiagnosticsCopyFeedback = "開発者向け認証情報をコピーしました"
+                } label: {
+                    Label("開発者向け認証情報をコピー", systemImage: "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
 
             if let authDiagnosticsCopyFeedback {
                 Text(authDiagnosticsCopyFeedback)
@@ -797,7 +814,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if showsAuthTestDiagnostics {
+            if canShowDeveloperDiagnostics && showsAuthTestDiagnostics {
                 VStack(alignment: .leading, spacing: 10) {
                     diagnosticRow(title: "AUTH_ENABLED", value: authContext.isAuthEnabled ? "true" : "false")
                     diagnosticRow(title: "AUTH_SIGN_IN_WITH_APPLE_ENABLED", value: authContext.signInWithAppleEnabled ? "true" : "false")
@@ -824,8 +841,8 @@ struct SettingsView: View {
     private var backendDiagnosticsSection: some View {
         let context = displayedBackendContext
         return AppSectionCard(
-            title: "Backend診断",
-            subtitle: "Supabase 接続準備と local fallback の状態を確認します。未設定でも起動やQAは継続できます。"
+            title: "開発者向け診断",
+            subtitle: "管理者・開発者向けに、アカウント保存やコミュニティ更新の接続状態を確認します。通常ユーザーには表示しません。"
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 diagnosticRow(title: "Provider", value: context.provider)
@@ -897,16 +914,16 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("DM同期は dm_threads / dm_messages を使います。本文は診断に出さず、相互フォローとブロック状態を確認してから同期します。")
+                Text("メッセージ更新は dm_threads / dm_messages を使います。本文は診断に出さず、相互フォローとブロック状態を確認してから反映します。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button {
                     UIPasteboard.general.string = context.diagnosticsReportText
-                    backendDiagnosticsCopyFeedback = "Backend診断をコピーしました"
+                    backendDiagnosticsCopyFeedback = "開発者向け診断をコピーしました"
                 } label: {
-                    Label("Backend診断をコピー", systemImage: "doc.on.doc")
+                    Label("開発者向け診断をコピー", systemImage: "doc.on.doc")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -945,13 +962,13 @@ struct SettingsView: View {
                 let updated = await runBackendConnectionTest()
                 await MainActor.run {
                     backendContextOverride = updated
-                    backendDiagnosticsCopyFeedback = "Supabase接続テストを実行しました"
+                    backendDiagnosticsCopyFeedback = "接続確認テストを実行しました"
                     isRunningBackendConnectionTest = false
                 }
             }
         } label: {
             Label(
-                isRunningBackendConnectionTest ? "接続確認中..." : "Supabase接続テスト",
+                isRunningBackendConnectionTest ? "接続確認中..." : "接続確認テスト",
                 systemImage: "antenna.radiowaves.left.and.right"
             )
             .frame(maxWidth: .infinity)
@@ -969,13 +986,13 @@ struct SettingsView: View {
                 let updated = await runProfileSyncTest()
                 await MainActor.run {
                     backendContextOverride = updated
-                    backendDiagnosticsCopyFeedback = "プロフィール同期テストを実行しました"
+                    backendDiagnosticsCopyFeedback = "プロフィール保存テストを実行しました"
                     isRunningProfileSyncTest = false
                 }
             }
         } label: {
             Label(
-                isRunningProfileSyncTest ? "同期確認中..." : "プロフィール同期テスト",
+                isRunningProfileSyncTest ? "保存確認中..." : "プロフィール保存テスト",
                 systemImage: "person.crop.circle.badge.checkmark"
             )
             .frame(maxWidth: .infinity)
@@ -993,13 +1010,13 @@ struct SettingsView: View {
                 let updated = await runCommunitySyncTest()
                 await MainActor.run {
                     backendContextOverride = updated
-                    backendDiagnosticsCopyFeedback = "コミュニティ同期テストを実行しました"
+                    backendDiagnosticsCopyFeedback = "コミュニティ更新テストを実行しました"
                     isRunningCommunitySyncTest = false
                 }
             }
         } label: {
             Label(
-                isRunningCommunitySyncTest ? "Community確認中..." : "コミュニティ同期テスト",
+                isRunningCommunitySyncTest ? "コミュニティ確認中..." : "コミュニティ更新テスト",
                 systemImage: "person.2.badge.gearshape"
             )
             .frame(maxWidth: .infinity)
@@ -1017,13 +1034,13 @@ struct SettingsView: View {
                 let updated = await runDMSyncTest()
                 await MainActor.run {
                     backendContextOverride = updated
-                    backendDiagnosticsCopyFeedback = "DM同期テストを実行しました"
+                    backendDiagnosticsCopyFeedback = "メッセージ更新テストを実行しました"
                     isRunningDMSyncTest = false
                 }
             }
         } label: {
             Label(
-                isRunningDMSyncTest ? "DM確認中..." : "DM同期テスト",
+                isRunningDMSyncTest ? "メッセージ確認中..." : "メッセージ更新テスト",
                 systemImage: "message.badge"
             )
             .frame(maxWidth: .infinity)
@@ -1035,8 +1052,10 @@ struct SettingsView: View {
     private var versionBadge: some View {
         Button {
             versionTapCount += 1
-            if versionTapCount >= 5 {
+            if versionTapCount >= 5 && canRevealDeveloperDiagnostics {
                 showsIAPDiagnostics.toggle()
+                versionTapCount = 0
+            } else if versionTapCount >= 5 {
                 versionTapCount = 0
             }
         } label: {

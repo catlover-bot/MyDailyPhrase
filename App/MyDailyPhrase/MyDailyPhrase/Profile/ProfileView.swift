@@ -543,8 +543,8 @@ struct ProfileView: View {
 
     private var profileSyncStatusCard: some View {
         AppSectionCard(
-            title: "プロフィール同期",
-            subtitle: "ログイン済みプロフィールは、Supabase設定がある場合だけ同期を試します。失敗してもこの端末の変更は残ります。"
+            title: "プロフィール保存",
+            subtitle: "ログイン済みの場合は、表示名や自己紹介をアカウントにも反映できます。失敗してもこの端末の変更は残ります。"
         ) {
             HStack(spacing: 10) {
                 Image(systemName: vm.profileSyncDiagnostics.status == .synced ? "checkmark.icloud.fill" : "icloud")
@@ -561,7 +561,7 @@ struct ProfileView: View {
 
             if let error = vm.profileSyncLastErrorText {
                 Text(error)
-                    .font(.caption2.monospaced())
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

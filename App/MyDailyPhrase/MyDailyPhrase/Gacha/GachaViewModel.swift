@@ -535,7 +535,7 @@ final class GachaViewModel: ObservableObject {
         runningActionID = nil
         actionMessage = nil
         transition(to: .idle, reason: "recoverNow")
-        lastMessage = "状態を再同期しました"
+        lastMessage = "状態を更新しました"
         scheduleRefreshProfile()
     }
 
@@ -1456,7 +1456,7 @@ final class GachaViewModel: ObservableObject {
             return
         }
 
-        let msg = "抽選状態の整合性を回復しました。状態を再同期します"
+        let msg = "抽選状態の整合性を回復しました。状態を更新します"
         transition(to: .error(msg), reason: "failsafe_recover \(reason)")
         lastMessage = msg
         appendSecurityAudit(

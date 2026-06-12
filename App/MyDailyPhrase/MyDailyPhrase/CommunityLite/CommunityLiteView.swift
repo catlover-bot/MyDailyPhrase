@@ -219,10 +219,10 @@ final class CommunityLiteViewModel: ObservableObject {
 
     var communityCreationStatusText: String {
         if featureAccess.isAdminBypassingCreatorFeatures {
-            return "管理者権限で有効です。この端末では StoreKit 加入状態を変えずに、ローカルな招待制コミュニティ作成を確認できます。"
+            return "管理者権限で有効です。Creator Pass の購入状態を変えずに、招待制コミュニティ作成を確認できます。"
         }
         if creatorEntitlement.canCreateCommunity {
-            return "Creator Passの権利が有効です。この端末ではローカルな招待制コミュニティを作成できます。"
+            return "Creator Passの権利が有効です。招待制コミュニティを作成できます。"
         }
         return "参加は無料です。コミュニティ作成はCreator Pass向け機能として準備中です。"
     }
@@ -332,7 +332,7 @@ final class CommunityLiteViewModel: ObservableObject {
 
     func join(communityId: String) {
         guard canUseLocalSocialActions else {
-            lastMessage = "コミュニティ参加はログイン後に同期できます"
+            lastMessage = "ログインするとコミュニティ参加を保存できます"
             return
         }
         joinCommunity(communityId: communityId)
@@ -554,7 +554,7 @@ final class CommunityLiteViewModel: ObservableObject {
         dmConversations = dmRepository.listThreads(for: getMyProfile().userId)
         selectedConversationId = updatedConversation.participantUserID
         dmDraftText = ""
-        lastMessage = "DMを保存しました。同期できる場合はSupabaseにも反映します"
+        lastMessage = "メッセージを保存しました。ログイン済みの場合は相手にも反映します。"
         syncDMOperation {
             try await self.dmRepository.sendMessage(to: profile, body: trimmed, for: self.getMyProfile())
         }
@@ -835,9 +835,9 @@ final class CommunityLiteViewModel: ObservableObject {
                 self.reloadCommunities()
                 self.ensureSelectedCommunity()
                 self.refreshSelectedCommunityContext()
-                self.lastMessage = "コミュニティを同期しました"
+                self.lastMessage = "コミュニティ情報を更新しました"
             } catch {
-                self.lastMessage = "通信に失敗しました。ローカル状態は保持されています。"
+                self.lastMessage = "通信に失敗しました。この端末の状態は保持されています。"
             }
         }
     }
@@ -850,9 +850,9 @@ final class CommunityLiteViewModel: ObservableObject {
                 self.dmConversations = self.dmRepository
                     .listThreads(for: self.getMyProfile().userId)
                     .sorted { $0.updatedAt > $1.updatedAt }
-                self.lastMessage = "DMを同期しました"
+                self.lastMessage = "メッセージを更新しました"
             } catch {
-                self.lastMessage = "通信に失敗しました。ローカル状態は保持されています。"
+                self.lastMessage = "通信に失敗しました。この端末の状態は保持されています。"
             }
         }
     }
@@ -2142,7 +2142,7 @@ struct CommunityLiteView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
                         vm.featureAccess.isAdminBypassingCreatorFeatures
-                            ? "管理者権限で作成機能を確認できます。StoreKit の Creator Pass 状態はそのままです。"
+                            ? "管理者権限で作成機能を確認できます。Creator Pass の購入状態はそのままです。"
                             : (vm.creatorEntitlement.hasCreatorPass ? "この端末ではコミュニティ作成が有効です。" : previewState.statusText)
                     )
                         .font(.subheadline)

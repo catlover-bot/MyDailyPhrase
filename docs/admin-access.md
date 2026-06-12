@@ -61,6 +61,13 @@ Release では safe mode のまま、allowlist に一致した手動 Apple ロ�
 - ローカルデモデータリセット
 - ローカルテストチケット付与
 
+## 表示コピーと診断
+
+- Build `1.0 (42)` では、通常ユーザー向け画面から Supabase / RLS / UUID / providerUserId / access token / refresh token / raw table name などの内部用語を出さない方針にしました。
+- 通常画面では「プロフィールを保存しました」「コミュニティ情報を更新しました」「メッセージを更新しました」のようなプロダクトコピーを使います。
+- 内部 ID、接続状態、RLS エラー、テーブル名などは `開発者向け診断` または `開発者向け認証診断` に限定します。
+- 診断でも access token / refresh token / Apple identityToken / DM本文は表示・コピーしません。
+
 ## 安全性
 
 - 通常ユーザーを自動で管理者にはしません。
@@ -69,8 +76,8 @@ Release では safe mode のまま、allowlist に一致した手動 Apple ロ�
 - public feed / comments / ranking は引き続き無効のままです。
 - 外部決済リンクは追加していません。
 - 管理者 bypass で課金状態や通貨表示は書き換えません。
-- Backend 診断は管理者メニュー内にだけ表示します。Supabase 未設定でも `localFallback` としてローカル QA を継続できます。
-- コミュニティ同期テストは管理者だけが Backend 診断から実行できます。Supabase Auth session がある場合は `communities` / `memberships` を確認し、未接続時は local fallback のまま安全に戻ります。
-- DM同期テストも管理者だけが Backend 診断から実行できます。診断は `dm_threads` / `dm_messages` の同期状態と件数だけを表示し、DM本文・access token・refresh token は表示しません。
+- 開発者向け診断は管理者メニュー内にだけ表示します。バックエンド未設定でもローカル QA を継続できます。
+- コミュニティ更新テストは管理者だけが開発者向け診断から実行できます。
+- メッセージ更新テストも管理者だけが開発者向け診断から実行できます。診断は状態と件数だけを表示し、DM本文・access token・refresh token は表示しません。
 - 管理者のコミュニティ作成テストは `管理者権限で有効` と区別し、StoreKit Creator Pass entitlement は変更しません。
 - allowlist が空でもクラッシュせず、単に非管理者として扱います。
